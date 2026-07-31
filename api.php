@@ -12,6 +12,7 @@ const NOTE_MAX = 60;
 const GAME_MAX = 60;
 const PASSWORD_MIN_LENGTH = 8;
 const ALLOWED_STATUSES = ['', 'online', 'late', 'absent', 'vacation'];
+const ALLOWED_THEMES = ['default', 'summer', 'winter'];
 const STORE_PREFIX = "<?php http_response_code(403); exit; ?>\n";
 
 function isHttpsRequest(): bool
@@ -114,6 +115,7 @@ function defaultStore(): array
         'custom_dates' => [],
         'settings' => [
             'admin_player_names' => [],
+            'theme' => 'default',
         ],
     ];
 }
@@ -155,6 +157,7 @@ function normalizeStore(array $store): array
     $store['settings']['admin_player_names'] = is_array($store['settings']['admin_player_names'] ?? null)
         ? array_values($store['settings']['admin_player_names'])
         : [];
+    $store['settings']['theme'] = validateThemeValue($store['settings']['theme'] ?? 'default', 'default');
 
     $maxPlayerId = 0;
     foreach ($store['players'] as &$player) {
@@ -465,6 +468,18 @@ function validateGame($value): string
         respond(['ok' => false, 'error' => 'Der Spielwunsch ist zu lang.'], 422);
     }
     return $game;
+}
+
+function validateThemeValue($value, ?string $fallback = null): string
+{
+    $theme = trim((string) $value);
+    if (in_array($theme, ALLOWED_THEMES, true)) {
+        return $theme;
+    }
+    if ($fallback !== null) {
+        return $fallback;
+    }
+    respond(['ok' => false, 'error' => 'Der ausgewählte Style ist ungültig.'], 422);
 }
 
 function findPlayerIndex(array $players, int $id): ?int
@@ -930,6 +945,9 @@ function bootstrapResponse(array $store): array
         'availability' => $availability,
         'game_options' => gameOptions($store),
         'event_dates' => $eventDates,
+        'settings' => [
+            'theme' => validateThemeValue($store['settings']['theme'] ?? 'default', 'default'),
+        ],
     ];
 
     if ($isAdmin) {
@@ -948,6 +966,7 @@ function bootstrapResponse(array $store): array
         $response['admin'] = [
             'users' => $adminUsers,
             'admin_player_names' => array_values($store['settings']['admin_player_names']),
+            'theme' => validateThemeValue($store['settings']['theme'] ?? 'default', 'default'),
         ];
     }
 
@@ -1323,6 +1342,7 @@ withWritableStore(function (array &$store) use ($action, $payload): array {
             if (countActiveAdminUsers($store) === 0) {
                 return [['ok' => false, 'error' => 'Die Liste muss mindestens einen vorhandenen Account zum Administrator machen.'], 422, false];
             }
+            $store['settings']['theme'] = validateThemeValue($payload['theme'] ?? ($store['settings']['theme'] ?? 'default'));
             return [bootstrapResponse($store), 200, true];
 
         default:

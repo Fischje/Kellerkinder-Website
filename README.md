@@ -10,6 +10,7 @@ Mobiloptimierter PHP-Kalender zur Planung gemeinsamer Spielabende mit Benutzerko
 - Normale Benutzer bearbeiten ausschließlich den eigenen Spieler und die eigenen Statusangaben
 - Administratoren verwalten Benutzer, Spieler, Termine und sämtliche Statusangaben
 - Adminrechte werden in `settings.admin_player_names` anhand der Spielernamen gespeichert
+- Administratoren ändern den globalen Style für alle Besucher und Benutzer
 - Automatische Anzeige der nächsten drei Mittwoche und Sonntage
 - Zusätzliche, frei wählbare Spieltage durch alle angemeldeten Benutzer
 - Anzeige von genau einem vergangenen Termin
@@ -22,7 +23,7 @@ Mobiloptimierter PHP-Kalender zur Planung gemeinsamer Spielabende mit Benutzerko
 - Passwortänderung ohne E-Mail-Funktion
 - Setzt ein Admin ein neues Passwort, wird die bestehende Sitzung ungültig und der Benutzer muss das vorläufige Passwort nach der nächsten Anmeldung erneut ändern
 - Discord-Abfrage über `/kalender`
-- Dunkles RGB-Gaming-Design
+- Drei globale Styles: RGB-Gaming als Standard, Sommer mit Sonne/Wasser/Strand und Winter mit Schnee/Weihnachtsmotiven
 - Keine externe Datenbank und keine externen Bibliotheken erforderlich
 
 ## Passwortregeln
@@ -149,6 +150,7 @@ Enthalten sind unter anderem:
 - Passwort-Hashes,
 - Spielerzuordnungen,
 - Admin-Spielernamen,
+- globaler Style,
 - wiederkehrende Wochentage,
 - Termine,
 - Statusangaben, Spielwünsche und Hinweise.

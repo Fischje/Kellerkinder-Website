@@ -12,7 +12,7 @@ if ($appVersion === '') {
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <meta name="theme-color" content="#070914">
+    <meta name="theme-color" id="themeColorMeta" content="#070914">
     <meta name="application-name" content="Kellerkinder-Online-Kalender">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -50,6 +50,50 @@ if ($appVersion === '') {
             --glow: 0 0 24px rgba(53, 231, 255, 0.14), 0 0 52px rgba(169, 92, 255, 0.08);
         }
 
+        body[data-theme="summer"] {
+            --bg: #061619;
+            --bg-soft: #0c2628;
+            --panel: rgba(9, 43, 47, 0.88);
+            --panel-strong: rgba(8, 35, 42, 0.96);
+            --panel-soft: rgba(19, 62, 60, 0.82);
+            --line: rgba(151, 233, 215, 0.24);
+            --line-strong: rgba(255, 214, 133, 0.42);
+            --text: #f7fff8;
+            --muted: #b8d7ce;
+            --cyan: #45f0dd;
+            --blue: #3aa8ff;
+            --violet: #6fd287;
+            --pink: #ff9d5c;
+            --green: #53e78e;
+            --orange: #ffd166;
+            --red: #ff6f6f;
+            --vacation: #ffd166;
+            --shadow: 0 22px 65px rgba(0, 32, 34, 0.5);
+            --glow: 0 0 24px rgba(69, 240, 221, 0.16), 0 0 48px rgba(255, 209, 102, 0.1);
+        }
+
+        body[data-theme="winter"] {
+            --bg: #030812;
+            --bg-soft: #081321;
+            --panel: rgba(8, 19, 34, 0.9);
+            --panel-strong: rgba(7, 16, 30, 0.97);
+            --panel-soft: rgba(18, 35, 58, 0.82);
+            --line: rgba(177, 222, 255, 0.25);
+            --line-strong: rgba(230, 242, 255, 0.45);
+            --text: #f6fbff;
+            --muted: #b7c8da;
+            --cyan: #9de9ff;
+            --blue: #5c96ff;
+            --violet: #d9f2ff;
+            --pink: #ff5b6d;
+            --green: #4be39b;
+            --orange: #f8d56c;
+            --red: #ff4058;
+            --vacation: #9de9ff;
+            --shadow: 0 22px 65px rgba(0, 10, 24, 0.62);
+            --glow: 0 0 24px rgba(157, 233, 255, 0.18), 0 0 52px rgba(255, 64, 88, 0.1);
+        }
+
         * { box-sizing: border-box; }
 
         html {
@@ -68,6 +112,18 @@ if ($appVersion === '') {
                 radial-gradient(circle at 50% -15%, rgba(44, 61, 125, .34), transparent 35rem),
                 linear-gradient(180deg, #070914 0%, #04050a 62%, #080912 100%);
             background-attachment: fixed;
+        }
+
+        body[data-theme="summer"] {
+            background:
+                radial-gradient(circle at 50% -15%, rgba(255, 209, 102, .24), transparent 33rem),
+                linear-gradient(180deg, #06383d 0%, #082420 58%, #051316 100%);
+        }
+
+        body[data-theme="winter"] {
+            background:
+                radial-gradient(circle at 50% -16%, rgba(180, 230, 255, .28), transparent 34rem),
+                linear-gradient(180deg, #07182b 0%, #030812 60%, #07101c 100%);
         }
 
         body::before,
@@ -89,6 +145,22 @@ if ($appVersion === '') {
             animation: rgbDrift 18s ease-in-out infinite alternate;
         }
 
+        body[data-theme="summer"]::before {
+            background:
+                radial-gradient(circle at 16% 20%, rgba(69, 240, 221, .24) 0 0, transparent 22rem),
+                radial-gradient(circle at 84% 18%, rgba(255, 209, 102, .22) 0 0, transparent 25rem),
+                radial-gradient(circle at 72% 78%, rgba(68, 214, 116, .19) 0 0, transparent 28rem),
+                radial-gradient(circle at 18% 84%, rgba(255, 157, 92, .18) 0 0, transparent 26rem);
+        }
+
+        body[data-theme="winter"]::before {
+            background:
+                radial-gradient(circle at 16% 22%, rgba(157, 233, 255, .22) 0 0, transparent 23rem),
+                radial-gradient(circle at 82% 18%, rgba(255, 64, 88, .2) 0 0, transparent 24rem),
+                radial-gradient(circle at 72% 78%, rgba(92, 150, 255, .22) 0 0, transparent 28rem),
+                radial-gradient(circle at 20% 82%, rgba(245, 255, 255, .16) 0 0, transparent 27rem);
+        }
+
         body::after {
             inset: 0;
             opacity: .45;
@@ -100,10 +172,272 @@ if ($appVersion === '') {
             mask-image: linear-gradient(180deg, #000 0%, rgba(0,0,0,.55) 55%, transparent 100%);
         }
 
+        body[data-theme="summer"]::after {
+            opacity: .34;
+            background-image:
+                linear-gradient(rgba(170, 255, 225, .06) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(170, 255, 225, .06) 1px, transparent 1px),
+                radial-gradient(circle, rgba(255,255,255,.08) 1px, transparent 1.5px);
+            background-size: 46px 46px, 46px 46px, 26px 26px;
+        }
+
+        body[data-theme="winter"]::after {
+            opacity: .42;
+            background-image:
+                linear-gradient(rgba(180, 220, 255, .06) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(180, 220, 255, .06) 1px, transparent 1px),
+                radial-gradient(circle, rgba(245,255,255,.18) 1px, transparent 1.8px);
+            background-size: 44px 44px, 44px 44px, 28px 28px;
+        }
+
+        .season-scene {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            overflow: hidden;
+            pointer-events: none;
+        }
+
+        .season-scene > * {
+            display: none;
+            position: absolute;
+        }
+
+        body[data-theme="summer"] .summer-sun,
+        body[data-theme="summer"] .summer-waves,
+        body[data-theme="summer"] .summer-icons,
+        body[data-theme="summer"] .summer-bubbles,
+        body[data-theme="winter"] .winter-snow,
+        body[data-theme="winter"] .winter-snowbank,
+        body[data-theme="winter"] .winter-tree,
+        body[data-theme="winter"] .winter-fireplace {
+            display: block;
+        }
+
+        .summer-sun {
+            top: clamp(18px, 7vh, 64px);
+            right: clamp(18px, 6vw, 92px);
+            width: clamp(88px, 16vw, 170px);
+            aspect-ratio: 1;
+            border-radius: 50%;
+            background:
+                radial-gradient(circle at 35% 32%, #fff8c7 0 16%, #ffd166 17% 58%, #ff9f3d 59% 100%);
+            box-shadow:
+                0 0 44px rgba(255, 209, 102, .55),
+                0 0 110px rgba(255, 157, 92, .28);
+            opacity: .88;
+            animation: sunFloat 7s ease-in-out infinite;
+        }
+
+        .summer-sun::before {
+            content: "";
+            position: absolute;
+            inset: -22px;
+            border-radius: 50%;
+            background: repeating-conic-gradient(from 0deg, rgba(255, 224, 122, .55) 0 8deg, transparent 8deg 18deg);
+            filter: blur(.5px);
+            animation: sunSpin 24s linear infinite;
+        }
+
+        .summer-waves {
+            left: -6vw;
+            right: -6vw;
+            bottom: -44px;
+            height: clamp(116px, 18vh, 190px);
+            opacity: .72;
+            background:
+                radial-gradient(80px 34px at 5% 22%, rgba(156, 255, 240, .65) 0 42%, transparent 43%),
+                radial-gradient(86px 36px at 17% 32%, rgba(88, 218, 255, .55) 0 42%, transparent 43%),
+                radial-gradient(92px 38px at 31% 25%, rgba(156, 255, 240, .58) 0 42%, transparent 43%),
+                radial-gradient(84px 34px at 46% 34%, rgba(88, 218, 255, .52) 0 42%, transparent 43%),
+                radial-gradient(98px 40px at 63% 24%, rgba(156, 255, 240, .58) 0 42%, transparent 43%),
+                radial-gradient(86px 36px at 79% 34%, rgba(88, 218, 255, .55) 0 42%, transparent 43%),
+                radial-gradient(100px 40px at 96% 25%, rgba(156, 255, 240, .58) 0 42%, transparent 43%),
+                linear-gradient(180deg, transparent 0 28%, rgba(25, 152, 172, .52) 29% 58%, rgba(7, 77, 99, .72) 100%);
+            filter: drop-shadow(0 -8px 22px rgba(69, 240, 221, .16));
+            animation: waveMove 8s ease-in-out infinite alternate;
+        }
+
+        .summer-icons {
+            left: clamp(14px, 5vw, 78px);
+            bottom: clamp(70px, 13vh, 145px);
+            width: min(430px, 78vw);
+            min-height: 78px;
+            opacity: .9;
+        }
+
+        .summer-icons::before {
+            content: "≋  ☀  💧  ≋  🏖";
+            position: absolute;
+            left: 0;
+            bottom: 0;
+            color: #dffff7;
+            font-size: clamp(1.35rem, 4vw, 2.45rem);
+            letter-spacing: .18em;
+            text-shadow: 0 0 16px rgba(69, 240, 221, .35), 0 4px 18px rgba(0, 0, 0, .45);
+        }
+
+        .summer-bubbles {
+            inset: 0;
+            opacity: .45;
+            background-image:
+                radial-gradient(circle, rgba(202,255,247,.48) 0 3px, transparent 4px),
+                radial-gradient(circle, rgba(255,244,184,.35) 0 2px, transparent 3px),
+                radial-gradient(circle, rgba(108,225,255,.36) 0 4px, transparent 5px);
+            background-size: 140px 160px, 210px 190px, 260px 230px;
+            background-position: 10% 20%, 80% 32%, 50% 70%;
+            animation: bubbleDrift 13s ease-in-out infinite alternate;
+        }
+
+        .winter-snow {
+            inset: -12vh 0 0;
+            opacity: .78;
+            background-image:
+                radial-gradient(circle, rgba(255,255,255,.92) 0 1.8px, transparent 2.4px),
+                radial-gradient(circle, rgba(211,240,255,.82) 0 1.4px, transparent 2px),
+                radial-gradient(circle, rgba(255,255,255,.66) 0 2.3px, transparent 3px);
+            background-size: 88px 96px, 132px 150px, 190px 220px;
+            background-position: 0 0, 36px 48px, 92px 10px;
+            animation: snowFall 16s linear infinite;
+        }
+
+        .winter-snowbank {
+            left: -5vw;
+            right: -5vw;
+            bottom: -38px;
+            height: clamp(96px, 16vh, 160px);
+            opacity: .86;
+            background:
+                radial-gradient(170px 54px at 8% 24%, rgba(255,255,255,.92) 0 58%, transparent 59%),
+                radial-gradient(220px 68px at 28% 18%, rgba(220,243,255,.9) 0 57%, transparent 58%),
+                radial-gradient(190px 56px at 53% 28%, rgba(255,255,255,.9) 0 58%, transparent 59%),
+                radial-gradient(240px 72px at 78% 17%, rgba(220,243,255,.88) 0 57%, transparent 58%),
+                radial-gradient(190px 58px at 97% 30%, rgba(255,255,255,.9) 0 58%, transparent 59%),
+                linear-gradient(180deg, transparent 0 30%, rgba(214,239,255,.88) 31% 100%);
+            filter: drop-shadow(0 -8px 24px rgba(200, 238, 255, .18));
+        }
+
+        .winter-tree {
+            bottom: clamp(62px, 11vh, 118px);
+            width: clamp(64px, 10vw, 112px);
+            height: clamp(104px, 17vw, 184px);
+            opacity: .9;
+            filter: drop-shadow(0 0 20px rgba(157, 233, 255, .18));
+        }
+
+        .winter-tree.left { left: clamp(10px, 4vw, 70px); }
+        .winter-tree.right {
+            right: clamp(10px, 5vw, 96px);
+            transform: scale(.82);
+            opacity: .72;
+        }
+
+        .winter-tree::before,
+        .winter-tree::after {
+            content: "";
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .winter-tree::before {
+            bottom: 20%;
+            width: 18%;
+            height: 25%;
+            border-radius: 3px;
+            background: linear-gradient(180deg, #7a4b2f, #3e2418);
+        }
+
+        .winter-tree::after {
+            bottom: 26%;
+            width: 100%;
+            height: 74%;
+            background:
+                linear-gradient(135deg, transparent 0 50%, rgba(255,255,255,.88) 51% 56%, transparent 57%) 50% 5% / 70% 30% no-repeat,
+                linear-gradient(45deg, transparent 0 50%, rgba(255,255,255,.8) 51% 56%, transparent 57%) 50% 38% / 88% 30% no-repeat,
+                linear-gradient(135deg, transparent 0 50%, rgba(255,255,255,.72) 51% 56%, transparent 57%) 50% 72% / 100% 30% no-repeat,
+                linear-gradient(135deg, transparent 0 50%, #0f684a 51%) 50% 4% / 70% 30% no-repeat,
+                linear-gradient(135deg, transparent 0 50%, #0b563e 51%) 50% 38% / 88% 30% no-repeat,
+                linear-gradient(135deg, transparent 0 50%, #094530 51%) 50% 72% / 100% 30% no-repeat;
+            clip-path: polygon(50% 0, 82% 32%, 70% 32%, 96% 65%, 78% 65%, 100% 100%, 0 100%, 22% 65%, 4% 65%, 30% 32%, 18% 32%);
+        }
+
+        .winter-fireplace {
+            right: clamp(18px, 6vw, 90px);
+            top: clamp(150px, 25vh, 260px);
+            width: clamp(120px, 18vw, 190px);
+            height: clamp(92px, 14vw, 140px);
+            border: 5px solid rgba(153, 78, 45, .82);
+            border-top-width: 15px;
+            border-radius: 12px 12px 8px 8px;
+            background:
+                radial-gradient(circle at 49% 66%, rgba(255, 219, 118, .98) 0 10%, rgba(255, 105, 43, .96) 11% 24%, transparent 25%),
+                radial-gradient(ellipse at 48% 84%, #2b130d 0 44%, #100707 45% 100%);
+            box-shadow: 0 0 26px rgba(255, 120, 50, .22), inset 0 0 0 2px rgba(255,255,255,.08);
+            opacity: .82;
+        }
+
+        .winter-fireplace::before {
+            content: "";
+            position: absolute;
+            left: -13px;
+            right: -13px;
+            top: -26px;
+            height: 12px;
+            border-radius: 7px;
+            background: linear-gradient(180deg, #885335, #4c2b1e);
+            box-shadow:
+                24px 16px 0 -3px #d93045,
+                52px 16px 0 -3px #f4f7ff,
+                80px 16px 0 -3px #d93045;
+        }
+
+        .winter-fireplace::after {
+            content: "";
+            position: absolute;
+            left: 42%;
+            bottom: 20%;
+            width: 24%;
+            height: 44%;
+            border-radius: 60% 40% 52% 48%;
+            background: linear-gradient(180deg, #fff3a6 0 24%, #ffb33f 25% 60%, #ff5a32 61% 100%);
+            filter: drop-shadow(0 0 14px rgba(255, 163, 54, .68));
+            animation: fireFlicker .9s ease-in-out infinite alternate;
+        }
+
         @keyframes rgbDrift {
             0% { transform: translate3d(-1.5%, -1%, 0) scale(1); }
             50% { transform: translate3d(2%, 1.5%, 0) scale(1.04); }
             100% { transform: translate3d(-.5%, 2.5%, 0) scale(1.02); }
+        }
+
+        @keyframes sunFloat {
+            0%, 100% { transform: translateY(0) rotate(-2deg); }
+            50% { transform: translateY(8px) rotate(2deg); }
+        }
+
+        @keyframes sunSpin {
+            to { transform: rotate(360deg); }
+        }
+
+        @keyframes waveMove {
+            0% { transform: translateX(-18px); }
+            100% { transform: translateX(18px); }
+        }
+
+        @keyframes bubbleDrift {
+            0% { transform: translate3d(-8px, 12px, 0); }
+            100% { transform: translate3d(12px, -8px, 0); }
+        }
+
+        @keyframes snowFall {
+            from { transform: translate3d(0, -8vh, 0); }
+            to { transform: translate3d(0, 18vh, 0); }
+        }
+
+        @keyframes fireFlicker {
+            0% { transform: translateX(-1px) scaleY(.92) rotate(-4deg); opacity: .86; }
+            100% { transform: translateX(2px) scaleY(1.08) rotate(5deg); opacity: 1; }
         }
 
         @keyframes glowPulse {
@@ -111,7 +445,7 @@ if ($appVersion === '') {
             50% { opacity: 1; filter: saturate(135%); }
         }
 
-        button, input { font: inherit; }
+        button, input, select { font: inherit; }
         button { -webkit-tap-highlight-color: transparent; }
 
         .page-shell {
@@ -136,6 +470,18 @@ if ($appVersion === '') {
             text-align: center;
         }
 
+        body[data-theme="summer"] .masthead {
+            background:
+                linear-gradient(var(--panel-strong), var(--panel-strong)) padding-box,
+                linear-gradient(110deg, rgba(69,240,221,.72), rgba(255,209,102,.58), rgba(255,157,92,.7)) border-box;
+        }
+
+        body[data-theme="winter"] .masthead {
+            background:
+                linear-gradient(var(--panel-strong), var(--panel-strong)) padding-box,
+                linear-gradient(110deg, rgba(157,233,255,.78), rgba(92,150,255,.42), rgba(255,64,88,.68)) border-box;
+        }
+
         .masthead::before {
             content: "";
             position: absolute;
@@ -153,6 +499,24 @@ if ($appVersion === '') {
             border: 1px solid rgba(255,255,255,.045);
             border-radius: 12px;
             pointer-events: none;
+        }
+
+        body[data-theme="summer"] .masthead::after {
+            background:
+                radial-gradient(circle at 12% 22%, rgba(255, 209, 102, .22) 0 4px, transparent 5px),
+                radial-gradient(circle at 88% 28%, rgba(69, 240, 221, .2) 0 5px, transparent 6px),
+                linear-gradient(90deg, transparent 0 12%, rgba(255, 209, 102, .2) 13% 17%, transparent 18% 100%);
+            box-shadow: inset 0 -9px 0 rgba(255, 214, 133, .08), inset 0 -15px 0 rgba(69, 240, 221, .06);
+        }
+
+        body[data-theme="winter"] .masthead::after {
+            background:
+                radial-gradient(28px 9px at 8% 0, rgba(255,255,255,.94) 0 60%, transparent 61%),
+                radial-gradient(42px 12px at 24% 0, rgba(225,244,255,.92) 0 60%, transparent 61%),
+                radial-gradient(34px 10px at 44% 0, rgba(255,255,255,.92) 0 60%, transparent 61%),
+                radial-gradient(46px 14px at 69% 0, rgba(225,244,255,.9) 0 60%, transparent 61%),
+                radial-gradient(32px 10px at 88% 0, rgba(255,255,255,.9) 0 60%, transparent 61%);
+            box-shadow: inset 0 10px 0 rgba(242, 250, 255, .12), inset 0 1px 0 rgba(255,255,255,.16);
         }
 
         .install-app-button {
@@ -358,6 +722,18 @@ if ($appVersion === '') {
             box-shadow: inset 0 1px 0 rgba(255,255,255,.24), 0 0 20px rgba(53,231,255,.22), 0 7px 18px rgba(0,0,0,.35);
         }
 
+        body[data-theme="summer"] .primary-button {
+            border-color: rgba(255, 222, 118, .68);
+            background: linear-gradient(115deg, #058f91, #3aa85d 58%, #e9902f);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,.24), 0 0 20px rgba(255,209,102,.22), 0 7px 18px rgba(0,0,0,.3);
+        }
+
+        body[data-theme="winter"] .primary-button {
+            border-color: rgba(180, 236, 255, .68);
+            background: linear-gradient(115deg, #165e9c, #3650b8 58%, #b51f3d);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,.24), 0 0 20px rgba(157,233,255,.24), 0 7px 18px rgba(0,0,0,.36);
+        }
+
         .secondary-button {
             color: var(--text);
             border-color: rgba(150,164,205,.34);
@@ -393,6 +769,18 @@ if ($appVersion === '') {
             box-shadow: var(--shadow), var(--glow), inset 0 1px 0 rgba(255,255,255,.04);
         }
 
+        body[data-theme="summer"] .board {
+            background:
+                linear-gradient(var(--panel-strong), var(--panel-strong)) padding-box,
+                linear-gradient(115deg, rgba(69,240,221,.4), rgba(255,209,102,.22) 48%, rgba(255,157,92,.36)) border-box;
+        }
+
+        body[data-theme="winter"] .board {
+            background:
+                linear-gradient(var(--panel-strong), var(--panel-strong)) padding-box,
+                linear-gradient(115deg, rgba(157,233,255,.42), rgba(92,150,255,.22) 48%, rgba(255,64,88,.35)) border-box;
+        }
+
         .board::before {
             content: "";
             position: absolute;
@@ -402,6 +790,37 @@ if ($appVersion === '') {
             background: linear-gradient(90deg, transparent, var(--cyan), var(--violet), var(--pink), transparent);
             opacity: .8;
             box-shadow: 0 0 15px rgba(53,231,255,.55);
+        }
+
+        .board::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            z-index: 7;
+            display: none;
+            pointer-events: none;
+        }
+
+        body[data-theme="summer"] .board::after {
+            display: block;
+            opacity: .42;
+            background:
+                radial-gradient(34px 12px at 12% 100%, rgba(255, 219, 130, .6) 0 60%, transparent 61%),
+                radial-gradient(26px 9px at 32% 100%, rgba(255, 219, 130, .42) 0 60%, transparent 61%),
+                radial-gradient(40px 13px at 72% 100%, rgba(255, 219, 130, .52) 0 60%, transparent 61%),
+                linear-gradient(180deg, transparent 0 88%, rgba(55, 212, 196, .1) 89% 100%);
+        }
+
+        body[data-theme="winter"] .board::after {
+            display: block;
+            opacity: .66;
+            background:
+                radial-gradient(36px 10px at 8% 0, rgba(255,255,255,.9) 0 62%, transparent 63%),
+                radial-gradient(54px 14px at 22% 0, rgba(226,245,255,.9) 0 62%, transparent 63%),
+                radial-gradient(38px 10px at 39% 0, rgba(255,255,255,.88) 0 62%, transparent 63%),
+                radial-gradient(58px 15px at 61% 0, rgba(226,245,255,.86) 0 62%, transparent 63%),
+                radial-gradient(42px 11px at 82% 0, rgba(255,255,255,.88) 0 62%, transparent 63%),
+                linear-gradient(180deg, rgba(244, 251, 255, .13) 0 16px, transparent 17px 100%);
         }
 
         .table-scroll {
@@ -1093,6 +1512,7 @@ if ($appVersion === '') {
         input[type="text"],
         input[type="password"],
         input[type="date"],
+        select,
         textarea {
             width: 100%;
             min-height: 47px;
@@ -1105,12 +1525,18 @@ if ($appVersion === '') {
             box-shadow: inset 0 1px 0 rgba(255,255,255,.025);
         }
 
+        select {
+            color-scheme: dark;
+            cursor: pointer;
+        }
+
         textarea { min-height: 104px; resize: vertical; }
 
         input::placeholder,
         textarea::placeholder { color: #6f7890; }
 
         input:focus,
+        select:focus,
         textarea:focus {
             border-color: rgba(53,231,255,.72);
             box-shadow: 0 0 0 3px rgba(53,231,255,.11), 0 0 18px rgba(53,231,255,.1);
@@ -1247,7 +1673,18 @@ if ($appVersion === '') {
         }
     </style>
 </head>
-<body>
+<body data-theme="default">
+<div class="season-scene" aria-hidden="true">
+    <div class="summer-sun"></div>
+    <div class="summer-bubbles"></div>
+    <div class="summer-icons"></div>
+    <div class="summer-waves"></div>
+    <div class="winter-snow"></div>
+    <div class="winter-tree left"></div>
+    <div class="winter-tree right"></div>
+    <div class="winter-fireplace"></div>
+    <div class="winter-snowbank"></div>
+</div>
 <main class="page-shell">
     <header class="masthead">
         <button class="install-app-button" id="installAppButton" type="button" title="Als App zum Home-Bildschirm hinzufügen" aria-label="Kellerkinder-Kalender als App zum Home-Bildschirm hinzufügen">
@@ -1499,6 +1936,21 @@ if ($appVersion === '') {
 
         <form id="adminSettingsForm" class="form-stack">
             <div>
+                <h3 class="section-heading">Style für alle</h3>
+                <p class="field-help">Nur Administratoren können den globalen Style ändern. Die Auswahl gilt nach dem Speichern für alle Besucher und Benutzer.</p>
+            </div>
+            <div>
+                <label for="adminTheme">Style auswählen</label>
+                <select id="adminTheme">
+                    <option value="default">Standard: RGB-Gaming</option>
+                    <option value="summer">Sommer: Sonne, Strand und Wasser</option>
+                    <option value="winter">Winter: Schnee und Weihnachten</option>
+                </select>
+            </div>
+
+            <div class="separator"></div>
+
+            <div>
                 <h3 class="section-heading">Administratoren nach Spielername</h3>
                 <p class="field-help">Diese Liste wird in der Datendatei unter <code>settings.admin_player_names</code> gespeichert. Jeder Name muss zu einem bestehenden Account gehören. Mehrere Namen mit Komma oder in einzelnen Zeilen eintragen.</p>
             </div>
@@ -1508,7 +1960,7 @@ if ($appVersion === '') {
             </div>
             <div class="modal-actions">
                 <button class="secondary-button" type="button" data-close-dialog="adminDialog">Schließen</button>
-                <button class="primary-button" type="submit">Admin-Liste speichern</button>
+                <button class="primary-button" type="submit">Einstellungen speichern</button>
             </div>
         </form>
     </div>
@@ -1620,6 +2072,12 @@ if ($appVersion === '') {
         '': { icon: '?', label: 'Offen', className: 'open' }
     };
 
+    const THEME_COLORS = {
+        default: '#070914',
+        summer: '#06383d',
+        winter: '#07182b'
+    };
+
     const state = {
         players: [],
         availability: {},
@@ -1627,6 +2085,7 @@ if ($appVersion === '') {
         eventDates: [],
         auth: { logged_in: false, setup_required: false, is_admin: false, must_change_password: false, can_write: false, user: null },
         admin: null,
+        settings: { theme: 'default' },
         csrf: '',
         storageWritable: true
     };
@@ -1716,6 +2175,8 @@ if ($appVersion === '') {
         state.availability = data.availability || {};
         state.gameOptions = data.game_options || [];
         state.eventDates = data.event_dates || [];
+        state.settings = data.settings || state.settings;
+        applyTheme(state.settings.theme);
         renderGameOptions();
         state.auth = data.auth || state.auth;
         state.admin = data.admin || null;
@@ -1726,6 +2187,12 @@ if ($appVersion === '') {
         renderAuth();
         renderPlan();
         if (adminDialog.open) renderAdminPanel();
+    }
+
+    function applyTheme(theme) {
+        const normalized = Object.prototype.hasOwnProperty.call(THEME_COLORS, theme) ? theme : 'default';
+        document.body.dataset.theme = normalized;
+        byId('themeColorMeta')?.setAttribute('content', THEME_COLORS[normalized]);
     }
 
     function renderGameOptions() {
@@ -2131,6 +2598,7 @@ if ($appVersion === '') {
             list.appendChild(card);
         }
         byId('adminPlayerNames').value = (state.admin.admin_player_names || []).join('\n');
+        byId('adminTheme').value = state.admin.theme || state.settings.theme || 'default';
     }
 
     function openAdminDialog() {
@@ -2359,10 +2827,13 @@ if ($appVersion === '') {
         event.preventDefault();
         try {
             const names = byId('adminPlayerNames').value.split(/[,;\n]+/).map(name => name.trim()).filter(Boolean);
-            const data = await api('admin_save_settings', { admin_player_names: names });
+            const data = await api('admin_save_settings', {
+                admin_player_names: names,
+                theme: byId('adminTheme').value
+            });
             applyData(data);
             if (!state.auth.is_admin) adminDialog.close();
-            showToast('Administratorliste wurde gespeichert.');
+            showToast('Einstellungen wurden gespeichert.');
         } catch (error) { handleApiError(error); }
     });
 
