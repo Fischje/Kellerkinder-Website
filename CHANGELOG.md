@@ -1,5 +1,14 @@
 # Änderungsprotokoll
 
+## 2.1.0
+
+- Neue Passwörter benötigen mindestens 8 Zeichen
+- Mindestens ein Buchstabe, eine Zahl und ein Sonderzeichen werden serverseitig geprüft
+- Passwortregeln werden bei Registrierung, Passwortänderung und Admin-Passwortreset angezeigt
+- Bestehende Passwörter bleiben bis zur nächsten Änderung weiterhin gültig
+- Alle angemeldeten Benutzer dürfen zusätzliche Spieltage anlegen
+- Das Löschen zusätzlicher Spieltage bleibt Administratoren vorbehalten
+
 ## 2.0.0
 
 - Benutzerregistrierung und Login ergänzt

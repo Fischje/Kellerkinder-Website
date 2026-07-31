@@ -11,7 +11,7 @@ Mobiloptimierter PHP-Kalender zur Planung gemeinsamer Spielabende mit Benutzerko
 - Administratoren verwalten Benutzer, Spieler, Termine und sämtliche Statusangaben
 - Adminrechte werden in `settings.admin_player_names` anhand der Spielernamen gespeichert
 - Automatische Anzeige der nächsten drei Mittwoche und Sonntage
-- Zusätzliche, frei wählbare Spieltage durch Administratoren
+- Zusätzliche, frei wählbare Spieltage durch alle angemeldeten Benutzer
 - Anzeige von genau einem vergangenen Termin
 - Wiederkehrende Standardtage: Ein Benutzer kann festlegen, an welchen Wochentagen er normalerweise online ist
 - Status: Online, später, verhindert, Urlaub oder offen
@@ -24,14 +24,14 @@ Mobiloptimierter PHP-Kalender zur Planung gemeinsamer Spielabende mit Benutzerko
 
 ## Passwortregeln
 
-Ein Passwort muss lediglich vorhanden sein. Die Anwendung erzwingt bewusst:
+Neue Passwörter müssen folgende Anforderungen erfüllen:
 
-- keine Mindestlänge,
-- keine Groß- oder Kleinbuchstaben,
-- keine Zahlen,
-- keine Sonderzeichen.
+- mindestens 8 Zeichen,
+- mindestens einen Buchstaben,
+- mindestens eine Zahl,
+- mindestens ein Sonderzeichen, beispielsweise `!`, `?`, `#`, `+`, `-` oder `_`.
 
-Technisch werden Passwörter ausschließlich als sichere PHP-Passworthashes gespeichert. Trotzdem sollte jeder Benutzer ein ausreichend starkes Passwort wählen.
+Die Regeln gelten bei der Registrierung, bei eigenen Passwortänderungen sowie bei vorläufigen Passwörtern, die ein Administrator setzt. Bereits vorhandene schwächere Passwörter bleiben für die Anmeldung gültig, bis sie geändert werden. Passwörter werden ausschließlich als sichere PHP-Passworthashes gespeichert.
 
 ## Voraussetzungen
 
@@ -102,8 +102,11 @@ Nach dem Upgrade:
 
 - eigenen Spielernamen ändern,
 - eigene regelmäßige Online-Wochentage festlegen,
+- zusätzliche Spieltage anlegen,
 - eigenen Status und eigenen Hinweis je Termin ändern,
 - eigenes Passwort ändern.
+
+Zusätzliche Spieltage können von allen angemeldeten Benutzern angelegt werden. Das Löschen zusätzlicher Spieltage bleibt Administratoren vorbehalten, weil dabei die zugehörigen Statusangaben aller Spieler entfernt werden.
 
 ### Administrator
 

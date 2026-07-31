@@ -1221,11 +1221,11 @@ date_default_timezone_set('Europe/Berlin');
         <div class="instruction-grid">
             <div class="instruction-item">
                 <span class="instruction-number">1</span>
-                <p><strong>Account anlegen:</strong> Registriere dich mit einem Benutzernamen, einem frei gewählten Passwort und deinem Spieler- oder Charakternamen. Für das Passwort gibt es keine Mindestlänge und keinen vorgeschriebenen Zeichensatz.</p>
+                <p><strong>Account anlegen:</strong> Registriere dich mit einem Benutzernamen, einem sicheren Passwort und deinem Spieler- oder Charakternamen. Das Passwort benötigt mindestens acht Zeichen, einen Buchstaben, eine Zahl und ein Sonderzeichen.</p>
             </div>
             <div class="instruction-item">
                 <span class="instruction-number">2</span>
-                <p><strong>Eigene Verfügbarkeit pflegen:</strong> Nach der Anmeldung kannst du ausschließlich deine eigene Spielerzeile bearbeiten und für jeden Termin „Online“, „Später“, „Verhindert“, „Urlaub“ oder „Offen“ auswählen.</p>
+                <p><strong>Eigene Verfügbarkeit pflegen:</strong> Nach der Anmeldung kannst du zusätzliche Spieltage anlegen und ausschließlich deine eigene Spielerzeile bearbeiten. Für jeden Termin stehen „Online“, „Später“, „Verhindert“, „Urlaub“ und „Offen“ zur Auswahl.</p>
             </div>
             <div class="instruction-item">
                 <span class="instruction-number">3</span>
@@ -1233,10 +1233,10 @@ date_default_timezone_set('Europe/Berlin');
             </div>
             <div class="instruction-item">
                 <span class="instruction-number">4</span>
-                <p><strong>Administration:</strong> Administratoren verwalten Benutzerkonten, Spieler, zusätzliche Spieltage und sämtliche Statusangaben. Wird ein Passwort durch einen Admin geändert, muss der Benutzer nach der nächsten Anmeldung ein eigenes neues Passwort festlegen.</p>
+                <p><strong>Administration:</strong> Administratoren verwalten Benutzerkonten, Spieler, zusätzliche Spieltage und sämtliche Statusangaben. Alle angemeldeten Benutzer dürfen neue Spieltage anlegen; löschen kann sie weiterhin nur ein Administrator. Wird ein Passwort durch einen Admin geändert, muss der Benutzer nach der nächsten Anmeldung ein eigenes neues Passwort festlegen.</p>
             </div>
         </div>
-        <p class="editing-note"><strong>Geschützte Bearbeitung:</strong> Die Kalenderübersicht bleibt für alle Besucher sichtbar. Änderungen sind nur nach der Anmeldung möglich. Normale Benutzer können ausschließlich den eigenen Spieler bearbeiten; Administratoren besitzen vollständige Verwaltungsrechte.</p>
+        <p class="editing-note"><strong>Geschützte Bearbeitung:</strong> Die Kalenderübersicht bleibt für alle Besucher sichtbar. Angemeldete Benutzer dürfen zusätzliche Spieltage anlegen und ausschließlich den eigenen Spieler bearbeiten. Administratoren können außerdem Termine löschen und besitzen vollständige Verwaltungsrechte.</p>
         <div class="discord-note">
             <h3>💬 Auch in Discord nutzbar</h3>
             <p>Im Kellerkinder-Discord könnt ihr den aktuellen Kalender jederzeit mit dem Befehl <code>/kalender</code> aufrufen und anzeigen lassen.</p>
@@ -1284,14 +1284,14 @@ date_default_timezone_set('Europe/Berlin');
         <div class="form-row">
             <div>
                 <label for="registerPassword">Passwort</label>
-                <input type="password" id="registerPassword" autocomplete="new-password" required>
+                <input type="password" id="registerPassword" minlength="8" autocomplete="new-password" required>
             </div>
             <div>
                 <label for="registerPasswordConfirmation">Passwort wiederholen</label>
-                <input type="password" id="registerPasswordConfirmation" autocomplete="new-password" required>
+                <input type="password" id="registerPasswordConfirmation" minlength="8" autocomplete="new-password" required>
             </div>
         </div>
-        <p class="field-help">Das Passwort darf frei gewählt werden. Es gibt keine Mindestlänge und keine Vorgaben zu Zeichenarten.</p>
+        <p class="field-help"><strong>Passwortregel:</strong> Mindestens 8 Zeichen sowie mindestens ein Buchstabe, eine Zahl und ein Sonderzeichen, zum Beispiel <code>! ? # + - _</code>.</p>
         <div class="modal-actions">
             <button class="secondary-button" type="button" data-close-dialog="registerDialog">Abbrechen</button>
             <button class="primary-button" type="submit">Account anlegen</button>
@@ -1350,14 +1350,14 @@ date_default_timezone_set('Europe/Berlin');
         <div class="form-row">
             <div>
                 <label for="newPassword">Neues Passwort</label>
-                <input type="password" id="newPassword" autocomplete="new-password" required>
+                <input type="password" id="newPassword" minlength="8" autocomplete="new-password" required>
             </div>
             <div>
                 <label for="newPasswordConfirmation">Neues Passwort wiederholen</label>
-                <input type="password" id="newPasswordConfirmation" autocomplete="new-password" required>
+                <input type="password" id="newPasswordConfirmation" minlength="8" autocomplete="new-password" required>
             </div>
         </div>
-        <p class="field-help">Keine Mindestlänge und kein vorgeschriebener Zeichensatz. Das Passwort darf lediglich nicht leer sein.</p>
+        <p class="field-help"><strong>Passwortregel:</strong> Mindestens 8 Zeichen sowie mindestens ein Buchstabe, eine Zahl und ein Sonderzeichen, zum Beispiel <code>! ? # + - _</code>.</p>
         <div class="modal-actions">
             <button class="secondary-button" id="cancelPasswordButton" type="button" data-close-dialog="passwordDialog">Abbrechen</button>
             <button class="primary-button" type="submit">Passwort speichern</button>
@@ -1415,14 +1415,14 @@ date_default_timezone_set('Europe/Berlin');
         <div class="form-row">
             <div>
                 <label for="adminUserPassword" id="adminUserPasswordLabel">Vorläufiges Passwort</label>
-                <input type="password" id="adminUserPassword" autocomplete="new-password">
+                <input type="password" id="adminUserPassword" minlength="8" autocomplete="new-password">
             </div>
             <div>
                 <label for="adminUserPasswordConfirmation">Passwort wiederholen</label>
-                <input type="password" id="adminUserPasswordConfirmation" autocomplete="new-password">
+                <input type="password" id="adminUserPasswordConfirmation" minlength="8" autocomplete="new-password">
             </div>
         </div>
-        <p class="field-help" id="adminPasswordHelp">Beim Anlegen ist ein Passwort erforderlich. Der Benutzer wird nach der ersten Anmeldung zur Änderung aufgefordert.</p>
+        <p class="field-help" id="adminPasswordHelp">Beim Anlegen ist ein Passwort mit mindestens 8 Zeichen, einem Buchstaben, einer Zahl und einem Sonderzeichen erforderlich. Der Benutzer wird nach der ersten Anmeldung zur Änderung aufgefordert.</p>
         <div class="modal-actions">
             <button class="danger-button" id="deleteUserButton" type="button" hidden>Benutzer löschen</button>
             <button class="secondary-button" type="button" data-close-dialog="adminUserDialog">Abbrechen</button>
@@ -1636,7 +1636,7 @@ date_default_timezone_set('Europe/Berlin');
         byId('profileButton').hidden = !auth.logged_in || auth.must_change_password;
         byId('adminButton').hidden = !auth.is_admin || auth.must_change_password;
         byId('logoutButton').hidden = !auth.logged_in;
-        byId('addDateButton').hidden = !auth.is_admin || auth.must_change_password;
+        byId('addDateButton').hidden = !auth.can_write;
         byId('addPlayerButton').hidden = !auth.is_admin || auth.must_change_password;
 
         accountSummary.replaceChildren();
@@ -1938,8 +1938,8 @@ date_default_timezone_set('Europe/Berlin');
             : 'Der Benutzer muss das vorläufige Passwort nach der ersten Anmeldung ändern.';
         byId('adminUserPasswordLabel').textContent = editMode ? 'Neues Passwort (optional)' : 'Vorläufiges Passwort';
         byId('adminPasswordHelp').textContent = editMode
-            ? 'Bleibt das Passwortfeld leer, wird das bisherige Passwort beibehalten. Bei einer Änderung wird der Benutzer nach dem nächsten Login zur erneuten Passwortänderung aufgefordert.'
-            : 'Beim Anlegen ist ein Passwort erforderlich. Der Benutzer wird nach der ersten Anmeldung zur Änderung aufgefordert.';
+            ? 'Bleibt das Passwortfeld leer, wird das bisherige Passwort beibehalten. Ein neues Passwort benötigt mindestens 8 Zeichen, einen Buchstaben, eine Zahl und ein Sonderzeichen. Danach wird der Benutzer beim nächsten Login zur erneuten Passwortänderung aufgefordert.'
+            : 'Beim Anlegen ist ein Passwort mit mindestens 8 Zeichen, einem Buchstaben, einer Zahl und einem Sonderzeichen erforderlich. Der Benutzer wird nach der ersten Anmeldung zur Änderung aufgefordert.';
         byId('adminUserPassword').required = !editMode;
         byId('adminUserPasswordConfirmation').required = !editMode;
         byId('deleteUserButton').hidden = !editMode;

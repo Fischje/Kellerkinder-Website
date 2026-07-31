@@ -9,6 +9,7 @@ date_default_timezone_set('Europe/Berlin');
 const PLAYER_NAME_MAX = 40;
 const USERNAME_MAX = 50;
 const NOTE_MAX = 60;
+const PASSWORD_MIN_LENGTH = 8;
 const ALLOWED_STATUSES = ['', 'online', 'late', 'absent', 'vacation'];
 const STORE_PREFIX = "<?php http_response_code(403); exit; ?>\n";
 
@@ -366,6 +367,18 @@ function validatePassword($value, $confirmation = null): string
     $password = (string) $value;
     if ($password === '') {
         respond(['ok' => false, 'error' => 'Bitte ein Passwort festlegen.'], 422);
+    }
+    if (textLength($password) < PASSWORD_MIN_LENGTH) {
+        respond(['ok' => false, 'error' => 'Das Passwort muss mindestens 8 Zeichen lang sein.'], 422);
+    }
+    if (preg_match('/\p{L}/u', $password) !== 1) {
+        respond(['ok' => false, 'error' => 'Das Passwort muss mindestens einen Buchstaben enthalten.'], 422);
+    }
+    if (preg_match('/\p{N}/u', $password) !== 1) {
+        respond(['ok' => false, 'error' => 'Das Passwort muss mindestens eine Zahl enthalten.'], 422);
+    }
+    if (preg_match('/[^\p{L}\p{N}\s]/u', $password) !== 1) {
+        respond(['ok' => false, 'error' => 'Das Passwort muss mindestens ein Sonderzeichen enthalten.'], 422);
     }
     if ($confirmation !== null && $password !== (string) $confirmation) {
         respond(['ok' => false, 'error' => 'Die beiden Passwörter stimmen nicht überein.'], 422);
@@ -1004,7 +1017,7 @@ withWritableStore(function (array &$store) use ($action, $payload): array {
             return [bootstrapResponse($store), 200, true];
 
         case 'create_event_date':
-            requireAdmin($store);
+            requireUser($store);
             $eventDate = validateDate($payload['event_date'] ?? '');
             if (isAutomaticWeekday($eventDate)) {
                 return [[
