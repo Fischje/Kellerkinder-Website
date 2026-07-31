@@ -864,12 +864,255 @@ date_default_timezone_set('Europe/Berlin');
         .storage-warning strong { color: #fff0ce; }
         .storage-warning code { color: #fff; font-weight: 800; }
 
+        [hidden] { display: none !important; }
+
+        .account-strip {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin: 18px 0 0;
+            padding: 13px 15px;
+            border: 1px solid rgba(135,151,197,.25);
+            border-radius: 14px;
+            background: rgba(10,13,24,.82);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,.04), 0 0 24px rgba(53,231,255,.06);
+            backdrop-filter: blur(12px);
+        }
+
+        .account-summary {
+            min-width: 0;
+            color: #cdd4e8;
+            line-height: 1.38;
+        }
+
+        .account-summary strong { color: #fff; }
+        .account-summary small { display: block; margin-top: 2px; color: var(--muted); }
+
+        .account-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: flex-end;
+        }
+
+        .compact-button {
+            min-height: 39px;
+            padding: 8px 12px;
+            border: 1px solid rgba(135,151,197,.34);
+            border-radius: 10px;
+            color: #edf2ff;
+            background: linear-gradient(180deg, rgba(34,42,68,.94), rgba(17,22,38,.96));
+            cursor: pointer;
+            font-weight: 800;
+        }
+
+        .compact-button:hover {
+            border-color: rgba(53,231,255,.62);
+            box-shadow: 0 0 16px rgba(53,231,255,.1);
+        }
+
+        .account-badge,
+        .player-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            margin-left: 5px;
+            padding: 2px 7px;
+            border: 1px solid rgba(53,231,255,.3);
+            border-radius: 999px;
+            color: #a9ecff;
+            background: rgba(16,83,105,.25);
+            font-size: .68rem;
+            font-weight: 900;
+            vertical-align: middle;
+        }
+
+        .account-badge.admin,
+        .player-badge.admin {
+            border-color: rgba(255,79,200,.38);
+            color: #ffb5e9;
+            background: rgba(120,32,93,.25);
+        }
+
+        .setup-callout,
+        .password-callout {
+            margin: 14px 0;
+            padding: 13px 15px;
+            border: 1px solid rgba(53,231,255,.4);
+            border-radius: 12px;
+            color: #dff9ff;
+            background: rgba(10,69,86,.42);
+            line-height: 1.5;
+        }
+
+        .password-callout {
+            border-color: rgba(255,173,66,.48);
+            color: #ffe1ad;
+            background: rgba(84,48,10,.52);
+        }
+
+        .status-button:disabled,
+        .player-button.readonly {
+            cursor: default;
+        }
+
+        .status-button:disabled:hover,
+        .player-button.readonly:hover {
+            filter: none;
+            transform: none;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,.08), 0 6px 15px rgba(0,0,0,.24);
+        }
+
+        .status-button:disabled { opacity: .86; }
+
+        .recurring-tag {
+            position: relative;
+            z-index: 1;
+            padding: 1px 5px;
+            border: 1px solid rgba(255,255,255,.22);
+            border-radius: 999px;
+            color: rgba(255,255,255,.82);
+            background: rgba(0,0,0,.2);
+            font-size: .52rem;
+            font-weight: 900;
+            letter-spacing: .04em;
+            text-transform: uppercase;
+        }
+
+        dialog.wide { width: min(760px, calc(100% - 24px)); }
+
+        .form-stack { display: grid; gap: 15px; }
+        .form-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+        .field-help { margin: -2px 0 0; color: #909ab4; font-size: .84rem; line-height: 1.42; }
+        .section-heading { margin: 5px 0 0; color: #a9ecff; font-size: 1.02rem; }
+
+        input[type="text"],
+        input[type="password"],
+        input[type="date"],
+        textarea {
+            width: 100%;
+            min-height: 47px;
+            padding: 10px 12px;
+            border: 1px solid rgba(135,151,197,.38);
+            border-radius: 10px;
+            outline: none;
+            color: #fff;
+            background: #090d19;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,.025);
+        }
+
+        textarea { min-height: 104px; resize: vertical; }
+
+        input::placeholder,
+        textarea::placeholder { color: #6f7890; }
+
+        input:focus,
+        textarea:focus {
+            border-color: rgba(53,231,255,.72);
+            box-shadow: 0 0 0 3px rgba(53,231,255,.11), 0 0 18px rgba(53,231,255,.1);
+        }
+
+        .weekday-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 8px;
+        }
+
+        .weekday-choice {
+            position: relative;
+            display: block;
+            margin: 0;
+        }
+
+        .weekday-choice input {
+            position: absolute;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .weekday-choice span {
+            min-height: 42px;
+            display: grid;
+            place-items: center;
+            border: 1px solid rgba(135,151,197,.3);
+            border-radius: 10px;
+            color: #bdc5da;
+            background: rgba(20,25,43,.72);
+            cursor: pointer;
+            font-size: .84rem;
+            font-weight: 900;
+        }
+
+        .weekday-choice input:checked + span {
+            border-color: rgba(53,231,255,.7);
+            color: #fff;
+            background: linear-gradient(135deg, rgba(20,124,163,.76), rgba(101,80,211,.72));
+            box-shadow: 0 0 14px rgba(53,231,255,.13);
+        }
+
+        .admin-toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 9px;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 13px;
+        }
+
+        .admin-user-list {
+            display: grid;
+            gap: 9px;
+            max-height: 330px;
+            overflow: auto;
+            padding-right: 3px;
+        }
+
+        .admin-user-card {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 12px;
+            border: 1px solid rgba(135,151,197,.22);
+            border-radius: 11px;
+            background: rgba(19,24,42,.72);
+        }
+
+        .admin-user-card strong { color: #fff; }
+        .admin-user-card small { display: block; margin-top: 3px; color: var(--muted); }
+        .admin-user-card button { flex: 0 0 auto; }
+
+        .separator {
+            height: 1px;
+            margin: 20px 0;
+            background: rgba(135,151,197,.2);
+        }
+
+        .forced-password-note {
+            margin: 0 0 15px;
+            padding: 11px 12px;
+            border: 1px solid rgba(255,173,66,.4);
+            border-radius: 10px;
+            color: #ffe0a8;
+            background: rgba(80,46,11,.48);
+            line-height: 1.45;
+        }
+
+
         @media (max-width: 680px) {
             .page-shell { padding: 10px 8px 30px; }
             .masthead { padding: 21px 12px 20px; border-radius: 14px; }
             .crest { width: 88px; }
             .subtitle-group { margin-top: 12px; gap: 5px; }
             .subtitle { font-size: 1rem; }
+            .account-strip { align-items: stretch; padding: 12px; }
+            .account-actions { width: 100%; justify-content: stretch; }
+            .account-actions > button { flex: 1 1 130px; }
+            .form-row { grid-template-columns: 1fr; }
+            .weekday-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+            .admin-user-card { align-items: flex-start; }
             .toolbar { align-items: stretch; }
             .toolbar-actions { width: 100%; }
             .toolbar-actions > button { flex: 1 1 190px; }
@@ -914,6 +1157,28 @@ date_default_timezone_set('Europe/Berlin');
         </div>
     </header>
 
+    <section class="account-strip" aria-label="Benutzerkonto">
+        <div class="account-summary" id="accountSummary">
+            <strong>Kalender wird geladen …</strong>
+            <small>Die Übersicht ist öffentlich sichtbar. Änderungen erfordern ein Benutzerkonto.</small>
+        </div>
+        <div class="account-actions">
+            <button class="compact-button" id="loginButton" type="button">Anmelden</button>
+            <button class="compact-button" id="registerButton" type="button">Account anlegen</button>
+            <button class="compact-button" id="profileButton" type="button" hidden>Mein Account</button>
+            <button class="compact-button" id="adminButton" type="button" hidden>Adminbereich</button>
+            <button class="compact-button" id="logoutButton" type="button" hidden>Abmelden</button>
+        </div>
+    </section>
+
+    <div id="setupCallout" class="setup-callout" hidden>
+        <strong>Ersteinrichtung:</strong> Es existiert noch kein Benutzerkonto. Der erste registrierte Account wird automatisch als Administrator eingetragen.
+    </div>
+
+    <div id="passwordCallout" class="password-callout" hidden>
+        <strong>Passwortänderung erforderlich:</strong> Ein Administrator hat dein Passwort geändert. Lege jetzt ein eigenes neues Passwort fest.
+    </div>
+
     <section class="toolbar" aria-label="Steuerung und Legende">
         <div class="legend" aria-label="Status-Legende">
             <span class="legend-item"><span class="legend-icon online">⚔</span> Online</span>
@@ -923,13 +1188,13 @@ date_default_timezone_set('Europe/Berlin');
             <span class="legend-item"><span class="legend-icon open">?</span> Offen</span>
         </div>
         <div class="toolbar-actions">
-            <button class="secondary-button" id="addDateButton" type="button">＋ Spieltag hinzufügen</button>
-            <button class="primary-button" id="addPlayerButton" type="button">＋ Spieler hinzufügen</button>
+            <button class="secondary-button" id="addDateButton" type="button" hidden>＋ Spieltag hinzufügen</button>
+            <button class="primary-button" id="addPlayerButton" type="button" hidden>＋ Spieler hinzufügen</button>
         </div>
     </section>
 
     <div id="storageWarning" class="storage-warning" hidden>
-        <strong>Nur-Lese-Modus:</strong> Der Plan ist sichtbar, Änderungen können aber noch nicht gespeichert werden.
+        <strong>Nur-Lese-Modus:</strong> Der Plan ist sichtbar, Änderungen können aber nicht gespeichert werden.
         Gib dem Ordner <code>data</code> Schreibrechte für den PHP-Webserver.
     </div>
 
@@ -956,28 +1221,215 @@ date_default_timezone_set('Europe/Berlin');
         <div class="instruction-grid">
             <div class="instruction-item">
                 <span class="instruction-number">1</span>
-                <p><strong>Spieler hinzufügen:</strong> Tippe auf „Spieler hinzufügen“ und trage den Spieler- oder Charakternamen ein. Jeder Name erscheint anschließend als eigene Zeile.</p>
+                <p><strong>Account anlegen:</strong> Registriere dich mit einem Benutzernamen, einem frei gewählten Passwort und deinem Spieler- oder Charakternamen. Für das Passwort gibt es keine Mindestlänge und keinen vorgeschriebenen Zeichensatz.</p>
             </div>
             <div class="instruction-item">
                 <span class="instruction-number">2</span>
-                <p><strong>Status auswählen:</strong> Tippe in der Tabelle auf den gewünschten Termin und wähle „Online“, „Später“, „Verhindert“, „Urlaub“ oder „Offen“.</p>
+                <p><strong>Eigene Verfügbarkeit pflegen:</strong> Nach der Anmeldung kannst du ausschließlich deine eigene Spielerzeile bearbeiten und für jeden Termin „Online“, „Später“, „Verhindert“, „Urlaub“ oder „Offen“ auswählen.</p>
             </div>
             <div class="instruction-item">
                 <span class="instruction-number">3</span>
-                <p><strong>Hinweis ergänzen:</strong> Bei Bedarf kannst du zusätzlich eine kurze Information eintragen, zum Beispiel „ab 21:00 Uhr“ oder „nur bis 22:30 Uhr“.</p>
+                <p><strong>Feste Wochentage einstellen:</strong> In „Mein Account“ kannst du Wochentage markieren, an denen du normalerweise online bist. Künftige Termine an diesen Tagen werden automatisch als „Online“ vorbelegt und lassen sich einzeln überschreiben.</p>
             </div>
             <div class="instruction-item">
                 <span class="instruction-number">4</span>
-                <p><strong>Einträge ändern oder löschen:</strong> Tippe auf einen Spielernamen, um ihn umzubenennen oder vollständig zu löschen. Einen Terminstatus änderst du einfach durch erneutes Antippen.</p>
+                <p><strong>Administration:</strong> Administratoren verwalten Benutzerkonten, Spieler, zusätzliche Spieltage und sämtliche Statusangaben. Wird ein Passwort durch einen Admin geändert, muss der Benutzer nach der nächsten Anmeldung ein eigenes neues Passwort festlegen.</p>
             </div>
         </div>
-        <p class="editing-note"><strong>Gemeinsamer Plan:</strong> Alle Besucher dieser Website dürfen Spieler und Verfügbarkeiten anlegen, verändern oder löschen. Änderungen werden sofort zentral auf dem Webserver gespeichert und sind anschließend für alle sichtbar.</p>
+        <p class="editing-note"><strong>Geschützte Bearbeitung:</strong> Die Kalenderübersicht bleibt für alle Besucher sichtbar. Änderungen sind nur nach der Anmeldung möglich. Normale Benutzer können ausschließlich den eigenen Spieler bearbeiten; Administratoren besitzen vollständige Verwaltungsrechte.</p>
         <div class="discord-note">
             <h3>💬 Auch in Discord nutzbar</h3>
             <p>Im Kellerkinder-Discord könnt ihr den aktuellen Kalender jederzeit mit dem Befehl <code>/kalender</code> aufrufen und anzeigen lassen.</p>
         </div>
     </section>
+
 </main>
+
+<dialog id="loginDialog">
+    <form class="modal-content form-stack" id="loginForm" method="dialog">
+        <div>
+            <h2 class="modal-title">Anmelden</h2>
+            <p class="modal-subtitle">Melde dich an, um deine eigene Verfügbarkeit zu bearbeiten.</p>
+        </div>
+        <div>
+            <label for="loginUsername">Benutzername</label>
+            <input type="text" id="loginUsername" autocomplete="username" required>
+        </div>
+        <div>
+            <label for="loginPassword">Passwort</label>
+            <input type="password" id="loginPassword" autocomplete="current-password" required>
+        </div>
+        <div class="modal-actions">
+            <button class="secondary-button" type="button" data-close-dialog="loginDialog">Abbrechen</button>
+            <button class="primary-button" type="submit">Anmelden</button>
+        </div>
+    </form>
+</dialog>
+
+<dialog id="registerDialog">
+    <form class="modal-content form-stack" id="registerForm" method="dialog">
+        <div>
+            <h2 class="modal-title" id="registerDialogTitle">Account anlegen</h2>
+            <p class="modal-subtitle" id="registerDialogSubtitle">Lege deinen persönlichen Zugang zum Kalender an.</p>
+        </div>
+        <div>
+            <label for="registerUsername">Benutzername</label>
+            <input type="text" id="registerUsername" autocomplete="username" required>
+        </div>
+        <div>
+            <label for="registerPlayerName">Spielername</label>
+            <input type="text" id="registerPlayerName" maxlength="40" autocomplete="nickname" required>
+            <p class="field-help">Existiert dieser Spieler bereits ohne Account, wird er mit deinem neuen Account verbunden.</p>
+        </div>
+        <div class="form-row">
+            <div>
+                <label for="registerPassword">Passwort</label>
+                <input type="password" id="registerPassword" autocomplete="new-password" required>
+            </div>
+            <div>
+                <label for="registerPasswordConfirmation">Passwort wiederholen</label>
+                <input type="password" id="registerPasswordConfirmation" autocomplete="new-password" required>
+            </div>
+        </div>
+        <p class="field-help">Das Passwort darf frei gewählt werden. Es gibt keine Mindestlänge und keine Vorgaben zu Zeichenarten.</p>
+        <div class="modal-actions">
+            <button class="secondary-button" type="button" data-close-dialog="registerDialog">Abbrechen</button>
+            <button class="primary-button" type="submit">Account anlegen</button>
+        </div>
+    </form>
+</dialog>
+
+<dialog id="profileDialog">
+    <form class="modal-content form-stack" id="profileForm" method="dialog">
+        <div>
+            <h2 class="modal-title">Mein Account</h2>
+            <p class="modal-subtitle">Verwalte deinen Spielernamen und deine üblichen Online-Tage.</p>
+        </div>
+        <div>
+            <label>Benutzername</label>
+            <input type="text" id="profileUsername" disabled>
+        </div>
+        <div>
+            <label for="profilePlayerName">Spielername</label>
+            <input type="text" id="profilePlayerName" maxlength="40" autocomplete="nickname" required>
+        </div>
+        <div>
+            <label>Normalerweise online an</label>
+            <div class="weekday-grid" id="profileWeekdays">
+                <label class="weekday-choice"><input type="checkbox" value="1"><span>Mo</span></label>
+                <label class="weekday-choice"><input type="checkbox" value="2"><span>Di</span></label>
+                <label class="weekday-choice"><input type="checkbox" value="3"><span>Mi</span></label>
+                <label class="weekday-choice"><input type="checkbox" value="4"><span>Do</span></label>
+                <label class="weekday-choice"><input type="checkbox" value="5"><span>Fr</span></label>
+                <label class="weekday-choice"><input type="checkbox" value="6"><span>Sa</span></label>
+                <label class="weekday-choice"><input type="checkbox" value="7"><span>So</span></label>
+            </div>
+            <p class="field-help">Künftige Spieltage an diesen Wochentagen werden automatisch als „Online“ angezeigt. Ein einzelner Termin kann jederzeit überschrieben werden.</p>
+        </div>
+        <div class="modal-actions">
+            <button class="secondary-button" id="openPasswordButton" type="button">Passwort ändern</button>
+            <button class="secondary-button" type="button" data-close-dialog="profileDialog">Abbrechen</button>
+            <button class="primary-button" type="submit">Profil speichern</button>
+        </div>
+    </form>
+</dialog>
+
+<dialog id="passwordDialog">
+    <form class="modal-content form-stack" id="passwordForm" method="dialog">
+        <div>
+            <h2 class="modal-title">Passwort ändern</h2>
+            <p class="modal-subtitle" id="passwordDialogSubtitle">Lege ein neues Passwort fest.</p>
+        </div>
+        <div id="forcedPasswordNote" class="forced-password-note" hidden>
+            Ein Administrator hat dein Passwort geändert. Bevor du den Kalender wieder bearbeiten kannst, musst du ein eigenes neues Passwort festlegen.
+        </div>
+        <div id="currentPasswordField">
+            <label for="currentPassword">Aktuelles Passwort</label>
+            <input type="password" id="currentPassword" autocomplete="current-password">
+        </div>
+        <div class="form-row">
+            <div>
+                <label for="newPassword">Neues Passwort</label>
+                <input type="password" id="newPassword" autocomplete="new-password" required>
+            </div>
+            <div>
+                <label for="newPasswordConfirmation">Neues Passwort wiederholen</label>
+                <input type="password" id="newPasswordConfirmation" autocomplete="new-password" required>
+            </div>
+        </div>
+        <p class="field-help">Keine Mindestlänge und kein vorgeschriebener Zeichensatz. Das Passwort darf lediglich nicht leer sein.</p>
+        <div class="modal-actions">
+            <button class="secondary-button" id="cancelPasswordButton" type="button" data-close-dialog="passwordDialog">Abbrechen</button>
+            <button class="primary-button" type="submit">Passwort speichern</button>
+        </div>
+    </form>
+</dialog>
+
+<dialog id="adminDialog" class="wide">
+    <div class="modal-content">
+        <div class="admin-toolbar">
+            <div>
+                <h2 class="modal-title">Adminbereich</h2>
+                <p class="modal-subtitle">Benutzerkonten, Adminrechte und zentrale Kalenderdaten verwalten.</p>
+            </div>
+            <button class="primary-button" id="createUserButton" type="button">＋ Benutzer anlegen</button>
+        </div>
+
+        <h3 class="section-heading">Benutzerkonten</h3>
+        <div class="admin-user-list" id="adminUserList"></div>
+
+        <div class="separator"></div>
+
+        <form id="adminSettingsForm" class="form-stack">
+            <div>
+                <h3 class="section-heading">Administratoren nach Spielername</h3>
+                <p class="field-help">Diese Liste wird in der Datendatei unter <code>settings.admin_player_names</code> gespeichert. Jeder Name muss zu einem bestehenden Account gehören. Mehrere Namen mit Komma oder in einzelnen Zeilen eintragen.</p>
+            </div>
+            <div>
+                <label for="adminPlayerNames">Admin-Spielernamen</label>
+                <textarea id="adminPlayerNames" required></textarea>
+            </div>
+            <div class="modal-actions">
+                <button class="secondary-button" type="button" data-close-dialog="adminDialog">Schließen</button>
+                <button class="primary-button" type="submit">Admin-Liste speichern</button>
+            </div>
+        </form>
+    </div>
+</dialog>
+
+<dialog id="adminUserDialog">
+    <form class="modal-content form-stack" id="adminUserForm" method="dialog">
+        <div>
+            <h2 class="modal-title" id="adminUserDialogTitle">Benutzer anlegen</h2>
+            <p class="modal-subtitle" id="adminUserDialogSubtitle">Der Benutzer muss das vorläufige Passwort nach der ersten Anmeldung ändern.</p>
+        </div>
+        <input type="hidden" id="adminUserId">
+        <div>
+            <label for="adminUsername">Benutzername</label>
+            <input type="text" id="adminUsername" autocomplete="off" required>
+        </div>
+        <div>
+            <label for="adminUserPlayerName">Spielername</label>
+            <input type="text" id="adminUserPlayerName" maxlength="40" autocomplete="off" required>
+        </div>
+        <div class="form-row">
+            <div>
+                <label for="adminUserPassword" id="adminUserPasswordLabel">Vorläufiges Passwort</label>
+                <input type="password" id="adminUserPassword" autocomplete="new-password">
+            </div>
+            <div>
+                <label for="adminUserPasswordConfirmation">Passwort wiederholen</label>
+                <input type="password" id="adminUserPasswordConfirmation" autocomplete="new-password">
+            </div>
+        </div>
+        <p class="field-help" id="adminPasswordHelp">Beim Anlegen ist ein Passwort erforderlich. Der Benutzer wird nach der ersten Anmeldung zur Änderung aufgefordert.</p>
+        <div class="modal-actions">
+            <button class="danger-button" id="deleteUserButton" type="button" hidden>Benutzer löschen</button>
+            <button class="secondary-button" type="button" data-close-dialog="adminUserDialog">Abbrechen</button>
+            <button class="primary-button" type="submit">Speichern</button>
+        </div>
+    </form>
+</dialog>
 
 <dialog id="playerDialog">
     <form class="modal-content" id="playerForm" method="dialog">
@@ -1047,45 +1499,64 @@ date_default_timezone_set('Europe/Berlin');
     const state = {
         players: [],
         availability: {},
-        eventDates: []
+        eventDates: [],
+        auth: { logged_in: false, setup_required: false, is_admin: false, must_change_password: false, can_write: false, user: null },
+        admin: null,
+        csrf: '',
+        storageWritable: true
     };
 
-    const loading = document.getElementById('loading');
-    const tableScroll = document.getElementById('tableScroll');
-    const planBody = document.getElementById('planBody');
-    const dateHeaderRow = document.getElementById('dateHeaderRow');
-    const emptyState = document.getElementById('emptyState');
-    const playerDialog = document.getElementById('playerDialog');
-    const playerForm = document.getElementById('playerForm');
-    const playerId = document.getElementById('playerId');
-    const playerName = document.getElementById('playerName');
-    const deletePlayerButton = document.getElementById('deletePlayerButton');
-    const dateDialog = document.getElementById('dateDialog');
-    const dateForm = document.getElementById('dateForm');
-    const eventDateInput = document.getElementById('eventDateInput');
-    const statusDialog = document.getElementById('statusDialog');
-    const statusForm = document.getElementById('statusForm');
-    const statusNote = document.getElementById('statusNote');
-    const selectedStatus = document.getElementById('selectedStatus');
-    const toast = document.getElementById('toast');
-    const storageWarning = document.getElementById('storageWarning');
+    const byId = id => document.getElementById(id);
+    const loading = byId('loading');
+    const tableScroll = byId('tableScroll');
+    const planBody = byId('planBody');
+    const dateHeaderRow = byId('dateHeaderRow');
+    const emptyState = byId('emptyState');
+    const toast = byId('toast');
+    const storageWarning = byId('storageWarning');
+    const setupCallout = byId('setupCallout');
+    const passwordCallout = byId('passwordCallout');
+    const accountSummary = byId('accountSummary');
+
+    const loginDialog = byId('loginDialog');
+    const registerDialog = byId('registerDialog');
+    const profileDialog = byId('profileDialog');
+    const passwordDialog = byId('passwordDialog');
+    const adminDialog = byId('adminDialog');
+    const adminUserDialog = byId('adminUserDialog');
+    const playerDialog = byId('playerDialog');
+    const dateDialog = byId('dateDialog');
+    const statusDialog = byId('statusDialog');
+
+    const playerForm = byId('playerForm');
+    const playerId = byId('playerId');
+    const playerName = byId('playerName');
+    const deletePlayerButton = byId('deletePlayerButton');
+    const dateForm = byId('dateForm');
+    const eventDateInput = byId('eventDateInput');
+    const statusForm = byId('statusForm');
+    const statusNote = byId('statusNote');
+    const selectedStatus = byId('selectedStatus');
     let toastTimer;
+    let passwordChangeForced = false;
 
     function showToast(message) {
         toast.textContent = message;
         toast.classList.add('show');
         clearTimeout(toastTimer);
-        toastTimer = setTimeout(() => toast.classList.remove('show'), 2600);
+        toastTimer = setTimeout(() => toast.classList.remove('show'), 3200);
     }
 
     async function api(action, payload = null) {
         const options = payload === null
-            ? { headers: { 'Accept': 'application/json' } }
+            ? { headers: { Accept: 'application/json' }, credentials: 'same-origin' }
             : {
                 method: 'POST',
+                credentials: 'same-origin',
                 headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json'
+                    Accept: 'application/json',
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': state.csrf
                 },
                 body: JSON.stringify({ action, ...payload })
             };
@@ -1104,24 +1575,42 @@ date_default_timezone_set('Europe/Berlin');
         if (!response.ok || data.ok === false) {
             const apiError = new Error(data.error || 'Die Anfrage konnte nicht verarbeitet werden.');
             apiError.code = data.code || '';
+            apiError.status = response.status;
             throw apiError;
         }
 
         return data;
     }
 
+    function applyData(data) {
+        state.players = data.players || [];
+        state.availability = data.availability || {};
+        state.eventDates = data.event_dates || [];
+        state.auth = data.auth || state.auth;
+        state.admin = data.admin || null;
+        state.csrf = data.csrf_token || state.csrf;
+        state.storageWritable = data.storage_writable !== false;
+        storageWarning.hidden = state.storageWritable;
+        loading.hidden = true;
+        renderAuth();
+        renderPlan();
+        if (adminDialog.open) renderAdminPanel();
+    }
+
     async function loadPlan() {
         try {
-            const data = await api('bootstrap');
-            state.players = data.players || [];
-            state.availability = data.availability || {};
-            state.eventDates = data.event_dates || [];
-            storageWarning.hidden = data.storage_writable !== false;
-            renderPlan();
+            applyData(await api('bootstrap'));
         } catch (error) {
             loading.textContent = 'Der Plan konnte nicht geladen werden.';
             showToast(error.message);
         }
+    }
+
+    function handleApiError(error) {
+        if (error.code === 'storage_not_writable') storageWarning.hidden = false;
+        if (error.code === 'password_change_required') openPasswordDialog(true);
+        if (error.status === 419) loadPlan();
+        showToast(error.message);
     }
 
     function parseLocalDate(isoDate) {
@@ -1137,13 +1626,50 @@ date_default_timezone_set('Europe/Berlin');
         };
     }
 
+    function renderAuth() {
+        const auth = state.auth;
+        setupCallout.hidden = !auth.setup_required;
+        passwordCallout.hidden = !auth.must_change_password;
+
+        byId('loginButton').hidden = auth.logged_in;
+        byId('registerButton').hidden = auth.logged_in;
+        byId('profileButton').hidden = !auth.logged_in || auth.must_change_password;
+        byId('adminButton').hidden = !auth.is_admin || auth.must_change_password;
+        byId('logoutButton').hidden = !auth.logged_in;
+        byId('addDateButton').hidden = !auth.is_admin || auth.must_change_password;
+        byId('addPlayerButton').hidden = !auth.is_admin || auth.must_change_password;
+
+        accountSummary.replaceChildren();
+        const strong = document.createElement('strong');
+        const small = document.createElement('small');
+
+        if (!auth.logged_in) {
+            strong.textContent = auth.setup_required ? 'Noch kein Administrator eingerichtet' : 'Nur-Lese-Ansicht';
+            small.textContent = auth.setup_required
+                ? 'Lege den ersten Account an. Dieser wird automatisch Administrator.'
+                : 'Melde dich an oder registriere dich, um deinen eigenen Spieler zu bearbeiten.';
+        } else {
+            strong.textContent = auth.user?.player_name || 'Spielername noch nicht eingerichtet';
+            if (auth.is_admin) {
+                const badge = document.createElement('span');
+                badge.className = 'account-badge admin';
+                badge.textContent = 'Admin';
+                strong.appendChild(badge);
+            }
+            small.textContent = `Angemeldet als ${auth.user?.username || ''}${auth.must_change_password ? ' · Passwortänderung erforderlich' : ''}`;
+        }
+        accountSummary.append(strong, small);
+
+        if (auth.must_change_password && !passwordDialog.open) {
+            setTimeout(() => openPasswordDialog(true), 50);
+        }
+    }
+
     function renderDateHeaders() {
         const table = dateHeaderRow.closest('table');
         table.style.minWidth = `${160 + (state.eventDates.length * 112)}px`;
 
-        while (dateHeaderRow.children.length > 1) {
-            dateHeaderRow.lastElementChild.remove();
-        }
+        while (dateHeaderRow.children.length > 1) dateHeaderRow.lastElementChild.remove();
 
         for (const eventDate of state.eventDates) {
             const parts = formatDateParts(eventDate.date);
@@ -1166,7 +1692,7 @@ date_default_timezone_set('Europe/Berlin');
                 heading.appendChild(past);
             }
 
-            if (eventDate.is_custom) {
+            if (eventDate.is_custom && state.auth.is_admin && !state.auth.must_change_password) {
                 const removeButton = document.createElement('button');
                 removeButton.type = 'button';
                 removeButton.className = 'date-remove';
@@ -1182,13 +1708,13 @@ date_default_timezone_set('Europe/Berlin');
     }
 
     function renderPlan() {
-        loading.hidden = true;
         planBody.replaceChildren();
         renderDateHeaders();
 
         if (state.players.length === 0) {
             tableScroll.hidden = true;
             emptyState.style.display = 'block';
+            emptyState.querySelector('strong').textContent = state.auth.is_admin ? 'Noch keine Spieler eingetragen.' : 'Noch keine Spieler eingetragen.';
             return;
         }
 
@@ -1197,7 +1723,6 @@ date_default_timezone_set('Europe/Berlin');
 
         for (const player of state.players) {
             const row = document.createElement('tr');
-
             const playerCell = document.createElement('th');
             playerCell.scope = 'row';
             playerCell.className = 'player-cell';
@@ -1205,8 +1730,25 @@ date_default_timezone_set('Europe/Berlin');
             const playerButton = document.createElement('button');
             playerButton.type = 'button';
             playerButton.className = 'player-button';
-            playerButton.innerHTML = `${escapeHtml(player.name)}<small>Antippen zum Bearbeiten</small>`;
-            playerButton.addEventListener('click', () => openPlayerDialog(player));
+            const nameText = document.createElement('span');
+            nameText.textContent = player.name;
+            playerButton.appendChild(nameText);
+            if (player.is_own) {
+                const badge = document.createElement('span');
+                badge.className = 'player-badge';
+                badge.textContent = 'Du';
+                playerButton.appendChild(badge);
+            }
+            const playerHint = document.createElement('small');
+            if (player.can_edit) {
+                playerHint.textContent = state.auth.is_admin ? 'Antippen zum Bearbeiten' : 'Dein Spieler · Account öffnen';
+                playerButton.addEventListener('click', () => state.auth.is_admin ? openPlayerDialog(player) : openProfileDialog());
+            } else {
+                playerHint.textContent = player.has_account ? 'Durch Account geschützt' : 'Noch keinem Account zugeordnet';
+                playerButton.classList.add('readonly');
+                playerButton.disabled = true;
+            }
+            playerButton.appendChild(playerHint);
             playerCell.appendChild(playerButton);
             row.appendChild(playerCell);
 
@@ -1215,14 +1757,14 @@ date_default_timezone_set('Europe/Berlin');
                 const dateLabel = formatDateParts(date).label;
                 const cell = document.createElement('td');
                 cell.className = 'status-cell';
-                const entry = state.availability[`${player.id}:${date}`] || { status: '', note: '' };
+                const entry = state.availability[`${player.id}:${date}`] || { status: '', note: '', source: '' };
                 const meta = STATUS_META[entry.status] || STATUS_META[''];
 
                 const button = document.createElement('button');
                 button.type = 'button';
                 button.className = `status-button ${meta.className}`;
                 button.setAttribute('aria-label', `${player.name}, ${dateLabel}: ${meta.label}${entry.note ? ', ' + entry.note : ''}`);
-                button.title = entry.note || meta.label;
+                button.title = player.can_edit ? (entry.note || `${meta.label} · Antippen zum Ändern`) : (entry.note || meta.label);
 
                 const icon = document.createElement('span');
                 icon.className = 'icon';
@@ -1232,6 +1774,12 @@ date_default_timezone_set('Europe/Berlin');
                 label.textContent = meta.label;
                 button.append(icon, label);
 
+                if (entry.source === 'recurring') {
+                    const recurring = document.createElement('span');
+                    recurring.className = 'recurring-tag';
+                    recurring.textContent = 'Standard';
+                    button.appendChild(recurring);
+                }
                 if (entry.note) {
                     const note = document.createElement('span');
                     note.className = 'note';
@@ -1239,28 +1787,23 @@ date_default_timezone_set('Europe/Berlin');
                     button.appendChild(note);
                 }
 
-                button.addEventListener('click', () => openStatusDialog(player, date, entry));
+                button.disabled = !player.can_edit || !state.storageWritable;
+                if (!button.disabled) button.addEventListener('click', () => openStatusDialog(player, date, entry));
                 cell.appendChild(button);
                 row.appendChild(cell);
             }
-
             planBody.appendChild(row);
         }
     }
 
-    function escapeHtml(value) {
-        return String(value).replace(/[&<>'"]/g, character => ({
-            '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
-        })[character]);
-    }
-
     function openDateDialog() {
+        if (!state.auth.is_admin) return;
         eventDateInput.value = '';
         dateDialog.showModal();
         requestAnimationFrame(() => {
             eventDateInput.focus();
             if (typeof eventDateInput.showPicker === 'function') {
-                try { eventDateInput.showPicker(); } catch (error) { /* Browser erlaubt Fokus dennoch. */ }
+                try { eventDateInput.showPicker(); } catch (error) { /* Fokus reicht als Rückfall. */ }
             }
         });
     }
@@ -1268,21 +1811,18 @@ date_default_timezone_set('Europe/Berlin');
     async function deleteEventDate(date, label) {
         if (!confirm(`Den zusätzlichen Spieltag „${label}“ samt aller Einträge wirklich löschen?`)) return;
         try {
-            await api('delete_event_date', { event_date: date });
+            applyData(await api('delete_event_date', { event_date: date }));
             showToast('Spieltag wurde gelöscht.');
-            await loadPlan();
-        } catch (error) {
-            if (error.code === 'storage_not_writable') storageWarning.hidden = false;
-            showToast(error.message);
-        }
+        } catch (error) { handleApiError(error); }
     }
 
     function openPlayerDialog(player = null) {
+        if (!state.auth.is_admin) return;
         const isEdit = Boolean(player);
-        document.getElementById('playerDialogTitle').textContent = isEdit ? 'Spieler bearbeiten' : 'Spieler hinzufügen';
-        document.getElementById('playerDialogSubtitle').textContent = isEdit
-            ? 'Name ändern oder den Spieler vollständig löschen.'
-            : 'Trage den Spieler- oder Charakternamen ein.';
+        byId('playerDialogTitle').textContent = isEdit ? 'Spieler bearbeiten' : 'Spieler hinzufügen';
+        byId('playerDialogSubtitle').textContent = isEdit
+            ? 'Name ändern oder den Spieler vollständig löschen. Verknüpfte Accounts bleiben bestehen, wenn ein Spieler gelöscht wird.'
+            : 'Lege einen zusätzlichen Spieler ohne Benutzerkonto an.';
         playerId.value = player?.id || '';
         playerName.value = player?.name || '';
         deletePlayerButton.hidden = !isEdit;
@@ -1291,10 +1831,11 @@ date_default_timezone_set('Europe/Berlin');
     }
 
     function openStatusDialog(player, date, entry) {
-        document.getElementById('statusDialogTitle').textContent = player.name;
-        document.getElementById('statusDialogSubtitle').textContent = formatDateParts(date).label;
-        document.getElementById('statusPlayerId').value = player.id;
-        document.getElementById('statusDate').value = date;
+        if (!player.can_edit) return;
+        byId('statusDialogTitle').textContent = player.name;
+        byId('statusDialogSubtitle').textContent = formatDateParts(date).label + (entry.source === 'recurring' ? ' · automatisch aus deinem Wochenstandard' : '');
+        byId('statusPlayerId').value = player.id;
+        byId('statusDate').value = date;
         selectedStatus.value = entry.status || '';
         statusNote.value = entry.note || '';
         updateStatusChoices();
@@ -1307,11 +1848,132 @@ date_default_timezone_set('Europe/Berlin');
         });
     }
 
-    document.getElementById('addDateButton').addEventListener('click', openDateDialog);
-    document.getElementById('addPlayerButton').addEventListener('click', () => openPlayerDialog());
+    function openLoginDialog() {
+        byId('loginForm').reset();
+        loginDialog.showModal();
+        requestAnimationFrame(() => byId('loginUsername').focus());
+    }
+
+    function openRegisterDialog() {
+        byId('registerForm').reset();
+        byId('registerDialogTitle').textContent = state.auth.setup_required ? 'Ersten Administrator anlegen' : 'Account anlegen';
+        byId('registerDialogSubtitle').textContent = state.auth.setup_required
+            ? 'Der erste Account erhält automatisch vollständige Administratorrechte.'
+            : 'Lege deinen persönlichen Zugang zum Kalender an.';
+        registerDialog.showModal();
+        requestAnimationFrame(() => byId('registerUsername').focus());
+    }
+
+    function openProfileDialog() {
+        if (!state.auth.logged_in || state.auth.must_change_password) return;
+        const user = state.auth.user || {};
+        byId('profileUsername').value = user.username || '';
+        byId('profilePlayerName').value = user.player_name || '';
+        const days = new Set((user.default_weekdays || []).map(Number));
+        document.querySelectorAll('#profileWeekdays input').forEach(input => input.checked = days.has(Number(input.value)));
+        profileDialog.showModal();
+        requestAnimationFrame(() => byId('profilePlayerName').focus());
+    }
+
+    function openPasswordDialog(forced = false) {
+        if (!state.auth.logged_in) return;
+        passwordChangeForced = forced || state.auth.must_change_password;
+        byId('passwordForm').reset();
+        byId('forcedPasswordNote').hidden = !passwordChangeForced;
+        byId('currentPasswordField').hidden = passwordChangeForced;
+        byId('currentPassword').required = !passwordChangeForced;
+        byId('cancelPasswordButton').hidden = passwordChangeForced;
+        byId('passwordDialogSubtitle').textContent = passwordChangeForced
+            ? 'Lege jetzt ein eigenes neues Passwort fest, um den Kalender wieder bearbeiten zu können.'
+            : 'Bestätige dein aktuelles Passwort und lege danach ein neues fest.';
+        if (!passwordDialog.open) passwordDialog.showModal();
+        requestAnimationFrame(() => (passwordChangeForced ? byId('newPassword') : byId('currentPassword')).focus());
+    }
+
+    function renderAdminPanel() {
+        if (!state.auth.is_admin || !state.admin) return;
+        const list = byId('adminUserList');
+        list.replaceChildren();
+        for (const user of state.admin.users || []) {
+            const card = document.createElement('div');
+            card.className = 'admin-user-card';
+            const info = document.createElement('div');
+            const title = document.createElement('strong');
+            title.textContent = user.username;
+            if (user.is_admin) {
+                const badge = document.createElement('span');
+                badge.className = 'account-badge admin';
+                badge.textContent = 'Admin';
+                title.appendChild(badge);
+            }
+            const details = document.createElement('small');
+            details.textContent = `Spieler: ${user.player_name || 'nicht zugeordnet'}${user.must_change_password ? ' · Passwortänderung offen' : ''}`;
+            info.append(title, details);
+            const edit = document.createElement('button');
+            edit.type = 'button';
+            edit.className = 'compact-button';
+            edit.textContent = 'Bearbeiten';
+            edit.addEventListener('click', () => openAdminUserDialog(user));
+            card.append(info, edit);
+            list.appendChild(card);
+        }
+        byId('adminPlayerNames').value = (state.admin.admin_player_names || []).join('\n');
+    }
+
+    function openAdminDialog() {
+        if (!state.auth.is_admin) return;
+        renderAdminPanel();
+        adminDialog.showModal();
+    }
+
+    function openAdminUserDialog(user = null) {
+        const editMode = Boolean(user);
+        byId('adminUserForm').reset();
+        byId('adminUserId').value = user?.id || '';
+        byId('adminUsername').value = user?.username || '';
+        byId('adminUserPlayerName').value = user?.player_name || '';
+        byId('adminUserDialogTitle').textContent = editMode ? 'Benutzer bearbeiten' : 'Benutzer anlegen';
+        byId('adminUserDialogSubtitle').textContent = editMode
+            ? 'Benutzername und Spielerzuordnung ändern oder ein vorläufiges neues Passwort setzen.'
+            : 'Der Benutzer muss das vorläufige Passwort nach der ersten Anmeldung ändern.';
+        byId('adminUserPasswordLabel').textContent = editMode ? 'Neues Passwort (optional)' : 'Vorläufiges Passwort';
+        byId('adminPasswordHelp').textContent = editMode
+            ? 'Bleibt das Passwortfeld leer, wird das bisherige Passwort beibehalten. Bei einer Änderung wird der Benutzer nach dem nächsten Login zur erneuten Passwortänderung aufgefordert.'
+            : 'Beim Anlegen ist ein Passwort erforderlich. Der Benutzer wird nach der ersten Anmeldung zur Änderung aufgefordert.';
+        byId('adminUserPassword').required = !editMode;
+        byId('adminUserPasswordConfirmation').required = !editMode;
+        byId('deleteUserButton').hidden = !editMode;
+        adminUserDialog.showModal();
+        requestAnimationFrame(() => byId('adminUsername').focus());
+    }
+
+    byId('loginButton').addEventListener('click', openLoginDialog);
+    byId('registerButton').addEventListener('click', openRegisterDialog);
+    byId('profileButton').addEventListener('click', openProfileDialog);
+    byId('adminButton').addEventListener('click', openAdminDialog);
+    byId('addDateButton').addEventListener('click', openDateDialog);
+    byId('addPlayerButton').addEventListener('click', () => openPlayerDialog());
+    byId('openPasswordButton').addEventListener('click', () => {
+        profileDialog.close();
+        openPasswordDialog(false);
+    });
+    byId('createUserButton').addEventListener('click', () => openAdminUserDialog());
+
+    byId('logoutButton').addEventListener('click', async () => {
+        try {
+            await api('logout', {});
+            [profileDialog, passwordDialog, adminDialog, adminUserDialog, playerDialog, dateDialog, statusDialog].forEach(dialog => dialog.open && dialog.close());
+            await loadPlan();
+            showToast('Du wurdest abgemeldet.');
+        } catch (error) { handleApiError(error); }
+    });
 
     document.querySelectorAll('[data-close-dialog]').forEach(button => {
-        button.addEventListener('click', () => document.getElementById(button.dataset.closeDialog).close());
+        button.addEventListener('click', () => {
+            const dialog = byId(button.dataset.closeDialog);
+            if (dialog === passwordDialog && passwordChangeForced) return;
+            dialog.close();
+        });
     });
 
     document.querySelectorAll('.status-choice').forEach(button => {
@@ -1321,88 +1983,169 @@ date_default_timezone_set('Europe/Berlin');
         });
     });
 
+    byId('loginForm').addEventListener('submit', async event => {
+        event.preventDefault();
+        try {
+            const data = await api('login', {
+                username: byId('loginUsername').value,
+                password: byId('loginPassword').value
+            });
+            loginDialog.close();
+            applyData(data);
+            showToast('Anmeldung erfolgreich.');
+        } catch (error) { handleApiError(error); }
+    });
+
+    byId('registerForm').addEventListener('submit', async event => {
+        event.preventDefault();
+        try {
+            const data = await api('register', {
+                username: byId('registerUsername').value,
+                player_name: byId('registerPlayerName').value,
+                password: byId('registerPassword').value,
+                password_confirmation: byId('registerPasswordConfirmation').value
+            });
+            registerDialog.close();
+            applyData(data);
+            showToast(state.auth.is_admin ? 'Erster Administrator wurde eingerichtet.' : 'Account wurde angelegt.');
+        } catch (error) { handleApiError(error); }
+    });
+
+    byId('profileForm').addEventListener('submit', async event => {
+        event.preventDefault();
+        const weekdays = [...document.querySelectorAll('#profileWeekdays input:checked')].map(input => Number(input.value));
+        try {
+            const data = await api('update_profile', {
+                player_name: byId('profilePlayerName').value,
+                default_weekdays: weekdays
+            });
+            profileDialog.close();
+            applyData(data);
+            showToast('Dein Account wurde gespeichert.');
+        } catch (error) { handleApiError(error); }
+    });
+
+    byId('passwordForm').addEventListener('submit', async event => {
+        event.preventDefault();
+        try {
+            const data = await api('change_password', {
+                current_password: byId('currentPassword').value,
+                new_password: byId('newPassword').value,
+                new_password_confirmation: byId('newPasswordConfirmation').value
+            });
+            passwordChangeForced = false;
+            passwordDialog.close();
+            applyData(data);
+            showToast('Dein Passwort wurde geändert.');
+        } catch (error) { handleApiError(error); }
+    });
+
     dateForm.addEventListener('submit', async event => {
         event.preventDefault();
         const eventDate = eventDateInput.value;
-        if (!eventDate) {
-            eventDateInput.focus();
-            return;
-        }
-
+        if (!eventDate) return eventDateInput.focus();
         const weekday = parseLocalDate(eventDate).getDay();
         if (weekday === 0 || weekday === 3) {
             showToast('Mittwoche und Sonntage werden automatisch angezeigt.');
             return;
         }
-
         try {
-            await api('create_event_date', { event_date: eventDate });
+            applyData(await api('create_event_date', { event_date: eventDate }));
             dateDialog.close();
             showToast('Spieltag wurde hinzugefügt.');
-            await loadPlan();
-        } catch (error) {
-            if (error.code === 'storage_not_writable') storageWarning.hidden = false;
-            showToast(error.message);
-        }
+        } catch (error) { handleApiError(error); }
     });
 
     playerForm.addEventListener('submit', async event => {
         event.preventDefault();
         const name = playerName.value.trim();
-        if (!name) {
-            playerName.focus();
-            return;
-        }
-
+        if (!name) return playerName.focus();
         try {
             const action = playerId.value ? 'update_player' : 'create_player';
-            await api(action, { id: playerId.value || undefined, name });
+            const data = await api(action, { id: playerId.value || undefined, name });
             playerDialog.close();
+            applyData(data);
             showToast(playerId.value ? 'Spieler wurde geändert.' : 'Spieler wurde hinzugefügt.');
-            await loadPlan();
-        } catch (error) {
-            if (error.code === 'storage_not_writable') storageWarning.hidden = false;
-            showToast(error.message);
-        }
+        } catch (error) { handleApiError(error); }
     });
 
     deletePlayerButton.addEventListener('click', async () => {
         const player = state.players.find(item => String(item.id) === String(playerId.value));
-        if (!player) return;
-        if (!confirm(`„${player.name}“ samt aller Einträge wirklich löschen?`)) return;
-
+        if (!player || !confirm(`„${player.name}“ samt aller Termineinträge wirklich löschen? Ein verknüpfter Account bleibt bestehen, besitzt danach aber zunächst keinen Spieler.`)) return;
         try {
-            await api('delete_player', { id: player.id });
+            const data = await api('delete_player', { id: player.id });
             playerDialog.close();
+            applyData(data);
             showToast('Spieler wurde gelöscht.');
-            await loadPlan();
-        } catch (error) {
-            if (error.code === 'storage_not_writable') storageWarning.hidden = false;
-            showToast(error.message);
-        }
+        } catch (error) { handleApiError(error); }
     });
 
     statusForm.addEventListener('submit', async event => {
         event.preventDefault();
         try {
-            await api('set_status', {
-                player_id: Number(document.getElementById('statusPlayerId').value),
-                event_date: document.getElementById('statusDate').value,
+            const data = await api('set_status', {
+                player_id: Number(byId('statusPlayerId').value),
+                event_date: byId('statusDate').value,
                 status: selectedStatus.value,
                 note: statusNote.value.trim()
             });
             statusDialog.close();
+            applyData(data);
             showToast('Verfügbarkeit wurde gespeichert.');
-            await loadPlan();
-        } catch (error) {
-            if (error.code === 'storage_not_writable') storageWarning.hidden = false;
-            showToast(error.message);
-        }
+        } catch (error) { handleApiError(error); }
     });
 
-    [playerDialog, dateDialog, statusDialog].forEach(dialog => {
+    byId('adminUserForm').addEventListener('submit', async event => {
+        event.preventDefault();
+        const editMode = Boolean(byId('adminUserId').value);
+        try {
+            const data = await api(editMode ? 'admin_update_user' : 'admin_create_user', {
+                user_id: byId('adminUserId').value || undefined,
+                username: byId('adminUsername').value,
+                player_name: byId('adminUserPlayerName').value,
+                password: byId('adminUserPassword').value,
+                password_confirmation: byId('adminUserPasswordConfirmation').value
+            });
+            adminUserDialog.close();
+            applyData(data);
+            renderAdminPanel();
+            showToast(editMode ? 'Benutzer wurde geändert.' : 'Benutzer wurde angelegt.');
+        } catch (error) { handleApiError(error); }
+    });
+
+    byId('deleteUserButton').addEventListener('click', async () => {
+        const userId = Number(byId('adminUserId').value);
+        const user = state.admin?.users?.find(item => Number(item.id) === userId);
+        if (!user || !confirm(`Benutzer „${user.username}“ wirklich löschen? Der Spieler und seine bisherigen Kalenderdaten bleiben erhalten.`)) return;
+        try {
+            const data = await api('admin_delete_user', { user_id: userId });
+            adminUserDialog.close();
+            applyData(data);
+            if (!state.auth.logged_in) adminDialog.close();
+            showToast('Benutzer wurde gelöscht.');
+        } catch (error) { handleApiError(error); }
+    });
+
+    byId('adminSettingsForm').addEventListener('submit', async event => {
+        event.preventDefault();
+        try {
+            const names = byId('adminPlayerNames').value.split(/[,;\n]+/).map(name => name.trim()).filter(Boolean);
+            const data = await api('admin_save_settings', { admin_player_names: names });
+            applyData(data);
+            if (!state.auth.is_admin) adminDialog.close();
+            showToast('Administratorliste wurde gespeichert.');
+        } catch (error) { handleApiError(error); }
+    });
+
+    passwordDialog.addEventListener('cancel', event => {
+        if (passwordChangeForced) event.preventDefault();
+    });
+
+    [loginDialog, registerDialog, profileDialog, passwordDialog, adminDialog, adminUserDialog, playerDialog, dateDialog, statusDialog].forEach(dialog => {
         dialog.addEventListener('click', event => {
-            if (event.target === dialog) dialog.close();
+            if (event.target !== dialog) return;
+            if (dialog === passwordDialog && passwordChangeForced) return;
+            dialog.close();
         });
     });
 

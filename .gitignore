@@ -1,8 +1,10 @@
-# Laufzeitdaten des Kalenders
+# Laufzeitdaten des Kalenders einschließlich Account- und Passwortdaten
 /data/store.php
+/data/store.php.*
 
 # Sicherungs- und temporäre Dateien
-/data/store.php.*
+/data/*.backup
+/data/*.backup-*
 *.tmp
 *.log
 

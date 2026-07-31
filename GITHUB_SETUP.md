@@ -18,7 +18,7 @@ Im Projektordner ausführen:
 git init
 git branch -M main
 git add .
-git commit -m "Kellerkinder-Online-Kalender v1.5"
+git commit -m "Kellerkinder-Online-Kalender v2.0.0"
 git remote add origin https://github.com/Fischje/kellerkinder-online-kalender.git
 git push -u origin main
 ```
@@ -55,7 +55,7 @@ chown -R www-data:www-data data
 chmod 750 data
 ```
 
-Die Datei `data/store.php` wird beim ersten Speichern automatisch erstellt und wird nicht in Git aufgenommen.
+Die Datei `data/store.php` wird beim ersten Speichern automatisch erstellt und wird nicht in Git aufgenommen. Sie enthält ab Version 2.0.0 auch Benutzerkonten und Passwort-Hashes.
 
 ## 5. Bereits vorhandene Daten behalten
 
@@ -72,3 +72,14 @@ cp /root/kellerkinder-store-backup.php data/store.php
 chown www-data:www-data data/store.php
 chmod 640 data/store.php
 ```
+
+
+## 6. Upgrade auf die Account-Version
+
+Vor dem ersten `git pull` eine Sicherung anlegen:
+
+```bash
+cp data/store.php data/store.php.backup-manual
+```
+
+Nach dem Update die Website öffnen und sofort den ersten Account registrieren. Der erste Account wird automatisch Administrator. Die vorhandenen Spieler, Termine und Statusangaben bleiben erhalten.
