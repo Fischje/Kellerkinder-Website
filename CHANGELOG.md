@@ -1,5 +1,21 @@
 # Änderungsprotokoll
 
+## 2.2.0
+
+- Spielwunsch je Spieler und Termin ergänzt
+- Bereits genannte Spiele werden als gemeinsame Dropdown-Vorschläge angeboten
+- Spielwünsche werden direkt in den Kalenderfeldern angezeigt
+- PWA-Manifest, Service Worker und App-Symbole ergänzt
+- Smartphone-Schaltfläche oben rechts startet die Installation oder zeigt gerätespezifische Hinweise
+- Dynamischer Footer mit „Created by Fischje with ♥ Version 2.2.0“ ergänzt
+- Bestehende Datendateien werden ohne Migration weiterverwendet
+
+## 2.1.1
+
+- Öffnen des Spieltag-Dialogs für normale Benutzer repariert
+- Erkennung sichtbarer Sonderzeichen bei neuen Passwörtern robuster umgesetzt
+- Umlaute werden korrekt als Buchstaben bewertet
+
 ## 2.1.0
 
 - Neue Passwörter benötigen mindestens 8 Zeichen

@@ -15,7 +15,10 @@ Mobiloptimierter PHP-Kalender zur Planung gemeinsamer Spielabende mit Benutzerko
 - Anzeige von genau einem vergangenen Termin
 - Wiederkehrende Standardtage: Ein Benutzer kann festlegen, an welchen Wochentagen er normalerweise online ist
 - Status: Online, später, verhindert, Urlaub oder offen
+- Spielwunsch je Spieler und Termin mit lernender Auswahlliste bereits genannter Spiele
 - Optionaler Hinweis, beispielsweise „ab 21:00 Uhr“
+- Als Progressive Web App auf dem Home-Bildschirm von iPhone und Android installierbar
+- Automatische Versionsanzeige im Footer
 - Passwortänderung ohne E-Mail-Funktion
 - Setzt ein Admin ein neues Passwort, wird die bestehende Sitzung ungültig und der Benutzer muss das vorläufige Passwort nach der nächsten Anmeldung erneut ändern
 - Discord-Abfrage über `/kalender`
@@ -103,7 +106,7 @@ Nach dem Upgrade:
 - eigenen Spielernamen ändern,
 - eigene regelmäßige Online-Wochentage festlegen,
 - zusätzliche Spieltage anlegen,
-- eigenen Status und eigenen Hinweis je Termin ändern,
+- eigenen Status, eigenen Spielwunsch und eigenen Hinweis je Termin ändern,
 - eigenes Passwort ändern.
 
 Zusätzliche Spieltage können von allen angemeldeten Benutzern angelegt werden. Das Löschen zusätzlicher Spieltage bleibt Administratoren vorbehalten, weil dabei die zugehörigen Statusangaben aller Spieler entfernt werden.
@@ -115,9 +118,22 @@ Zusätzliche Spieltage können von allen angemeldeten Benutzern angelegt werden.
 - Admin-Spielernamen verwalten,
 - Spieler anlegen, umbenennen und löschen,
 - zusätzliche Spieltage anlegen und löschen,
-- Status und Hinweise aller Spieler ändern.
+- Status, Spielwünsche und Hinweise aller Spieler ändern.
 
 Beim Löschen eines Benutzerkontos bleibt der zugehörige Spieler samt Kalenderhistorie bestehen und wird lediglich vom Account getrennt. Ein Spieler kann anschließend separat gelöscht oder erneut einem Account zugeordnet werden.
+
+## Spielwünsche
+
+Im Bearbeitungsfenster eines Termins kann jeder berechtigte Spieler neben Status und Hinweis ein gewünschtes Spiel eintragen. Bereits einmal gespeicherte Spielnamen werden allen Benutzern als Vorschläge in einer Auswahlliste angeboten. Neue Titel können weiterhin frei eingetragen werden.
+
+## Installation auf dem Home-Bildschirm
+
+Das kleine Smartphone-Symbol oben rechts öffnet die Installation:
+
+- Unterstützte Android-Browser zeigen direkt den Installationsdialog.
+- Auf dem iPhone werden die Schritte für Safari angezeigt: Teilen → Zum Home-Bildschirm hinzufügen → Als Web-App öffnen → Hinzufügen.
+
+Für die Installation muss die Website über HTTPS erreichbar sein. Die PWA-Dateien speichern ausschließlich statische Logos und Symbole zwischen; die Kalender- und Accountdaten werden weiterhin aktuell über `api.php` geladen.
 
 ## Datenspeicherung
 
@@ -135,7 +151,7 @@ Enthalten sind unter anderem:
 - Admin-Spielernamen,
 - wiederkehrende Wochentage,
 - Termine,
-- Statusangaben und Hinweise.
+- Statusangaben, Spielwünsche und Hinweise.
 
 Die Datei beginnt mit einer PHP-Sperre und liefert bei einem direkten Aufruf HTTP 403. Sie darf trotzdem niemals in das öffentliche GitHub-Repository eingecheckt werden.
 
@@ -164,7 +180,11 @@ Die Laufzeitdateien unter `data/store.php*` werden von Git ignoriert und dadurch
 ```text
 .
 ├── assets/
-│   └── kellerkinder-logo.svg
+│   ├── app-icon-180.png
+│   ├── app-icon-192.png
+│   ├── app-icon-512.png
+│   ├── kellerkinder-logo.svg
+│   └── smartphone-install.svg
 ├── data/
 │   ├── .htaccess
 │   └── index.php
@@ -172,6 +192,8 @@ Die Laufzeitdateien unter `data/store.php*` werden von Git ignoriert und dadurch
 ├── api.php
 ├── check.php
 ├── index.php
+├── manifest.webmanifest
+├── service-worker.js
 ├── CHANGELOG.md
 ├── GITHUB_SETUP.md
 ├── README.md

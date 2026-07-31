@@ -18,7 +18,7 @@ Im Projektordner ausführen:
 git init
 git branch -M main
 git add .
-git commit -m "Kellerkinder-Online-Kalender v2.1.0"
+git commit -m "Kellerkinder-Online-Kalender v2.2.0"
 git remote add origin https://github.com/Fischje/kellerkinder-online-kalender.git
 git push -u origin main
 ```

@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title desc">
+  <title id="title">Zum Home-Bildschirm hinzufügen</title>
+  <desc id="desc">Neonfarbenes Smartphone mit Pluszeichen.</desc>
+  <defs>
+    <linearGradient id="phone" x1="13" y1="8" x2="52" y2="57" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#35e7ff"/>
+      <stop offset="0.52" stop-color="#7766ff"/>
+      <stop offset="1" stop-color="#ff4fc8"/>
+    </linearGradient>
+    <filter id="glow" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="2.4" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <rect x="15" y="5" width="34" height="54" rx="8" fill="#080b16" stroke="url(#phone)" stroke-width="4" filter="url(#glow)"/>
+  <path d="M25 12h14" stroke="#c9d4ff" stroke-opacity=".8" stroke-width="3" stroke-linecap="round"/>
+  <circle cx="32" cy="51" r="2.2" fill="#dffaff"/>
+  <circle cx="47" cy="18" r="11" fill="#0b1020" stroke="#35e7ff" stroke-width="3"/>
+  <path d="M47 13v10M42 18h10" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round"/>
+</svg>

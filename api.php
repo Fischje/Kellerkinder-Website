@@ -9,6 +9,7 @@ date_default_timezone_set('Europe/Berlin');
 const PLAYER_NAME_MAX = 40;
 const USERNAME_MAX = 50;
 const NOTE_MAX = 60;
+const GAME_MAX = 60;
 const PASSWORD_MIN_LENGTH = 8;
 const ALLOWED_STATUSES = ['', 'online', 'late', 'absent', 'vacation'];
 const STORE_PREFIX = "<?php http_response_code(403); exit; ?>\n";
@@ -362,23 +363,58 @@ function validateUsername($value): string
     return $username;
 }
 
+function passwordRuleState(string $password): array
+{
+    $state = [
+        'length' => textLength($password) >= PASSWORD_MIN_LENGTH,
+        'letter' => false,
+        'number' => false,
+        'special' => false,
+    ];
+
+    $characters = preg_split('//u', $password, -1, PREG_SPLIT_NO_EMPTY);
+    if ($characters === false) {
+        $characters = str_split($password);
+    }
+
+    foreach ($characters as $character) {
+        if (preg_match('/^\p{L}$/u', $character) === 1) {
+            $state['letter'] = true;
+            continue;
+        }
+        if (preg_match('/^\p{N}$/u', $character) === 1) {
+            $state['number'] = true;
+            continue;
+        }
+        if (preg_match('/^\s$/u', $character) !== 1) {
+            // Jedes sichtbare Zeichen, das weder Buchstabe noch Zahl ist,
+            // gilt als Sonderzeichen. Dazu zählen z. B. ! ? # + - _ @ € und Emojis.
+            $state['special'] = true;
+        }
+    }
+
+    return $state;
+}
+
 function validatePassword($value, $confirmation = null): string
 {
     $password = (string) $value;
     if ($password === '') {
         respond(['ok' => false, 'error' => 'Bitte ein Passwort festlegen.'], 422);
     }
-    if (textLength($password) < PASSWORD_MIN_LENGTH) {
+
+    $rules = passwordRuleState($password);
+    if (!$rules['length']) {
         respond(['ok' => false, 'error' => 'Das Passwort muss mindestens 8 Zeichen lang sein.'], 422);
     }
-    if (preg_match('/\p{L}/u', $password) !== 1) {
+    if (!$rules['letter']) {
         respond(['ok' => false, 'error' => 'Das Passwort muss mindestens einen Buchstaben enthalten.'], 422);
     }
-    if (preg_match('/\p{N}/u', $password) !== 1) {
+    if (!$rules['number']) {
         respond(['ok' => false, 'error' => 'Das Passwort muss mindestens eine Zahl enthalten.'], 422);
     }
-    if (preg_match('/[^\p{L}\p{N}\s]/u', $password) !== 1) {
-        respond(['ok' => false, 'error' => 'Das Passwort muss mindestens ein Sonderzeichen enthalten.'], 422);
+    if (!$rules['special']) {
+        respond(['ok' => false, 'error' => 'Das Passwort muss mindestens ein Sonderzeichen wie !, ?, #, +, -, _, @ oder € enthalten. Umlaute gelten als Buchstaben.'], 422);
     }
     if ($confirmation !== null && $password !== (string) $confirmation) {
         respond(['ok' => false, 'error' => 'Die beiden Passwörter stimmen nicht überein.'], 422);
@@ -420,6 +456,15 @@ function validateNote($value): string
         respond(['ok' => false, 'error' => 'Der Hinweis ist zu lang.'], 422);
     }
     return $note;
+}
+
+function validateGame($value): string
+{
+    $game = normalizeSimpleText($value);
+    if (textLength($game) > GAME_MAX) {
+        respond(['ok' => false, 'error' => 'Der Spielwunsch ist zu lang.'], 422);
+    }
+    return $game;
 }
 
 function findPlayerIndex(array $players, int $id): ?int
@@ -656,6 +701,7 @@ function effectiveAvailability(array $store, array $eventDates): array
         $availability[$playerId . ':' . $eventDate] = [
             'status' => in_array((string) ($entry['status'] ?? ''), ALLOWED_STATUSES, true) ? (string) ($entry['status'] ?? '') : '',
             'note' => (string) ($entry['note'] ?? ''),
+            'game' => (string) ($entry['game'] ?? ''),
             'source' => 'explicit',
         ];
     }
@@ -687,12 +733,29 @@ function effectiveAvailability(array $store, array $eventDates): array
                 $availability[$key] = [
                     'status' => 'online',
                     'note' => '',
+                    'game' => '',
                     'source' => 'recurring',
                 ];
             }
         }
     }
     return $availability;
+}
+
+
+function gameOptions(array $store): array
+{
+    $games = [];
+    foreach ($store['availability'] as $entry) {
+        $game = normalizeSimpleText($entry['game'] ?? '');
+        if ($game === '') {
+            continue;
+        }
+        $games[textLower($game)] = $game;
+    }
+    $values = array_values($games);
+    usort($values, static fn(string $a, string $b): int => strcasecmp($a, $b));
+    return $values;
 }
 
 function replaceAdminName(array &$store, string $oldName, string $newName): void
@@ -865,6 +928,7 @@ function bootstrapResponse(array $store): array
         'auth' => $auth,
         'players' => $playerPayload,
         'availability' => $availability,
+        'game_options' => gameOptions($store),
         'event_dates' => $eventDates,
     ];
 
@@ -1108,6 +1172,7 @@ withWritableStore(function (array &$store) use ($action, $payload): array {
             $eventDate = validateDate($payload['event_date'] ?? '');
             $status = validateStatus($payload['status'] ?? '');
             $note = validateNote($payload['note'] ?? '');
+            $game = validateGame($payload['game'] ?? '');
             $playerIndex = findPlayerIndex($store['players'], $playerId);
             if ($playerIndex === null) {
                 return [['ok' => false, 'error' => 'Der Spieler wurde nicht gefunden.'], 404, false];
@@ -1128,6 +1193,7 @@ withWritableStore(function (array &$store) use ($action, $payload): array {
                 'event_date' => $eventDate,
                 'status' => $status,
                 'note' => $note,
+                'game' => $game,
                 'updated_at' => gmdate('c'),
                 'updated_by_user_id' => (int) $user['id'],
             ];

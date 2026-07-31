@@ -2,6 +2,10 @@
 declare(strict_types=1);
 
 date_default_timezone_set('Europe/Berlin');
+$appVersion = trim((string) @file_get_contents(__DIR__ . DIRECTORY_SEPARATOR . 'VERSION'));
+if ($appVersion === '') {
+    $appVersion = '2.2.0';
+}
 ?>
 <!doctype html>
 <html lang="de">
@@ -9,9 +13,15 @@ date_default_timezone_set('Europe/Berlin');
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#070914">
+    <meta name="application-name" content="Kellerkinder-Online-Kalender">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Kellerkinder">
     <title>Kellerkinder-Online-Kalender</title>
     <meta name="description" content="Der gemeinsame Kellerkinder-Online-Kalender für eure Spieltage.">
     <link rel="icon" href="assets/kellerkinder-logo.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="assets/app-icon-180.png">
+    <link rel="manifest" href="manifest.webmanifest">
     <style>
         :root {
             --bg: #05060b;
@@ -143,6 +153,85 @@ date_default_timezone_set('Europe/Berlin');
             border: 1px solid rgba(255,255,255,.045);
             border-radius: 12px;
             pointer-events: none;
+        }
+
+        .install-app-button {
+            position: absolute;
+            z-index: 5;
+            top: 11px;
+            right: 11px;
+            width: 38px;
+            height: 38px;
+            display: grid;
+            place-items: center;
+            padding: 7px;
+            border: 1px solid rgba(126, 229, 255, .48);
+            border-radius: 11px;
+            color: #dffaff;
+            background: rgba(9, 14, 28, .78);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,.1), 0 0 18px rgba(53,231,255,.15);
+            cursor: pointer;
+            transition: transform .14s ease, filter .14s ease, box-shadow .14s ease;
+        }
+
+        .install-app-button:hover {
+            transform: translateY(-1px) scale(1.04);
+            filter: brightness(1.18);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,.14), 0 0 24px rgba(53,231,255,.28);
+        }
+
+        .install-app-button img {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        .install-steps {
+            display: grid;
+            gap: 10px;
+            margin: 4px 0 0;
+            padding: 0;
+            list-style: none;
+            counter-reset: install-step;
+        }
+
+        .install-steps li {
+            counter-increment: install-step;
+            display: grid;
+            grid-template-columns: 32px 1fr;
+            gap: 10px;
+            align-items: start;
+            color: #dfe5f5;
+            line-height: 1.5;
+        }
+
+        .install-steps li::before {
+            content: counter(install-step);
+            width: 30px;
+            height: 30px;
+            display: grid;
+            place-items: center;
+            border: 1px solid rgba(117,230,255,.5);
+            border-radius: 9px;
+            color: white;
+            background: linear-gradient(135deg, #157ca3, #6550d3 58%, #a34093);
+            font-weight: 900;
+        }
+
+        .site-footer {
+            margin: 18px 0 0;
+            padding: 12px 8px 0;
+            color: #9099b2;
+            text-align: center;
+            font-size: .84rem;
+            letter-spacing: .02em;
+        }
+
+        .site-footer .heart {
+            display: inline-block;
+            margin: 0 .18em;
+            color: #ff4f91;
+            filter: drop-shadow(0 0 6px rgba(255,79,145,.55));
         }
 
         .crest {
@@ -528,6 +617,19 @@ date_default_timezone_set('Europe/Berlin');
             font-size: .72rem;
             font-weight: 900;
             letter-spacing: .02em;
+        }
+
+        .status-button .game {
+            position: relative;
+            z-index: 1;
+            max-width: 94px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            color: #fff1a8;
+            font-size: .64rem;
+            font-weight: 900;
+            text-shadow: 0 0 8px rgba(255, 214, 92, .28);
         }
 
         .status-button .note {
@@ -1148,6 +1250,9 @@ date_default_timezone_set('Europe/Berlin');
 <body>
 <main class="page-shell">
     <header class="masthead">
+        <button class="install-app-button" id="installAppButton" type="button" title="Als App zum Home-Bildschirm hinzufügen" aria-label="Kellerkinder-Kalender als App zum Home-Bildschirm hinzufügen">
+            <img src="assets/smartphone-install.svg" alt="">
+        </button>
         <div class="crest">
             <img src="assets/kellerkinder-logo.svg" alt="Kellerkinder Gaming-Logo">
         </div>
@@ -1225,7 +1330,7 @@ date_default_timezone_set('Europe/Berlin');
             </div>
             <div class="instruction-item">
                 <span class="instruction-number">2</span>
-                <p><strong>Eigene Verfügbarkeit pflegen:</strong> Nach der Anmeldung kannst du zusätzliche Spieltage anlegen und ausschließlich deine eigene Spielerzeile bearbeiten. Für jeden Termin stehen „Online“, „Später“, „Verhindert“, „Urlaub“ und „Offen“ zur Auswahl.</p>
+                <p><strong>Eigene Verfügbarkeit pflegen:</strong> Nach der Anmeldung kannst du zusätzliche Spieltage anlegen und ausschließlich deine eigene Spielerzeile bearbeiten. Für jeden Termin stehen „Online“, „Später“, „Verhindert“, „Urlaub“ und „Offen“ zur Auswahl. Zusätzlich kannst du angeben, welches Spiel du spielen möchtest und einen kurzen Hinweis ergänzen.</p>
             </div>
             <div class="instruction-item">
                 <span class="instruction-number">3</span>
@@ -1243,7 +1348,19 @@ date_default_timezone_set('Europe/Berlin');
         </div>
     </section>
 
+    <footer class="site-footer">Created by Fischje with <span class="heart" aria-label="Love">♥</span> Version <?= htmlspecialchars($appVersion, ENT_QUOTES, 'UTF-8') ?></footer>
 </main>
+
+<dialog id="installDialog">
+    <div class="modal-content">
+        <h2 class="modal-title">Kalender als App speichern</h2>
+        <p class="modal-subtitle" id="installDialogSubtitle">Lege den Kellerkinder-Kalender als Symbol auf deinem Home-Bildschirm ab.</p>
+        <ol class="install-steps" id="installSteps"></ol>
+        <div class="modal-actions">
+            <button class="primary-button" type="button" data-close-dialog="installDialog">Verstanden</button>
+        </div>
+    </div>
+</dialog>
 
 <dialog id="loginDialog">
     <form class="modal-content form-stack" id="loginForm" method="dialog">
@@ -1291,7 +1408,7 @@ date_default_timezone_set('Europe/Berlin');
                 <input type="password" id="registerPasswordConfirmation" minlength="8" autocomplete="new-password" required>
             </div>
         </div>
-        <p class="field-help"><strong>Passwortregel:</strong> Mindestens 8 Zeichen sowie mindestens ein Buchstabe, eine Zahl und ein Sonderzeichen, zum Beispiel <code>! ? # + - _</code>.</p>
+        <p class="field-help"><strong>Passwortregel:</strong> Mindestens 8 Zeichen sowie mindestens ein Buchstabe, eine Zahl und ein Sonderzeichen, zum Beispiel <code>! ? # + - _ @ €</code>. Umlaute wie ä, ö und ü zählen als Buchstaben.</p>
         <div class="modal-actions">
             <button class="secondary-button" type="button" data-close-dialog="registerDialog">Abbrechen</button>
             <button class="primary-button" type="submit">Account anlegen</button>
@@ -1357,7 +1474,7 @@ date_default_timezone_set('Europe/Berlin');
                 <input type="password" id="newPasswordConfirmation" minlength="8" autocomplete="new-password" required>
             </div>
         </div>
-        <p class="field-help"><strong>Passwortregel:</strong> Mindestens 8 Zeichen sowie mindestens ein Buchstabe, eine Zahl und ein Sonderzeichen, zum Beispiel <code>! ? # + - _</code>.</p>
+        <p class="field-help"><strong>Passwortregel:</strong> Mindestens 8 Zeichen sowie mindestens ein Buchstabe, eine Zahl und ein Sonderzeichen, zum Beispiel <code>! ? # + - _ @ €</code>. Umlaute wie ä, ö und ü zählen als Buchstaben.</p>
         <div class="modal-actions">
             <button class="secondary-button" id="cancelPasswordButton" type="button" data-close-dialog="passwordDialog">Abbrechen</button>
             <button class="primary-button" type="submit">Passwort speichern</button>
@@ -1422,7 +1539,7 @@ date_default_timezone_set('Europe/Berlin');
                 <input type="password" id="adminUserPasswordConfirmation" minlength="8" autocomplete="new-password">
             </div>
         </div>
-        <p class="field-help" id="adminPasswordHelp">Beim Anlegen ist ein Passwort mit mindestens 8 Zeichen, einem Buchstaben, einer Zahl und einem Sonderzeichen erforderlich. Der Benutzer wird nach der ersten Anmeldung zur Änderung aufgefordert.</p>
+        <p class="field-help" id="adminPasswordHelp">Beim Anlegen ist ein Passwort mit mindestens 8 Zeichen, einem Buchstaben, einer Zahl und einem Sonderzeichen wie !, ?, #, +, -, _, @ oder € erforderlich. Umlaute zählen als Buchstaben. Der Benutzer wird nach der ersten Anmeldung zur Änderung aufgefordert.</p>
         <div class="modal-actions">
             <button class="danger-button" id="deleteUserButton" type="button" hidden>Benutzer löschen</button>
             <button class="secondary-button" type="button" data-close-dialog="adminUserDialog">Abbrechen</button>
@@ -1475,6 +1592,13 @@ date_default_timezone_set('Europe/Berlin');
             <button class="status-choice" type="button" data-status=""><span>?</span>Offen</button>
         </div>
 
+        <div>
+            <label for="statusGame">Was möchtest du spielen? <small>(optional)</small></label>
+            <input type="text" id="statusGame" list="gameOptions" maxlength="60" placeholder="z. B. WoW, Diablo 4 oder Factorio" autocomplete="off">
+            <datalist id="gameOptions"></datalist>
+            <p class="field-help">Du kannst ein neues Spiel eintragen oder einen bereits genannten Titel aus der Liste auswählen.</p>
+        </div>
+
         <label for="statusNote">Hinweis <small>(optional)</small></label>
         <input type="text" id="statusNote" maxlength="60" placeholder="z. B. ab 21:00 Uhr" autocomplete="off">
 
@@ -1499,6 +1623,7 @@ date_default_timezone_set('Europe/Berlin');
     const state = {
         players: [],
         availability: {},
+        gameOptions: [],
         eventDates: [],
         auth: { logged_in: false, setup_required: false, is_admin: false, must_change_password: false, can_write: false, user: null },
         admin: null,
@@ -1518,6 +1643,7 @@ date_default_timezone_set('Europe/Berlin');
     const passwordCallout = byId('passwordCallout');
     const accountSummary = byId('accountSummary');
 
+    const installDialog = byId('installDialog');
     const loginDialog = byId('loginDialog');
     const registerDialog = byId('registerDialog');
     const profileDialog = byId('profileDialog');
@@ -1535,10 +1661,13 @@ date_default_timezone_set('Europe/Berlin');
     const dateForm = byId('dateForm');
     const eventDateInput = byId('eventDateInput');
     const statusForm = byId('statusForm');
+    const statusGame = byId('statusGame');
+    const gameOptionsList = byId('gameOptions');
     const statusNote = byId('statusNote');
     const selectedStatus = byId('selectedStatus');
     let toastTimer;
     let passwordChangeForced = false;
+    let deferredInstallPrompt = null;
 
     function showToast(message) {
         toast.textContent = message;
@@ -1585,7 +1714,9 @@ date_default_timezone_set('Europe/Berlin');
     function applyData(data) {
         state.players = data.players || [];
         state.availability = data.availability || {};
+        state.gameOptions = data.game_options || [];
         state.eventDates = data.event_dates || [];
+        renderGameOptions();
         state.auth = data.auth || state.auth;
         state.admin = data.admin || null;
         state.csrf = data.csrf_token || state.csrf;
@@ -1595,6 +1726,62 @@ date_default_timezone_set('Europe/Berlin');
         renderAuth();
         renderPlan();
         if (adminDialog.open) renderAdminPanel();
+    }
+
+    function renderGameOptions() {
+        gameOptionsList.replaceChildren();
+        for (const game of state.gameOptions) {
+            const option = document.createElement('option');
+            option.value = game;
+            gameOptionsList.appendChild(option);
+        }
+    }
+
+    function isInstalledApp() {
+        return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+    }
+
+    function showInstallInstructions() {
+        const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
+        const steps = isIos
+            ? [
+                'Öffne diese Seite in Safari.',
+                'Tippe in Safari auf „Teilen“.',
+                'Wähle „Zum Home-Bildschirm hinzufügen“, aktiviere „Als Web-App öffnen“ und tippe auf „Hinzufügen“.'
+            ]
+            : [
+                'Öffne das Browsermenü oben rechts.',
+                'Wähle „App installieren“ oder „Zum Startbildschirm hinzufügen“.',
+                'Bestätige die Installation. Danach erscheint das Kellerkinder-Symbol wie eine App auf deinem Home-Bildschirm.'
+            ];
+        byId('installDialogSubtitle').textContent = isIos
+            ? 'Auf dem iPhone wird die Web-App über das Teilen-Menü in Safari installiert.'
+            : 'Falls dein Browser keinen direkten Installationsdialog anbietet, nutze diese Schritte.';
+        const list = byId('installSteps');
+        list.replaceChildren();
+        for (const text of steps) {
+            const item = document.createElement('li');
+            item.textContent = text;
+            list.appendChild(item);
+        }
+        installDialog.showModal();
+    }
+
+    async function installApp() {
+        if (isInstalledApp()) {
+            showToast('Der Kalender ist bereits als App geöffnet.');
+            return;
+        }
+        if (deferredInstallPrompt) {
+            deferredInstallPrompt.prompt();
+            const choice = await deferredInstallPrompt.userChoice;
+            deferredInstallPrompt = null;
+            if (choice.outcome === 'accepted') {
+                showToast('Der Kellerkinder-Kalender wurde installiert.');
+            }
+            return;
+        }
+        showInstallInstructions();
     }
 
     async function loadPlan() {
@@ -1624,6 +1811,24 @@ date_default_timezone_set('Europe/Berlin');
             value: new Intl.DateTimeFormat('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(date),
             label: new Intl.DateTimeFormat('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' }).format(date)
         };
+    }
+
+    function passwordValidationMessage(password, confirmation = null) {
+        const characters = [...password];
+        const hasLetter = characters.some(character => /^\p{L}$/u.test(character));
+        const hasNumber = characters.some(character => /^\p{N}$/u.test(character));
+        const hasSpecial = characters.some(character =>
+            !/^\p{L}$/u.test(character)
+            && !/^\p{N}$/u.test(character)
+            && !/^\s$/u.test(character)
+        );
+
+        if (characters.length < 8) return 'Das Passwort muss mindestens 8 Zeichen lang sein.';
+        if (!hasLetter) return 'Das Passwort muss mindestens einen Buchstaben enthalten.';
+        if (!hasNumber) return 'Das Passwort muss mindestens eine Zahl enthalten.';
+        if (!hasSpecial) return 'Das Passwort muss mindestens ein Sonderzeichen wie !, ?, #, +, -, _, @ oder € enthalten. Umlaute gelten als Buchstaben.';
+        if (confirmation !== null && password !== confirmation) return 'Die beiden Passwörter stimmen nicht überein.';
+        return '';
     }
 
     function renderAuth() {
@@ -1757,14 +1962,15 @@ date_default_timezone_set('Europe/Berlin');
                 const dateLabel = formatDateParts(date).label;
                 const cell = document.createElement('td');
                 cell.className = 'status-cell';
-                const entry = state.availability[`${player.id}:${date}`] || { status: '', note: '', source: '' };
+                const entry = state.availability[`${player.id}:${date}`] || { status: '', note: '', game: '', source: '' };
                 const meta = STATUS_META[entry.status] || STATUS_META[''];
 
                 const button = document.createElement('button');
                 button.type = 'button';
                 button.className = `status-button ${meta.className}`;
-                button.setAttribute('aria-label', `${player.name}, ${dateLabel}: ${meta.label}${entry.note ? ', ' + entry.note : ''}`);
-                button.title = player.can_edit ? (entry.note || `${meta.label} · Antippen zum Ändern`) : (entry.note || meta.label);
+                const entryDetails = [entry.game ? `Spiel: ${entry.game}` : '', entry.note || ''].filter(Boolean).join(', ');
+                button.setAttribute('aria-label', `${player.name}, ${dateLabel}: ${meta.label}${entryDetails ? ', ' + entryDetails : ''}`);
+                button.title = player.can_edit ? (entryDetails || `${meta.label} · Antippen zum Ändern`) : (entryDetails || meta.label);
 
                 const icon = document.createElement('span');
                 icon.className = 'icon';
@@ -1779,6 +1985,12 @@ date_default_timezone_set('Europe/Berlin');
                     recurring.className = 'recurring-tag';
                     recurring.textContent = 'Standard';
                     button.appendChild(recurring);
+                }
+                if (entry.game) {
+                    const game = document.createElement('span');
+                    game.className = 'game';
+                    game.textContent = `🎮 ${entry.game}`;
+                    button.appendChild(game);
                 }
                 if (entry.note) {
                     const note = document.createElement('span');
@@ -1797,7 +2009,7 @@ date_default_timezone_set('Europe/Berlin');
     }
 
     function openDateDialog() {
-        if (!state.auth.is_admin) return;
+        if (!state.auth.can_write || !state.storageWritable) return;
         eventDateInput.value = '';
         dateDialog.showModal();
         requestAnimationFrame(() => {
@@ -1837,6 +2049,7 @@ date_default_timezone_set('Europe/Berlin');
         byId('statusPlayerId').value = player.id;
         byId('statusDate').value = date;
         selectedStatus.value = entry.status || '';
+        statusGame.value = entry.game || '';
         statusNote.value = entry.note || '';
         updateStatusChoices();
         statusDialog.showModal();
@@ -1939,7 +2152,7 @@ date_default_timezone_set('Europe/Berlin');
         byId('adminUserPasswordLabel').textContent = editMode ? 'Neues Passwort (optional)' : 'Vorläufiges Passwort';
         byId('adminPasswordHelp').textContent = editMode
             ? 'Bleibt das Passwortfeld leer, wird das bisherige Passwort beibehalten. Ein neues Passwort benötigt mindestens 8 Zeichen, einen Buchstaben, eine Zahl und ein Sonderzeichen. Danach wird der Benutzer beim nächsten Login zur erneuten Passwortänderung aufgefordert.'
-            : 'Beim Anlegen ist ein Passwort mit mindestens 8 Zeichen, einem Buchstaben, einer Zahl und einem Sonderzeichen erforderlich. Der Benutzer wird nach der ersten Anmeldung zur Änderung aufgefordert.';
+            : 'Beim Anlegen ist ein Passwort mit mindestens 8 Zeichen, einem Buchstaben, einer Zahl und einem Sonderzeichen wie !, ?, #, +, -, _, @ oder € erforderlich. Umlaute zählen als Buchstaben. Der Benutzer wird nach der ersten Anmeldung zur Änderung aufgefordert.';
         byId('adminUserPassword').required = !editMode;
         byId('adminUserPasswordConfirmation').required = !editMode;
         byId('deleteUserButton').hidden = !editMode;
@@ -1947,6 +2160,7 @@ date_default_timezone_set('Europe/Berlin');
         requestAnimationFrame(() => byId('adminUsername').focus());
     }
 
+    byId('installAppButton').addEventListener('click', installApp);
     byId('loginButton').addEventListener('click', openLoginDialog);
     byId('registerButton').addEventListener('click', openRegisterDialog);
     byId('profileButton').addEventListener('click', openProfileDialog);
@@ -1962,7 +2176,7 @@ date_default_timezone_set('Europe/Berlin');
     byId('logoutButton').addEventListener('click', async () => {
         try {
             await api('logout', {});
-            [profileDialog, passwordDialog, adminDialog, adminUserDialog, playerDialog, dateDialog, statusDialog].forEach(dialog => dialog.open && dialog.close());
+            [installDialog, profileDialog, passwordDialog, adminDialog, adminUserDialog, playerDialog, dateDialog, statusDialog].forEach(dialog => dialog.open && dialog.close());
             await loadPlan();
             showToast('Du wurdest abgemeldet.');
         } catch (error) { handleApiError(error); }
@@ -1998,12 +2212,16 @@ date_default_timezone_set('Europe/Berlin');
 
     byId('registerForm').addEventListener('submit', async event => {
         event.preventDefault();
+        const password = byId('registerPassword').value;
+        const passwordConfirmation = byId('registerPasswordConfirmation').value;
+        const passwordError = passwordValidationMessage(password, passwordConfirmation);
+        if (passwordError) return showToast(passwordError);
         try {
             const data = await api('register', {
                 username: byId('registerUsername').value,
                 player_name: byId('registerPlayerName').value,
-                password: byId('registerPassword').value,
-                password_confirmation: byId('registerPasswordConfirmation').value
+                password,
+                password_confirmation: passwordConfirmation
             });
             registerDialog.close();
             applyData(data);
@@ -2027,11 +2245,15 @@ date_default_timezone_set('Europe/Berlin');
 
     byId('passwordForm').addEventListener('submit', async event => {
         event.preventDefault();
+        const newPassword = byId('newPassword').value;
+        const newPasswordConfirmation = byId('newPasswordConfirmation').value;
+        const passwordError = passwordValidationMessage(newPassword, newPasswordConfirmation);
+        if (passwordError) return showToast(passwordError);
         try {
             const data = await api('change_password', {
                 current_password: byId('currentPassword').value,
-                new_password: byId('newPassword').value,
-                new_password_confirmation: byId('newPasswordConfirmation').value
+                new_password: newPassword,
+                new_password_confirmation: newPasswordConfirmation
             });
             passwordChangeForced = false;
             passwordDialog.close();
@@ -2087,6 +2309,7 @@ date_default_timezone_set('Europe/Berlin');
                 player_id: Number(byId('statusPlayerId').value),
                 event_date: byId('statusDate').value,
                 status: selectedStatus.value,
+                game: statusGame.value.trim(),
                 note: statusNote.value.trim()
             });
             statusDialog.close();
@@ -2098,13 +2321,19 @@ date_default_timezone_set('Europe/Berlin');
     byId('adminUserForm').addEventListener('submit', async event => {
         event.preventDefault();
         const editMode = Boolean(byId('adminUserId').value);
+        const password = byId('adminUserPassword').value;
+        const passwordConfirmation = byId('adminUserPasswordConfirmation').value;
+        if (!editMode || password !== '' || passwordConfirmation !== '') {
+            const passwordError = passwordValidationMessage(password, passwordConfirmation);
+            if (passwordError) return showToast(passwordError);
+        }
         try {
             const data = await api(editMode ? 'admin_update_user' : 'admin_create_user', {
                 user_id: byId('adminUserId').value || undefined,
                 username: byId('adminUsername').value,
                 player_name: byId('adminUserPlayerName').value,
-                password: byId('adminUserPassword').value,
-                password_confirmation: byId('adminUserPasswordConfirmation').value
+                password,
+                password_confirmation: passwordConfirmation
             });
             adminUserDialog.close();
             applyData(data);
@@ -2141,13 +2370,31 @@ date_default_timezone_set('Europe/Berlin');
         if (passwordChangeForced) event.preventDefault();
     });
 
-    [loginDialog, registerDialog, profileDialog, passwordDialog, adminDialog, adminUserDialog, playerDialog, dateDialog, statusDialog].forEach(dialog => {
+    [installDialog, loginDialog, registerDialog, profileDialog, passwordDialog, adminDialog, adminUserDialog, playerDialog, dateDialog, statusDialog].forEach(dialog => {
         dialog.addEventListener('click', event => {
             if (event.target !== dialog) return;
             if (dialog === passwordDialog && passwordChangeForced) return;
             dialog.close();
         });
     });
+
+    window.addEventListener('beforeinstallprompt', event => {
+        event.preventDefault();
+        deferredInstallPrompt = event;
+    });
+
+    window.addEventListener('appinstalled', () => {
+        deferredInstallPrompt = null;
+        showToast('Der Kellerkinder-Kalender ist jetzt auf deinem Home-Bildschirm.');
+    });
+
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('./service-worker.js').catch(() => {
+                /* Die Website funktioniert auch ohne Service Worker weiter. */
+            });
+        });
+    }
 
     loadPlan();
 </script>
