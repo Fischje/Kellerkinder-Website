@@ -1,0 +1,13 @@
+# Laufzeitdaten des Kalenders
+/data/store.php
+
+# Sicherungs- und temporäre Dateien
+/data/store.php.*
+*.tmp
+*.log
+
+# Betriebssysteme und Editoren
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
