@@ -7,6 +7,7 @@ Mobiloptimierter PHP-Kalender zur Planung gemeinsamer Spielabende mit Benutzerko
 - Öffentliche Kalenderansicht
 - Registrierung und Anmeldung mit Benutzername und Passwort
 - Persönlicher Spielername je Account
+- Persönlicher Avatar je Account, automatisch auf maximal 50 × 50 Pixel verkleinert
 - Normale Benutzer bearbeiten ausschließlich den eigenen Spieler und die eigenen Statusangaben
 - Administratoren verwalten Benutzer, Spieler, Termine und sämtliche Statusangaben
 - Adminrechte werden in `settings.admin_player_names` anhand der Spielernamen gespeichert
@@ -105,6 +106,7 @@ Nach dem Upgrade:
 ### Normaler Benutzer
 
 - eigenen Spielernamen ändern,
+- eigenes Profilbild/Avatar hochladen oder entfernen,
 - eigene regelmäßige Online-Wochentage festlegen,
 - zusätzliche Spieltage anlegen,
 - eigenen Status, eigenen Spielwunsch und eigenen Hinweis je Termin ändern,

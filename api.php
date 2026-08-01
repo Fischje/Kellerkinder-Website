@@ -11,6 +11,9 @@ const USERNAME_MAX = 50;
 const NOTE_MAX = 60;
 const GAME_MAX = 60;
 const PASSWORD_MIN_LENGTH = 8;
+const AVATAR_MAX_SIZE = 50;
+const AVATAR_MAX_DATA_LENGTH = 30000;
+const ALLOWED_AVATAR_MIME_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'];
 const ALLOWED_STATUSES = ['', 'online', 'late', 'absent', 'vacation'];
 const ALLOWED_THEMES = ['default', 'summer', 'winter'];
 const STORE_PREFIX = "<?php http_response_code(403); exit; ?>\n";
@@ -177,6 +180,7 @@ function normalizeStore(array $store): array
         $user['must_change_password'] = !empty($user['must_change_password']);
         $user['session_version'] = max(1, (int) ($user['session_version'] ?? 1));
         $user['default_weekdays'] = normalizeWeekdays($user['default_weekdays'] ?? []);
+        $user['avatar'] = validateAvatarData($user['avatar'] ?? '', true);
         $user['defaults_effective_from'] = validIsoDate((string) ($user['defaults_effective_from'] ?? ''))
             ? (string) $user['defaults_effective_from']
             : (new DateTimeImmutable('today', new DateTimeZone('Europe/Berlin')))->format('Y-m-d');
@@ -480,6 +484,50 @@ function validateThemeValue($value, ?string $fallback = null): string
         return $fallback;
     }
     respond(['ok' => false, 'error' => 'Der ausgewählte Style ist ungültig.'], 422);
+}
+
+function validateAvatarData($value, bool $silentFallback = false): string
+{
+    $data = trim((string) $value);
+    if ($data === '') {
+        return '';
+    }
+    if (strlen($data) > AVATAR_MAX_DATA_LENGTH) {
+        if ($silentFallback) return '';
+        respond(['ok' => false, 'error' => 'Das Avatarbild ist zu groß. Bitte nutze ein kleines Bild.'], 422);
+    }
+    if (!preg_match('/^data:(image\/(?:png|jpeg|gif|webp));base64,([A-Za-z0-9+\/=]+)$/', $data, $matches)) {
+        if ($silentFallback) return '';
+        respond(['ok' => false, 'error' => 'Bitte lade ein PNG-, JPG-, GIF- oder WebP-Bild hoch.'], 422);
+    }
+
+    $mime = $matches[1];
+    if (!in_array($mime, ALLOWED_AVATAR_MIME_TYPES, true)) {
+        if ($silentFallback) return '';
+        respond(['ok' => false, 'error' => 'Dieser Bildtyp wird für Avatare nicht unterstützt.'], 422);
+    }
+
+    $binary = base64_decode($matches[2], true);
+    if ($binary === false) {
+        if ($silentFallback) return '';
+        respond(['ok' => false, 'error' => 'Das Avatarbild konnte nicht gelesen werden.'], 422);
+    }
+    if (strlen($binary) > 20000) {
+        if ($silentFallback) return '';
+        respond(['ok' => false, 'error' => 'Das Avatarbild ist zu groß. Bitte nutze ein kleines Bild.'], 422);
+    }
+
+    $info = @getimagesizefromstring($binary);
+    if ($info === false || empty($info[0]) || empty($info[1])) {
+        if ($silentFallback) return '';
+        respond(['ok' => false, 'error' => 'Das Avatarbild ist keine gültige Bilddatei.'], 422);
+    }
+    if ((int) $info[0] > AVATAR_MAX_SIZE || (int) $info[1] > AVATAR_MAX_SIZE) {
+        if ($silentFallback) return '';
+        respond(['ok' => false, 'error' => 'Das Avatarbild darf maximal 50 × 50 Pixel groß sein.'], 422);
+    }
+
+    return 'data:' . $mime . ';base64,' . $matches[2];
 }
 
 function findPlayerIndex(array $players, int $id): ?int
@@ -909,12 +957,18 @@ function bootstrapResponse(array $store): array
     $players = array_values($store['players']);
     usort($players, static fn(array $a, array $b): int => strcasecmp((string) ($a['name'] ?? ''), (string) ($b['name'] ?? '')));
 
-    $playerPayload = array_map(static function (array $player) use ($currentUser, $isAdmin, $mustChange): array {
+    $userAvatars = [];
+    foreach ($store['users'] as $user) {
+        $userAvatars[(int) ($user['id'] ?? 0)] = (string) ($user['avatar'] ?? '');
+    }
+
+    $playerPayload = array_map(static function (array $player) use ($currentUser, $isAdmin, $mustChange, $userAvatars): array {
         $ownerId = isset($player['user_id']) && $player['user_id'] !== null ? (int) $player['user_id'] : null;
         $isOwn = $currentUser !== null && $ownerId === (int) $currentUser['id'];
         return [
             'id' => (int) $player['id'],
             'name' => (string) $player['name'],
+            'avatar' => $ownerId === null ? '' : ($userAvatars[$ownerId] ?? ''),
             'has_account' => $ownerId !== null,
             'is_own' => $isOwn,
             'can_edit' => !$mustChange && ($isAdmin || $isOwn),
@@ -932,6 +986,7 @@ function bootstrapResponse(array $store): array
             'username' => (string) $currentUser['username'],
             'player_id' => $currentPlayer === null ? null : (int) $currentPlayer['id'],
             'player_name' => $currentPlayer === null ? '' : (string) $currentPlayer['name'],
+            'avatar' => (string) ($currentUser['avatar'] ?? ''),
             'default_weekdays' => normalizeWeekdays($currentUser['default_weekdays'] ?? []),
         ],
     ];
@@ -1031,6 +1086,7 @@ withWritableStore(function (array &$store) use ($action, $payload): array {
                 'must_change_password' => false,
                 'session_version' => 1,
                 'default_weekdays' => [],
+                'avatar' => '',
                 'defaults_effective_from' => (new DateTimeImmutable('today', new DateTimeZone('Europe/Berlin')))->format('Y-m-d'),
                 'created_at' => $now,
                 'updated_at' => $now,
@@ -1093,8 +1149,10 @@ withWritableStore(function (array &$store) use ($action, $payload): array {
             [$userIndex, $user] = requireUser($store);
             $playerName = validateName($payload['player_name'] ?? '');
             $weekdays = normalizeWeekdays($payload['default_weekdays'] ?? []);
+            $avatar = validateAvatarData($payload['avatar'] ?? '');
             renameOrAssignUserPlayer($store, $userIndex, $playerName, false);
             $store['users'][$userIndex]['default_weekdays'] = $weekdays;
+            $store['users'][$userIndex]['avatar'] = $avatar;
             $store['users'][$userIndex]['defaults_effective_from'] = (new DateTimeImmutable('today', new DateTimeZone('Europe/Berlin')))->format('Y-m-d');
             $store['users'][$userIndex]['updated_at'] = gmdate('c');
             return [bootstrapResponse($store), 200, true];
@@ -1243,6 +1301,7 @@ withWritableStore(function (array &$store) use ($action, $payload): array {
                 'must_change_password' => true,
                 'session_version' => 1,
                 'default_weekdays' => [],
+                'avatar' => '',
                 'defaults_effective_from' => (new DateTimeImmutable('today', new DateTimeZone('Europe/Berlin')))->format('Y-m-d'),
                 'created_at' => $now,
                 'updated_at' => $now,

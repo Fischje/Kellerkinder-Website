@@ -1403,13 +1403,87 @@ if ($appVersion === '') {
         }
 
         .account-summary {
+            display: grid;
+            grid-template-columns: auto minmax(0, 1fr);
+            gap: 10px;
+            align-items: center;
             min-width: 0;
             color: #cdd4e8;
             line-height: 1.38;
         }
 
+        .account-summary-text { min-width: 0; }
         .account-summary strong { color: #fff; }
         .account-summary small { display: block; margin-top: 2px; color: var(--muted); }
+
+        .avatar,
+        .avatar-placeholder {
+            flex: 0 0 auto;
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            border: 1px solid rgba(53,231,255,.42);
+            object-fit: cover;
+            background:
+                radial-gradient(circle at 35% 26%, rgba(255,255,255,.32), transparent 23px),
+                linear-gradient(135deg, rgba(53,231,255,.2), rgba(169,92,255,.22)),
+                #090d19;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,.08), 0 0 14px rgba(53,231,255,.12);
+        }
+
+        .avatar-placeholder {
+            display: inline-grid;
+            place-items: center;
+            color: #cfefff;
+            font-size: .78rem;
+            font-weight: 900;
+        }
+
+        .account-avatar {
+            width: 42px;
+            height: 42px;
+        }
+
+        .player-title {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 7px;
+            min-width: 0;
+        }
+
+        .player-title .avatar,
+        .player-title .avatar-placeholder {
+            width: 28px;
+            height: 28px;
+        }
+
+        .player-name {
+            min-width: 0;
+            overflow-wrap: anywhere;
+        }
+
+        .avatar-upload-row {
+            display: grid;
+            grid-template-columns: auto minmax(0, 1fr);
+            gap: 12px;
+            align-items: center;
+        }
+
+        .avatar-preview {
+            width: 50px;
+            height: 50px;
+        }
+
+        input[type="file"] {
+            width: 100%;
+            min-height: 47px;
+            padding: 10px 12px;
+            border: 1px solid rgba(135,151,197,.38);
+            border-radius: 10px;
+            color: #dbe6ff;
+            background: #090d19;
+        }
 
         .account-actions {
             display: flex;
@@ -1638,6 +1712,7 @@ if ($appVersion === '') {
             .account-strip { align-items: stretch; padding: 12px; }
             .account-actions { width: 100%; justify-content: stretch; }
             .account-actions > button { flex: 1 1 130px; }
+            .account-summary { width: 100%; }
             .form-row { grid-template-columns: 1fr; }
             .weekday-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
             .admin-user-card { align-items: flex-start; }
@@ -1649,6 +1724,9 @@ if ($appVersion === '') {
             table { min-width: 790px; }
             .player-heading, .player-cell { width: 125px; min-width: 125px; }
             .player-heading { padding-left: 9px; }
+            .player-title { gap: 5px; }
+            .player-title .avatar,
+            .player-title .avatar-placeholder { width: 24px; height: 24px; }
             .status-button { min-height: 64px; }
             .modal-actions > button { flex: 1 1 120px; }
             .modal-actions .danger-button { margin-right: 0; }
@@ -1866,6 +1944,17 @@ if ($appVersion === '') {
         <div>
             <label for="profilePlayerName">Spielername</label>
             <input type="text" id="profilePlayerName" maxlength="40" autocomplete="nickname" required>
+        </div>
+        <div>
+            <label for="profileAvatarInput">Profilbild / Avatar</label>
+            <div class="avatar-upload-row">
+                <span class="avatar-placeholder avatar-preview" id="profileAvatarPreview" aria-hidden="true">?</span>
+                <div>
+                    <input type="file" id="profileAvatarInput" accept="image/png,image/jpeg,image/gif,image/webp">
+                    <p class="field-help">PNG, JPG, GIF oder WebP. Wird automatisch auf maximal 50 × 50 Pixel verkleinert und in der Tabelle klein neben deinem Namen angezeigt.</p>
+                    <button class="secondary-button" id="removeAvatarButton" type="button">Avatar entfernen</button>
+                </div>
+            </div>
         </div>
         <div>
             <label>Normalerweise online an</label>
@@ -2127,6 +2216,67 @@ if ($appVersion === '') {
     let toastTimer;
     let passwordChangeForced = false;
     let deferredInstallPrompt = null;
+    let profileAvatarData = '';
+
+    function playerInitial(name) {
+        const clean = String(name || '').trim();
+        return clean ? clean.slice(0, 1).toUpperCase() : '?';
+    }
+
+    function createAvatarElement(src, name, className = '') {
+        if (src) {
+            const image = document.createElement('img');
+            image.className = `avatar ${className}`.trim();
+            image.src = src;
+            image.alt = `${name || 'Spieler'} Avatar`;
+            image.loading = 'lazy';
+            image.decoding = 'async';
+            return image;
+        }
+
+        const placeholder = document.createElement('span');
+        placeholder.className = `avatar-placeholder ${className}`.trim();
+        placeholder.textContent = playerInitial(name);
+        placeholder.setAttribute('aria-hidden', 'true');
+        return placeholder;
+    }
+
+    function setAvatarPreview(src, name) {
+        const preview = byId('profileAvatarPreview');
+        const replacement = createAvatarElement(src, name || byId('profilePlayerName').value, 'avatar-preview');
+        replacement.id = 'profileAvatarPreview';
+        preview.replaceWith(replacement);
+    }
+
+    function readImageFile(file) {
+        return new Promise((resolve, reject) => {
+            if (!file || !file.type.startsWith('image/')) {
+                reject(new Error('Bitte wähle eine Bilddatei aus.'));
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onerror = () => reject(new Error('Das Bild konnte nicht gelesen werden.'));
+            reader.onload = () => {
+                const image = new Image();
+                image.onerror = () => reject(new Error('Das Bild konnte nicht verarbeitet werden.'));
+                image.onload = () => {
+                    const scale = Math.min(1, 50 / image.naturalWidth, 50 / image.naturalHeight);
+                    const width = Math.max(1, Math.round(image.naturalWidth * scale));
+                    const height = Math.max(1, Math.round(image.naturalHeight * scale));
+                    const canvas = document.createElement('canvas');
+                    canvas.width = width;
+                    canvas.height = height;
+                    const context = canvas.getContext('2d');
+                    context.clearRect(0, 0, width, height);
+                    context.drawImage(image, 0, 0, width, height);
+                    resolve(canvas.toDataURL('image/png'));
+                };
+                image.src = String(reader.result || '');
+            };
+            reader.readAsDataURL(file);
+        });
+    }
 
     function showToast(message) {
         toast.textContent = message;
@@ -2312,6 +2462,9 @@ if ($appVersion === '') {
         byId('addPlayerButton').hidden = !auth.is_admin || auth.must_change_password;
 
         accountSummary.replaceChildren();
+        const avatar = createAvatarElement(auth.user?.avatar || '', auth.user?.player_name || auth.user?.username || '', 'account-avatar');
+        const text = document.createElement('div');
+        text.className = 'account-summary-text';
         const strong = document.createElement('strong');
         const small = document.createElement('small');
 
@@ -2330,7 +2483,8 @@ if ($appVersion === '') {
             }
             small.textContent = `Angemeldet als ${auth.user?.username || ''}${auth.must_change_password ? ' · Passwortänderung erforderlich' : ''}`;
         }
-        accountSummary.append(strong, small);
+        text.append(strong, small);
+        accountSummary.append(avatar, text);
 
         if (auth.must_change_password && !passwordDialog.open) {
             setTimeout(() => openPasswordDialog(true), 50);
@@ -2402,15 +2556,20 @@ if ($appVersion === '') {
             const playerButton = document.createElement('button');
             playerButton.type = 'button';
             playerButton.className = 'player-button';
+            const title = document.createElement('span');
+            title.className = 'player-title';
+            title.appendChild(createAvatarElement(player.avatar || '', player.name));
             const nameText = document.createElement('span');
+            nameText.className = 'player-name';
             nameText.textContent = player.name;
-            playerButton.appendChild(nameText);
+            title.appendChild(nameText);
             if (player.is_own) {
                 const badge = document.createElement('span');
                 badge.className = 'player-badge';
                 badge.textContent = 'Du';
-                playerButton.appendChild(badge);
+                title.appendChild(badge);
             }
+            playerButton.appendChild(title);
             const playerHint = document.createElement('small');
             if (player.can_edit) {
                 playerHint.textContent = state.auth.is_admin ? 'Antippen zum Bearbeiten' : 'Dein Spieler · Account öffnen';
@@ -2549,6 +2708,9 @@ if ($appVersion === '') {
         const user = state.auth.user || {};
         byId('profileUsername').value = user.username || '';
         byId('profilePlayerName').value = user.player_name || '';
+        byId('profileAvatarInput').value = '';
+        profileAvatarData = user.avatar || '';
+        setAvatarPreview(profileAvatarData, user.player_name || user.username || '');
         const days = new Set((user.default_weekdays || []).map(Number));
         document.querySelectorAll('#profileWeekdays input').forEach(input => input.checked = days.has(Number(input.value)));
         profileDialog.showModal();
@@ -2639,6 +2801,28 @@ if ($appVersion === '') {
         profileDialog.close();
         openPasswordDialog(false);
     });
+    byId('removeAvatarButton').addEventListener('click', () => {
+        profileAvatarData = '';
+        byId('profileAvatarInput').value = '';
+        setAvatarPreview('', byId('profilePlayerName').value);
+    });
+    byId('profileAvatarInput').addEventListener('change', async event => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+        try {
+            profileAvatarData = await readImageFile(file);
+            setAvatarPreview(profileAvatarData, byId('profilePlayerName').value);
+            showToast('Avatar wurde vorbereitet.');
+        } catch (error) {
+            profileAvatarData = state.auth.user?.avatar || '';
+            setAvatarPreview(profileAvatarData, byId('profilePlayerName').value);
+            byId('profileAvatarInput').value = '';
+            showToast(error.message || 'Das Bild konnte nicht verarbeitet werden.');
+        }
+    });
+    byId('profilePlayerName').addEventListener('input', () => {
+        if (!profileAvatarData) setAvatarPreview('', byId('profilePlayerName').value);
+    });
     byId('createUserButton').addEventListener('click', () => openAdminUserDialog());
 
     byId('logoutButton').addEventListener('click', async () => {
@@ -2703,7 +2887,8 @@ if ($appVersion === '') {
         try {
             const data = await api('update_profile', {
                 player_name: byId('profilePlayerName').value,
-                default_weekdays: weekdays
+                default_weekdays: weekdays,
+                avatar: profileAvatarData
             });
             profileDialog.close();
             applyData(data);
