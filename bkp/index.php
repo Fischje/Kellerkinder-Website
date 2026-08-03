@@ -1749,66 +1749,9 @@ if ($appVersion === '') {
                 transition: none !important;
             }
         }
-
-        .pull-refresh {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            z-index: 40;
-            display: flex;
-            justify-content: center;
-            padding-top: max(10px, env(safe-area-inset-top));
-            pointer-events: none;
-            opacity: 0;
-            transition: opacity .18s ease;
-        }
-
-        .pull-refresh.pull-refresh-visible { opacity: 1; }
-
-        .pull-refresh-badge {
-            width: 38px;
-            height: 38px;
-            display: grid;
-            place-items: center;
-            border: 1px solid rgba(126, 229, 255, .48);
-            border-radius: 50%;
-            background: rgba(9, 14, 28, .86);
-            box-shadow: inset 0 1px 0 rgba(255,255,255,.1), 0 0 18px rgba(53,231,255,.15);
-        }
-
-        .pull-refresh-arrow {
-            display: inline-block;
-            font-size: 18px;
-            line-height: 1;
-            color: var(--cyan);
-            transition: transform .05s linear;
-        }
-
-        .pull-refresh-ready .pull-refresh-badge {
-            border-color: rgba(62, 231, 143, .6);
-            box-shadow: inset 0 1px 0 rgba(255,255,255,.14), 0 0 22px rgba(62,231,143,.3);
-        }
-
-        .pull-refresh-ready .pull-refresh-arrow { color: var(--green); }
-
-        .pull-refresh-loading .pull-refresh-arrow {
-            animation: pullRefreshSpin .8s linear infinite;
-        }
-
-        @keyframes pullRefreshSpin {
-            to { transform: rotate(360deg); }
-        }
-
-        @media (prefers-reduced-motion: reduce) {
-            .pull-refresh-loading .pull-refresh-arrow { animation: none; }
-        }
     </style>
 </head>
 <body data-theme="default">
-<div id="pullRefresh" class="pull-refresh" aria-hidden="true">
-    <span class="pull-refresh-badge"><span class="pull-refresh-arrow">↓</span></span>
-</div>
 <div class="season-scene" aria-hidden="true">
     <div class="summer-sun"></div>
     <div class="summer-bubbles"></div>
@@ -3108,66 +3051,6 @@ if ($appVersion === '') {
             });
         });
     }
-
-    (function setupPullToRefresh() {
-        if (!isInstalledApp() || !('ontouchstart' in window)) return;
-
-        const container = byId('pullRefresh');
-        const arrow = container.querySelector('.pull-refresh-arrow');
-        const THRESHOLD = 72;
-        const MAX_PULL = 130;
-        let startY = 0;
-        let pulling = false;
-        let ready = false;
-        let refreshing = false;
-
-        document.documentElement.style.overscrollBehaviorY = 'contain';
-
-        const pageScrollTop = () => window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
-
-        function reset() {
-            pulling = false;
-            ready = false;
-            container.classList.remove('pull-refresh-visible', 'pull-refresh-ready');
-            arrow.style.transform = 'rotate(0deg)';
-        }
-
-        window.addEventListener('touchstart', event => {
-            if (refreshing || pageScrollTop() > 0 || event.touches.length !== 1) return;
-            startY = event.touches[0].clientY;
-            pulling = true;
-        }, { passive: true });
-
-        window.addEventListener('touchmove', event => {
-            if (!pulling || refreshing) return;
-            const distance = event.touches[0].clientY - startY;
-            if (distance <= 0 || pageScrollTop() > 0) { reset(); return; }
-            event.preventDefault();
-            const pull = Math.min(MAX_PULL, distance * 0.5);
-            ready = pull >= THRESHOLD;
-            container.classList.add('pull-refresh-visible');
-            container.classList.toggle('pull-refresh-ready', ready);
-            arrow.style.transform = `rotate(${Math.min(180, (pull / THRESHOLD) * 180)}deg)`;
-        }, { passive: false });
-
-        window.addEventListener('touchend', () => {
-            if (!pulling || refreshing) { pulling = false; return; }
-            pulling = false;
-            if (!ready) { reset(); return; }
-            refreshing = true;
-            container.classList.add('pull-refresh-loading');
-            loadPlan().finally(() => {
-                refreshing = false;
-                container.classList.remove('pull-refresh-loading');
-                reset();
-            });
-        });
-
-        window.addEventListener('touchcancel', () => {
-            refreshing = false;
-            reset();
-        });
-    })();
 
     loadPlan();
 </script>

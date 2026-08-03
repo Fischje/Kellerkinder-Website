@@ -1,0 +1,86 @@
+diff --git a/VERSION b/VERSION
+--- a/VERSION
++++ b/VERSION
+@@ -1 +1 @@
+-2.2.0
++2.2.1
+diff --git a/CHANGELOG.md b/CHANGELOG.md
+--- a/CHANGELOG.md
++++ b/CHANGELOG.md
+@@ -1,5 +1,12 @@
+ # Änderungsprotokoll
+ 
++## 2.2.1
++
++- Pull-to-Refresh für die installierte PWA ergänzt
++- Herunterziehen am oberen Seitenrand lädt Kalenderdaten neu
++- Vor dem Neuladen wird nach einer neuen Service-Worker-Version gesucht
++- Horizontales Scrollen der Kalendertabelle bleibt erhalten
++
+ ## 2.2.0
+ 
+ - Spielwunsch je Spieler und Termin ergänzt
+diff --git a/index.php b/index.php
+--- a/index.php
++++ b/index.php
+@@ -6,7 +6,7 @@ declare(strict_types=1);
+ date_default_timezone_set('Europe/Berlin');
+ $appVersion = trim((string) @file_get_contents(__DIR__ . DIRECTORY_SEPARATOR . 'VERSION'));
+ if ($appVersion === '') {
+-    $appVersion = '2.2.0';
++    $appVersion = '2.2.1';
+ }
+ ?>
+ <!doctype html>
+@@ -24,6 +24,7 @@ if ($appVersion === '') {
+     <link rel="icon" href="assets/kellerkinder-logo.svg" type="image/svg+xml">
+     <link rel="apple-touch-icon" href="assets/app-icon-180.png">
+     <link rel="manifest" href="manifest.webmanifest">
++    <link rel="stylesheet" href="assets/pull-to-refresh.css?v=2.2.1">
+     <style>
+         :root {
+             --bg: #05060b;
+@@ -2154,6 +2155,7 @@ if ($appVersion === '') {
+ 
+ <div class="toast" id="toast" role="status" aria-live="polite"></div>
+ 
++<script src="assets/pull-to-refresh.js?v=2.2.1"></script>
+ <script>
+     const STATUS_META = {
+         online: { icon: '⚔', label: 'Online', className: 'online' },
+@@ -3054,6 +3056,7 @@ if ($appVersion === '') {
+         });
+     }
+ 
++    initPullToRefresh();
+     loadPlan();
+ </script>
+ </body>
+diff --git a/service-worker.js b/service-worker.js
+--- a/service-worker.js
++++ b/service-worker.js
+@@ -1,9 +1,11 @@
+-const CACHE_NAME = 'kellerkinder-static-v2.2.0';
++const CACHE_NAME = 'kellerkinder-static-v2.2.1';
+ const STATIC_ASSETS = [
+   './manifest.webmanifest',
+   './assets/kellerkinder-logo.svg',
+   './assets/smartphone-install.svg',
++  './assets/pull-to-refresh.css',
++  './assets/pull-to-refresh.js',
+   './assets/app-icon-180.png',
+   './assets/app-icon-192.png',
+   './assets/app-icon-512.png'
+ ];
+diff --git a/assets/pull-to-refresh.css b/assets/pull-to-refresh.css
+new file mode 100644
+--- /dev/null
++++ b/assets/pull-to-refresh.css
+@@ -0,0 +1 @@
++@media (display-mode:standalone){html,body{overscroll-behavior-y:contain}}.pull-to-refresh{position:fixed;z-index:1000;top:max(10px,env(safe-area-inset-top));left:50%;min-width:178px;min-height:42px;display:flex;align-items:center;justify-content:center;gap:9px;padding:9px 14px;border:1px solid rgba(126,229,255,.48);border-radius:999px;color:#e9fbff;background:rgba(9,14,28,.94);box-shadow:0 12px 34px rgba(0,0,0,.48),0 0 22px rgba(53,231,255,.16);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);opacity:0;pointer-events:none;transform:translate(-50%,-72px);transition:transform .18s ease,opacity .18s ease,border-color .18s ease}.pull-to-refresh.visible{opacity:1}.pull-to-refresh.ready{border-color:rgba(62,231,143,.78)}.pull-to-refresh.refreshing{opacity:1;transform:translate(-50%,0)!important}.pull-to-refresh-icon{display:inline-grid;width:23px;height:23px;place-items:center;color:#35e7ff;font-size:1.18rem;line-height:1;transition:transform .18s ease}.pull-to-refresh.ready .pull-to-refresh-icon{color:#3ee78f;transform:rotate(180deg)}.pull-to-refresh.refreshing .pull-to-refresh-icon{animation:pull-refresh-spin .8s linear infinite}.pull-to-refresh-text{font-size:.84rem;font-weight:900;white-space:nowrap}@keyframes pull-refresh-spin{to{transform:rotate(360deg)}}@media (prefers-reduced-motion:reduce){.pull-to-refresh,.pull-to-refresh-icon{transition:none}}
+diff --git a/assets/pull-to-refresh.js b/assets/pull-to-refresh.js
+new file mode 100644
+--- /dev/null
++++ b/assets/pull-to-refresh.js
+@@ -0,0 +1 @@
++function initPullToRefresh(){const standalone=window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone===true;if(!standalone||!('ontouchstart'in window))return;const indicator=document.createElement('div'),icon=document.createElement('span'),text=document.createElement('span'),threshold=86,maximum=128;let startX=0,startY=0,distance=0,tracking=false,locked=false,vertical=false,refreshing=false;indicator.className='pull-to-refresh';indicator.setAttribute('role','status');indicator.setAttribute('aria-live','polite');indicator.setAttribute('aria-hidden','true');icon.className='pull-to-refresh-icon';icon.textContent='↓';text.className='pull-to-refresh-text';text.textContent='Zum Aktualisieren ziehen';indicator.append(icon,text);document.body.prepend(indicator);const atTop=()=>window.scrollY<=0&&document.documentElement.scrollTop<=0&&document.body.scrollTop<=0;const reset=()=>{if(refreshing)return;tracking=false;locked=false;vertical=false;distance=0;indicator.classList.remove('visible','ready');indicator.style.transform='translate(-50%, -72px)';indicator.setAttribute('aria-hidden','true');icon.textContent='↓';text.textContent='Zum Aktualisieren ziehen'};const update=raw=>{distance=Math.min(maximum,Math.max(0,raw));const progress=Math.min(1,distance/threshold);indicator.classList.toggle('visible',distance>5);indicator.classList.toggle('ready',distance>=threshold);indicator.style.transform=`translate(-50%, ${-72+progress*78}px)`;indicator.setAttribute('aria-hidden',distance>5?'false':'true');if(distance>=threshold){icon.textContent='↑';text.textContent='Loslassen zum Aktualisieren'}else{icon.textContent='↓';text.textContent='Zum Aktualisieren ziehen'}};const refresh=async()=>{if(refreshing)return;refreshing=true;tracking=false;indicator.classList.remove('ready');indicator.classList.add('visible','refreshing');indicator.style.transform='translate(-50%, 0)';indicator.setAttribute('aria-hidden','false');icon.textContent='↻';text.textContent='Aktualisierung wird geladen …';try{if('serviceWorker'in navigator){const registration=await navigator.serviceWorker.getRegistration();if(registration)await registration.update()}}catch(error){}window.location.reload()};document.addEventListener('touchstart',event=>{if(refreshing||event.touches.length!==1||!atTop()||document.querySelector('dialog[open]'))return;const touch=event.touches[0];startX=touch.clientX;startY=touch.clientY;distance=0;tracking=true;locked=false;vertical=false},{passive:true});document.addEventListener('touchmove',event=>{if(!tracking||refreshing||event.touches.length!==1)return;const touch=event.touches[0],deltaX=touch.clientX-startX,deltaY=touch.clientY-startY;if(!locked){if(Math.abs(deltaX)<8&&Math.abs(deltaY)<8)return;locked=true;vertical=deltaY>0&&Math.abs(deltaY)>Math.abs(deltaX)*1.25}if(!vertical||deltaY<=0||!atTop()){reset();return}update(deltaY*.58);if(distance>5)event.preventDefault()},{passive:false});document.addEventListener('touchend',()=>{if(!tracking||refreshing)return;if(distance>=threshold){refresh();return}reset()},{passive:true});document.addEventListener('touchcancel',reset,{passive:true})}

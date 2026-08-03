@@ -1,0 +1,189 @@
+<?php http_response_code(403); exit; ?>
+{
+    "next_player_id": 7,
+    "players": [
+        {
+            "id": 1,
+            "name": "Fischje"
+        },
+        {
+            "id": 2,
+            "name": "Fusion"
+        },
+        {
+            "id": 3,
+            "name": "Nenok"
+        },
+        {
+            "id": 4,
+            "name": "Pizzamann"
+        },
+        {
+            "id": 5,
+            "name": "Crydamoure"
+        },
+        {
+            "id": 6,
+            "name": "ActionAndy"
+        }
+    ],
+    "availability": {
+        "1:2026-07-29": {
+            "player_id": 1,
+            "event_date": "2026-07-29",
+            "status": "online",
+            "note": "",
+            "updated_at": "2026-07-29T21:20:46+00:00"
+        },
+        "1:2026-08-02": {
+            "player_id": 1,
+            "event_date": "2026-08-02",
+            "status": "online",
+            "note": "",
+            "updated_at": "2026-07-29T21:20:49+00:00"
+        },
+        "1:2026-08-05": {
+            "player_id": 1,
+            "event_date": "2026-08-05",
+            "status": "online",
+            "note": "",
+            "updated_at": "2026-07-29T21:19:39+00:00"
+        },
+        "1:2026-08-09": {
+            "player_id": 1,
+            "event_date": "2026-08-09",
+            "status": "vacation",
+            "note": "",
+            "updated_at": "2026-07-29T21:34:10+00:00"
+        },
+        "1:2026-08-12": {
+            "player_id": 1,
+            "event_date": "2026-08-12",
+            "status": "vacation",
+            "note": "",
+            "updated_at": "2026-07-29T21:34:20+00:00"
+        },
+        "1:2026-08-16": {
+            "player_id": 1,
+            "event_date": "2026-08-16",
+            "status": "vacation",
+            "note": "",
+            "updated_at": "2026-07-29T21:34:25+00:00"
+        },
+        "1:2026-07-22": {
+            "player_id": 1,
+            "event_date": "2026-07-22",
+            "status": "online",
+            "note": "",
+            "updated_at": "2026-07-29T21:20:41+00:00"
+        },
+        "1:2026-07-26": {
+            "player_id": 1,
+            "event_date": "2026-07-26",
+            "status": "online",
+            "note": "",
+            "updated_at": "2026-07-29T21:20:42+00:00"
+        },
+        "3:2026-07-29": {
+            "player_id": 3,
+            "event_date": "2026-07-29",
+            "status": "online",
+            "note": "",
+            "updated_at": "2026-07-29T21:43:51+00:00"
+        },
+        "3:2026-08-02": {
+            "player_id": 3,
+            "event_date": "2026-08-02",
+            "status": "online",
+            "note": "",
+            "updated_at": "2026-07-29T21:44:31+00:00"
+        },
+        "6:2026-07-29": {
+            "player_id": 6,
+            "event_date": "2026-07-29",
+            "status": "online",
+            "note": "",
+            "updated_at": "2026-07-29T21:55:22+00:00"
+        },
+        "1:2026-08-19": {
+            "player_id": 1,
+            "event_date": "2026-08-19",
+            "status": "vacation",
+            "note": "",
+            "updated_at": "2026-07-30T05:54:50+00:00"
+        },
+        "5:2026-07-29": {
+            "player_id": 5,
+            "event_date": "2026-07-29",
+            "status": "online",
+            "note": "",
+            "updated_at": "2026-07-30T07:10:45+00:00"
+        },
+        "2:2026-07-29": {
+            "player_id": 2,
+            "event_date": "2026-07-29",
+            "status": "online",
+            "note": "",
+            "updated_at": "2026-07-30T07:10:48+00:00"
+        },
+        "4:2026-07-29": {
+            "player_id": 4,
+            "event_date": "2026-07-29",
+            "status": "online",
+            "note": "",
+            "updated_at": "2026-07-30T07:10:51+00:00"
+        },
+        "2:2026-08-02": {
+            "player_id": 2,
+            "event_date": "2026-08-02",
+            "status": "online",
+            "note": "20:30",
+            "updated_at": "2026-07-30T07:29:52+00:00"
+        },
+        "2:2026-08-05": {
+            "player_id": 2,
+            "event_date": "2026-08-05",
+            "status": "online",
+            "note": "20:00",
+            "updated_at": "2026-07-30T07:30:45+00:00"
+        },
+        "3:2026-08-05": {
+            "player_id": 3,
+            "event_date": "2026-08-05",
+            "status": "online",
+            "note": "",
+            "updated_at": "2026-07-30T07:33:43+00:00"
+        },
+        "3:2026-08-12": {
+            "player_id": 3,
+            "event_date": "2026-08-12",
+            "status": "online",
+            "note": "",
+            "updated_at": "2026-07-30T07:34:03+00:00"
+        },
+        "5:2026-08-02": {
+            "player_id": 5,
+            "event_date": "2026-08-02",
+            "status": "online",
+            "note": "",
+            "updated_at": "2026-07-30T07:40:13+00:00"
+        },
+        "1:2026-07-31": {
+            "player_id": 1,
+            "event_date": "2026-07-31",
+            "status": "late",
+            "note": "22 Uhr?",
+            "updated_at": "2026-07-31T08:23:28+00:00"
+        },
+        "2:2026-07-31": {
+            "player_id": 2,
+            "event_date": "2026-07-31",
+            "status": "late",
+            "note": "Ab 23:00",
+            "updated_at": "2026-07-31T09:57:20+00:00"
+        }
+    },
+    "custom_dates": [
+        "2026-07-31"
+    ]
+}
