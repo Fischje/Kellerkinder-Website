@@ -661,6 +661,22 @@ function validatePassword($value, $confirmation = null): string
     return $password;
 }
 
+function validateAdminAssignedPassword($value, $confirmation = null): string
+{
+    // Ein Admin, der einem anderen Benutzer ein neues Passwort zuweist (z. B.
+    // nach "Passwort vergessen"), muss die strengen Komplexitätsregeln nicht
+    // erfüllen — der Benutzer muss beim nächsten Login ohnehin ein eigenes,
+    // regelkonformes Passwort festlegen (must_change_password wird gesetzt).
+    $password = (string) $value;
+    if ($password === '') {
+        respond(['ok' => false, 'error' => 'Bitte ein Passwort festlegen.'], 422);
+    }
+    if ($confirmation !== null && $password !== (string) $confirmation) {
+        respond(['ok' => false, 'error' => 'Die beiden Passwörter stimmen nicht überein.'], 422);
+    }
+    return $password;
+}
+
 function validateId($value, string $field = 'ID'): int
 {
     $id = filter_var($value, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
@@ -1736,7 +1752,7 @@ withWritableStore(function (array &$store) use ($action, $payload): array {
 
             $newPassword = (string) ($payload['password'] ?? '');
             if ($newPassword !== '') {
-                validatePassword($newPassword, $payload['password_confirmation'] ?? null);
+                validateAdminAssignedPassword($newPassword, $payload['password_confirmation'] ?? null);
                 $hash = password_hash($newPassword, PASSWORD_DEFAULT);
                 if ($hash === false) {
                     return [['ok' => false, 'error' => 'Das Passwort konnte nicht gespeichert werden.'], 500, false];

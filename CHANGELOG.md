@@ -1,5 +1,11 @@
 # Änderungsprotokoll
 
+## 2.3.1
+
+- Hintergrundgrafiken aller drei Themes überarbeitet: cartoonhafte Elemente (Sonnen-Icon mit Strahlen, Emoji-Zeile, Christbäume, geschmückter Kaminofen) durch abstrakte, zur jeweiligen Farbpalette passende Lichteffekte ersetzt (Glow-Flächen, Aurora-Streifen, Horizont-Verläufe)
+- Admin-Passwort-Reset für andere Benutzer benötigt keine Komplexitätsregeln mehr (nur noch: nicht leer, beide Felder identisch); bei Neuanlage eines Kontos sowie bei der eigenen Passwortänderung gelten die Regeln unverändert weiter
+- Versionsnummer wird ab sofort bei jeder Auslieferung mitgeführt (Datei- und Footer-Version)
+
 ## 2.3.0
 
 - Erfolge-Bereich unter dem Kalender ergänzt: pro Spiel (WoW, Heroes of the Storm, Diablo IV, Rocket League) ein Statistik- und ein Link-Kästchen, per Pfeilen durchblätterbar

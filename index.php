@@ -4,7 +4,7 @@ declare(strict_types=1);
 date_default_timezone_set('Europe/Berlin');
 $appVersion = trim((string) @file_get_contents(__DIR__ . DIRECTORY_SEPARATOR . 'VERSION'));
 if ($appVersion === '') {
-    $appVersion = '2.3.0';
+    $appVersion = '2.3.1';
 }
 ?>
 <!doctype html>
@@ -205,88 +205,57 @@ if ($appVersion === '') {
 
         body[data-theme="summer"] .summer-sun,
         body[data-theme="summer"] .summer-waves,
-        body[data-theme="summer"] .summer-icons,
         body[data-theme="summer"] .summer-bubbles,
         body[data-theme="winter"] .winter-snow,
         body[data-theme="winter"] .winter-snowbank,
-        body[data-theme="winter"] .winter-tree,
-        body[data-theme="winter"] .winter-fireplace {
+        body[data-theme="winter"] .winter-aurora,
+        body[data-theme="winter"] .winter-ember-glow {
             display: block;
         }
 
         .summer-sun {
-            top: clamp(18px, 7vh, 64px);
-            right: clamp(18px, 6vw, 92px);
-            width: clamp(88px, 16vw, 170px);
+            top: clamp(6px, 5vh, 46px);
+            right: clamp(4vw, 9vw, 150px);
+            width: clamp(220px, 27vw, 400px);
             aspect-ratio: 1;
             border-radius: 50%;
-            background:
-                radial-gradient(circle at 35% 32%, #fff8c7 0 16%, #ffd166 17% 58%, #ff9f3d 59% 100%);
-            box-shadow:
-                0 0 44px rgba(255, 209, 102, .55),
-                0 0 110px rgba(255, 157, 92, .28);
-            opacity: .88;
-            animation: sunFloat 7s ease-in-out infinite;
-        }
-
-        .summer-sun::before {
-            content: "";
-            position: absolute;
-            inset: -22px;
-            border-radius: 50%;
-            background: repeating-conic-gradient(from 0deg, rgba(255, 224, 122, .55) 0 8deg, transparent 8deg 18deg);
-            filter: blur(.5px);
-            animation: sunSpin 24s linear infinite;
+            background: radial-gradient(circle, rgba(255, 226, 158, .5) 0%, rgba(255, 180, 110, .24) 40%, transparent 72%);
+            filter: blur(4px);
+            opacity: .82;
+            animation: glowPulse 7s ease-in-out infinite;
         }
 
         .summer-waves {
             left: -6vw;
             right: -6vw;
-            bottom: -44px;
-            height: clamp(116px, 18vh, 190px);
-            opacity: .72;
-            background:
-                radial-gradient(80px 34px at 5% 22%, rgba(156, 255, 240, .65) 0 42%, transparent 43%),
-                radial-gradient(86px 36px at 17% 32%, rgba(88, 218, 255, .55) 0 42%, transparent 43%),
-                radial-gradient(92px 38px at 31% 25%, rgba(156, 255, 240, .58) 0 42%, transparent 43%),
-                radial-gradient(84px 34px at 46% 34%, rgba(88, 218, 255, .52) 0 42%, transparent 43%),
-                radial-gradient(98px 40px at 63% 24%, rgba(156, 255, 240, .58) 0 42%, transparent 43%),
-                radial-gradient(86px 36px at 79% 34%, rgba(88, 218, 255, .55) 0 42%, transparent 43%),
-                radial-gradient(100px 40px at 96% 25%, rgba(156, 255, 240, .58) 0 42%, transparent 43%),
-                linear-gradient(180deg, transparent 0 28%, rgba(25, 152, 172, .52) 29% 58%, rgba(7, 77, 99, .72) 100%);
-            filter: drop-shadow(0 -8px 22px rgba(69, 240, 221, .16));
-            animation: waveMove 8s ease-in-out infinite alternate;
+            bottom: -10px;
+            height: clamp(150px, 21vh, 240px);
+            opacity: .6;
+            background: linear-gradient(180deg, transparent 0%, rgba(69, 240, 221, .14) 32%, rgba(25, 152, 172, .32) 62%, rgba(7, 77, 99, .5) 100%);
+            filter: blur(1px);
         }
 
-        .summer-icons {
-            left: clamp(14px, 5vw, 78px);
-            bottom: clamp(70px, 13vh, 145px);
-            width: min(430px, 78vw);
-            min-height: 78px;
-            opacity: .9;
-        }
-
-        .summer-icons::before {
-            content: "≋  ☀  💧  ≋  🏖";
+        .summer-waves::before {
+            content: "";
             position: absolute;
-            left: 0;
-            bottom: 0;
-            color: #dffff7;
-            font-size: clamp(1.35rem, 4vw, 2.45rem);
-            letter-spacing: .18em;
-            text-shadow: 0 0 16px rgba(69, 240, 221, .35), 0 4px 18px rgba(0, 0, 0, .45);
+            inset: 0;
+            background: linear-gradient(100deg, transparent 0%, rgba(255, 232, 190, .22) 46%, rgba(255, 232, 190, .4) 50%, rgba(255, 232, 190, .22) 54%, transparent 100%);
+            background-size: 260% 100%;
+            mix-blend-mode: screen;
+            animation: horizonShimmer 9s ease-in-out infinite;
         }
 
         .summer-bubbles {
             inset: 0;
-            opacity: .45;
+            opacity: .4;
             background-image:
-                radial-gradient(circle, rgba(202,255,247,.48) 0 3px, transparent 4px),
-                radial-gradient(circle, rgba(255,244,184,.35) 0 2px, transparent 3px),
-                radial-gradient(circle, rgba(108,225,255,.36) 0 4px, transparent 5px);
+                radial-gradient(circle, rgba(202,255,247,.42) 0 3px, transparent 4px),
+                radial-gradient(circle, rgba(255,244,184,.32) 0 2px, transparent 3px),
+                radial-gradient(circle, rgba(108,225,255,.32) 0 4px, transparent 5px);
             background-size: 140px 160px, 210px 190px, 260px 230px;
             background-position: 10% 20%, 80% 32%, 50% 70%;
-            animation: bubbleDrift 13s ease-in-out infinite alternate;
+            filter: blur(.5px);
+            animation: bubbleDrift 15s ease-in-out infinite alternate;
         }
 
         .winter-snow {
@@ -304,105 +273,45 @@ if ($appVersion === '') {
         .winter-snowbank {
             left: -5vw;
             right: -5vw;
-            bottom: -38px;
-            height: clamp(96px, 16vh, 160px);
-            opacity: .86;
-            background:
-                radial-gradient(170px 54px at 8% 24%, rgba(255,255,255,.92) 0 58%, transparent 59%),
-                radial-gradient(220px 68px at 28% 18%, rgba(220,243,255,.9) 0 57%, transparent 58%),
-                radial-gradient(190px 56px at 53% 28%, rgba(255,255,255,.9) 0 58%, transparent 59%),
-                radial-gradient(240px 72px at 78% 17%, rgba(220,243,255,.88) 0 57%, transparent 58%),
-                radial-gradient(190px 58px at 97% 30%, rgba(255,255,255,.9) 0 58%, transparent 59%),
-                linear-gradient(180deg, transparent 0 30%, rgba(214,239,255,.88) 31% 100%);
-            filter: drop-shadow(0 -8px 24px rgba(200, 238, 255, .18));
+            bottom: -10px;
+            height: clamp(120px, 17vh, 200px);
+            opacity: .55;
+            background: linear-gradient(180deg, transparent 0%, rgba(200, 238, 255, .2) 38%, rgba(214, 239, 255, .48) 100%);
+            filter: blur(1px);
         }
 
-        .winter-tree {
-            bottom: clamp(62px, 11vh, 118px);
-            width: clamp(64px, 10vw, 112px);
-            height: clamp(104px, 17vw, 184px);
-            opacity: .9;
-            filter: drop-shadow(0 0 20px rgba(157, 233, 255, .18));
+        .winter-aurora {
+            top: -14vh;
+            bottom: -14vh;
+            width: clamp(130px, 19vw, 280px);
+            opacity: .32;
+            background: linear-gradient(180deg, transparent 0%, rgba(157, 233, 255, .32) 28%, rgba(217, 242, 255, .22) 55%, transparent 88%);
+            filter: blur(34px);
+            animation: auroraDrift 13s ease-in-out infinite alternate;
         }
 
-        .winter-tree.left { left: clamp(10px, 4vw, 70px); }
-        .winter-tree.right {
-            right: clamp(10px, 5vw, 96px);
-            transform: scale(.82);
-            opacity: .72;
+        .winter-aurora.left {
+            left: clamp(-4vw, -1vw, 40px);
+            transform: skewX(-9deg);
         }
 
-        .winter-tree::before,
-        .winter-tree::after {
-            content: "";
-            position: absolute;
-            left: 50%;
-            transform: translateX(-50%);
+        .winter-aurora.right {
+            right: clamp(-6vw, -1vw, 20px);
+            transform: skewX(9deg);
+            opacity: .24;
+            animation-delay: -6s;
         }
 
-        .winter-tree::before {
-            bottom: 20%;
-            width: 18%;
-            height: 25%;
-            border-radius: 3px;
-            background: linear-gradient(180deg, #7a4b2f, #3e2418);
-        }
-
-        .winter-tree::after {
-            bottom: 26%;
-            width: 100%;
-            height: 74%;
-            background:
-                linear-gradient(135deg, transparent 0 50%, rgba(255,255,255,.88) 51% 56%, transparent 57%) 50% 5% / 70% 30% no-repeat,
-                linear-gradient(45deg, transparent 0 50%, rgba(255,255,255,.8) 51% 56%, transparent 57%) 50% 38% / 88% 30% no-repeat,
-                linear-gradient(135deg, transparent 0 50%, rgba(255,255,255,.72) 51% 56%, transparent 57%) 50% 72% / 100% 30% no-repeat,
-                linear-gradient(135deg, transparent 0 50%, #0f684a 51%) 50% 4% / 70% 30% no-repeat,
-                linear-gradient(135deg, transparent 0 50%, #0b563e 51%) 50% 38% / 88% 30% no-repeat,
-                linear-gradient(135deg, transparent 0 50%, #094530 51%) 50% 72% / 100% 30% no-repeat;
-            clip-path: polygon(50% 0, 82% 32%, 70% 32%, 96% 65%, 78% 65%, 100% 100%, 0 100%, 22% 65%, 4% 65%, 30% 32%, 18% 32%);
-        }
-
-        .winter-fireplace {
-            right: clamp(18px, 6vw, 90px);
-            top: clamp(150px, 25vh, 260px);
-            width: clamp(120px, 18vw, 190px);
-            height: clamp(92px, 14vw, 140px);
-            border: 5px solid rgba(153, 78, 45, .82);
-            border-top-width: 15px;
-            border-radius: 12px 12px 8px 8px;
-            background:
-                radial-gradient(circle at 49% 66%, rgba(255, 219, 118, .98) 0 10%, rgba(255, 105, 43, .96) 11% 24%, transparent 25%),
-                radial-gradient(ellipse at 48% 84%, #2b130d 0 44%, #100707 45% 100%);
-            box-shadow: 0 0 26px rgba(255, 120, 50, .22), inset 0 0 0 2px rgba(255,255,255,.08);
-            opacity: .82;
-        }
-
-        .winter-fireplace::before {
-            content: "";
-            position: absolute;
-            left: -13px;
-            right: -13px;
-            top: -26px;
-            height: 12px;
-            border-radius: 7px;
-            background: linear-gradient(180deg, #885335, #4c2b1e);
-            box-shadow:
-                24px 16px 0 -3px #d93045,
-                52px 16px 0 -3px #f4f7ff,
-                80px 16px 0 -3px #d93045;
-        }
-
-        .winter-fireplace::after {
-            content: "";
-            position: absolute;
-            left: 42%;
-            bottom: 20%;
-            width: 24%;
-            height: 44%;
-            border-radius: 60% 40% 52% 48%;
-            background: linear-gradient(180deg, #fff3a6 0 24%, #ffb33f 25% 60%, #ff5a32 61% 100%);
-            filter: drop-shadow(0 0 14px rgba(255, 163, 54, .68));
-            animation: fireFlicker .9s ease-in-out infinite alternate;
+        .winter-ember-glow {
+            right: clamp(18px, 7vw, 110px);
+            top: clamp(120px, 22vh, 250px);
+            width: clamp(150px, 19vw, 250px);
+            aspect-ratio: 1;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(255, 172, 92, .46) 0%, rgba(255, 90, 50, .2) 45%, transparent 76%);
+            filter: blur(8px);
+            opacity: .58;
+            animation: emberPulse 3.6s ease-in-out infinite alternate;
         }
 
         @keyframes rgbDrift {
@@ -411,18 +320,9 @@ if ($appVersion === '') {
             100% { transform: translate3d(-.5%, 2.5%, 0) scale(1.02); }
         }
 
-        @keyframes sunFloat {
-            0%, 100% { transform: translateY(0) rotate(-2deg); }
-            50% { transform: translateY(8px) rotate(2deg); }
-        }
-
-        @keyframes sunSpin {
-            to { transform: rotate(360deg); }
-        }
-
-        @keyframes waveMove {
-            0% { transform: translateX(-18px); }
-            100% { transform: translateX(18px); }
+        @keyframes horizonShimmer {
+            0% { background-position: 130% 0%; }
+            100% { background-position: -30% 0%; }
         }
 
         @keyframes bubbleDrift {
@@ -435,14 +335,20 @@ if ($appVersion === '') {
             to { transform: translate3d(0, 18vh, 0); }
         }
 
-        @keyframes fireFlicker {
-            0% { transform: translateX(-1px) scaleY(.92) rotate(-4deg); opacity: .86; }
-            100% { transform: translateX(2px) scaleY(1.08) rotate(5deg); opacity: 1; }
+        @keyframes auroraDrift {
+            0% { transform: translateX(0) skewX(-9deg); opacity: .26; }
+            50% { transform: translateX(2.5vw) skewX(-6deg); opacity: .38; }
+            100% { transform: translateX(-1.5vw) skewX(-11deg); opacity: .3; }
+        }
+
+        @keyframes emberPulse {
+            0% { opacity: .46; transform: scale(1); }
+            100% { opacity: .68; transform: scale(1.06); }
         }
 
         @keyframes glowPulse {
-            0%, 100% { opacity: .72; filter: saturate(105%); }
-            50% { opacity: 1; filter: saturate(135%); }
+            0%, 100% { opacity: .72; filter: blur(4px) saturate(105%); }
+            50% { opacity: 1; filter: blur(2px) saturate(135%); }
         }
 
         button, input, select { font: inherit; }
@@ -2179,12 +2085,11 @@ if ($appVersion === '') {
 <div class="season-scene" aria-hidden="true">
     <div class="summer-sun"></div>
     <div class="summer-bubbles"></div>
-    <div class="summer-icons"></div>
     <div class="summer-waves"></div>
     <div class="winter-snow"></div>
-    <div class="winter-tree left"></div>
-    <div class="winter-tree right"></div>
-    <div class="winter-fireplace"></div>
+    <div class="winter-aurora left"></div>
+    <div class="winter-aurora right"></div>
+    <div class="winter-ember-glow"></div>
     <div class="winter-snowbank"></div>
 </div>
 <main class="page-shell">
@@ -3644,10 +3549,12 @@ if ($appVersion === '') {
             : 'Der Benutzer muss das vorläufige Passwort nach der ersten Anmeldung ändern.';
         byId('adminUserPasswordLabel').textContent = editMode ? 'Neues Passwort (optional)' : 'Vorläufiges Passwort';
         byId('adminPasswordHelp').textContent = editMode
-            ? 'Bleibt das Passwortfeld leer, wird das bisherige Passwort beibehalten. Ein neues Passwort benötigt mindestens 8 Zeichen, einen Buchstaben, eine Zahl und ein Sonderzeichen. Danach wird der Benutzer beim nächsten Login zur erneuten Passwortänderung aufgefordert.'
+            ? 'Bleibt das Passwortfeld leer, wird das bisherige Passwort beibehalten. Beim Zurücksetzen gelten keine Komplexitätsregeln — der Benutzer muss beim nächsten Login ohnehin ein eigenes, regelkonformes Passwort festlegen.'
             : 'Beim Anlegen ist ein Passwort mit mindestens 8 Zeichen, einem Buchstaben, einer Zahl und einem Sonderzeichen wie !, ?, #, +, -, _, @ oder € erforderlich. Umlaute zählen als Buchstaben. Der Benutzer wird nach der ersten Anmeldung zur Änderung aufgefordert.';
         byId('adminUserPassword').required = !editMode;
         byId('adminUserPasswordConfirmation').required = !editMode;
+        byId('adminUserPassword').minLength = editMode ? 0 : 8;
+        byId('adminUserPasswordConfirmation').minLength = editMode ? 0 : 8;
         byId('deleteUserButton').hidden = !editMode;
         adminUserDialog.showModal();
         requestAnimationFrame(() => byId('adminUsername').focus());
@@ -3842,9 +3749,12 @@ if ($appVersion === '') {
         const editMode = Boolean(byId('adminUserId').value);
         const password = byId('adminUserPassword').value;
         const passwordConfirmation = byId('adminUserPasswordConfirmation').value;
-        if (!editMode || password !== '' || passwordConfirmation !== '') {
+        if (!editMode) {
             const passwordError = passwordValidationMessage(password, passwordConfirmation);
             if (passwordError) return showToast(passwordError);
+        } else if (password !== '' || passwordConfirmation !== '') {
+            if (password === '') return showToast('Bitte ein Passwort festlegen.');
+            if (password !== passwordConfirmation) return showToast('Die beiden Passwörter stimmen nicht überein.');
         }
         try {
             const data = await api(editMode ? 'admin_update_user' : 'admin_create_user', {
