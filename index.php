@@ -654,13 +654,39 @@ if ($appVersion === '') {
             line-height: 1.38;
         }
 
+        .subtitle .shine {
+            font-style: italic;
+            background: linear-gradient(100deg, #cdd4ec 30%, #ffffff 45%, #35e7ff 50%, #cdd4ec 65%);
+            background-size: 250% 100%;
+            background-position: 0% 0%;
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            animation: shine-sweep 4.5s ease-in-out infinite;
+        }
+
+        @keyframes shine-sweep {
+            0% { background-position: 200% 0%; }
+            60%, 100% { background-position: -40% 0%; }
+        }
+
+        .board-toolbar {
+            padding: 22px 22px 18px;
+        }
+
+        .board-heading {
+            margin: 0 0 16px;
+            color: #fff;
+            font-size: clamp(1.55rem, 4.2vw, 2rem);
+            text-shadow: 0 0 18px rgba(53,231,255,.2);
+        }
+
         .toolbar {
             display: flex;
             flex-wrap: wrap;
             gap: 11px;
             align-items: center;
             justify-content: space-between;
-            margin: 19px 0 13px;
         }
 
         .legend {
@@ -1421,13 +1447,6 @@ if ($appVersion === '') {
             text-shadow: 0 0 18px rgba(53,231,255,.18);
         }
 
-        .section-heading {
-            margin: 22px 0 0;
-            color: #fff;
-            font-size: clamp(1.45rem, 4vw, 1.85rem);
-            text-shadow: 0 0 18px rgba(53,231,255,.18);
-        }
-
         .achievements-nav {
             display: inline-flex;
             align-items: center;
@@ -2178,7 +2197,7 @@ if ($appVersion === '') {
         </div>
         <h1>Kellerkinder</h1>
         <div class="subtitle-group">
-            <p class="subtitle">Wer ist wann da und zockt mit</p>
+            <p class="subtitle">Online-Gaming mit Freunden seit <em class="shine">ewig</em></p>
         </div>
     </header>
 
@@ -2204,28 +2223,28 @@ if ($appVersion === '') {
         <strong>Passwortänderung erforderlich:</strong> Ein Administrator hat dein Passwort geändert. Lege jetzt ein eigenes neues Passwort fest.
     </div>
 
-    <h2 class="section-heading">Online-Kalender</h2>
-
-    <section class="toolbar" aria-label="Steuerung und Legende">
-        <div class="legend" aria-label="Status-Legende">
-            <span class="legend-item"><span class="legend-icon online">⚔</span> Online</span>
-            <span class="legend-item"><span class="legend-icon late">◷</span> Später</span>
-            <span class="legend-item"><span class="legend-icon absent">✕</span> Verhindert</span>
-            <span class="legend-item"><span class="legend-icon vacation">☀</span> Urlaub</span>
-            <span class="legend-item"><span class="legend-icon open">?</span> Offen</span>
-        </div>
-        <div class="toolbar-actions">
-            <button class="secondary-button" id="addDateButton" type="button" hidden>＋ Spieltag hinzufügen</button>
-            <button class="primary-button" id="addPlayerButton" type="button" hidden>＋ Spieler hinzufügen</button>
-        </div>
-    </section>
-
     <div id="storageWarning" class="storage-warning" hidden>
         <strong>Nur-Lese-Modus:</strong> Der Plan ist sichtbar, Änderungen können aber nicht gespeichert werden.
         Gib dem Ordner <code>data</code> Schreibrechte für den PHP-Webserver.
     </div>
 
     <section class="board" aria-label="Verfügbarkeitsplan">
+        <div class="board-toolbar">
+            <h2 class="board-heading">Online-Kalender</h2>
+            <div class="toolbar" aria-label="Steuerung und Legende">
+                <div class="legend" aria-label="Status-Legende">
+                    <span class="legend-item"><span class="legend-icon online">⚔</span> Online</span>
+                    <span class="legend-item"><span class="legend-icon late">◷</span> Später</span>
+                    <span class="legend-item"><span class="legend-icon absent">✕</span> Verhindert</span>
+                    <span class="legend-item"><span class="legend-icon vacation">☀</span> Urlaub</span>
+                    <span class="legend-item"><span class="legend-icon open">?</span> Offen</span>
+                </div>
+                <div class="toolbar-actions">
+                    <button class="secondary-button" id="addDateButton" type="button" hidden>＋ Spieltag hinzufügen</button>
+                    <button class="primary-button" id="addPlayerButton" type="button" hidden>＋ Spieler hinzufügen</button>
+                </div>
+            </div>
+        </div>
         <div id="loading" class="loading">Wird geladen …</div>
         <div id="tableScroll" class="table-scroll" hidden>
             <table>
