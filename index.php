@@ -4,7 +4,7 @@ declare(strict_types=1);
 date_default_timezone_set('Europe/Berlin');
 $appVersion = trim((string) @file_get_contents(__DIR__ . DIRECTORY_SEPARATOR . 'VERSION'));
 if ($appVersion === '') {
-    $appVersion = '2.3.1';
+    $appVersion = '2.3.2';
 }
 ?>
 <!doctype html>

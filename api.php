@@ -176,6 +176,42 @@ function achievementsCacheWrite(string $file, array $data): void
     );
 }
 
+function raiderIoCharacterSlug(string $name, string $realm, string $region): string
+{
+    return $region . '-' . $realm . '-' . $name;
+}
+
+function fetchRaiderIoCharacter(string $name, string $realm, string $region): ?array
+{
+    $url = 'https://raider.io/api/v1/characters/profile'
+        . '?region=' . rawurlencode($region)
+        . '&realm=' . rawurlencode($realm)
+        . '&name=' . rawurlencode($name)
+        . '&fields=' . rawurlencode('mythic_plus_best_runs,mythic_plus_scores_by_season:current');
+
+    $context = stream_context_create(['http' => [
+        'timeout' => 6,
+        'ignore_errors' => true,
+        'header' => "User-Agent: Kellerkinder-Kalender/1.0 (+https://github.com/Fischje)\r\n",
+    ]]);
+
+    // Bis zu 2 Versuche, da einzelne Raider.IO-Anfragen gelegentlich ohne
+    // erkennbaren Grund fehlschlagen (Timeout, kurzzeitige Störung o. ä.).
+    for ($attempt = 0; $attempt < 2; $attempt++) {
+        $raw = @file_get_contents($url, false, $context);
+        if ($raw !== false) {
+            $data = json_decode($raw, true);
+            if (is_array($data) && isset($data['mythic_plus_best_runs']) && is_array($data['mythic_plus_best_runs'])) {
+                return $data;
+            }
+        }
+        if ($attempt === 0) {
+            usleep(300000);
+        }
+    }
+    return null;
+}
+
 function achievementsWowData(): array
 {
     if (WOW_ACHIEVEMENT_CHARACTERS === []) {
@@ -196,20 +232,27 @@ function achievementsWowData(): array
             continue;
         }
 
-        $url = 'https://raider.io/api/v1/characters/profile'
-            . '?region=' . rawurlencode($region)
-            . '&realm=' . rawurlencode($realm)
-            . '&name=' . rawurlencode($name)
-            . '&fields=' . rawurlencode('mythic_plus_best_runs,mythic_plus_scores_by_season:current');
+        $characterCacheFile = 'wow-char-' . md5(raiderIoCharacterSlug($name, $realm, $region)) . '.json';
+        $data = fetchRaiderIoCharacter($name, $realm, $region);
 
-        $context = stream_context_create(['http' => ['timeout' => 3, 'ignore_errors' => true]]);
-        $raw = @file_get_contents($url, false, $context);
-        if ($raw === false) {
-            continue;
+        if ($data !== null) {
+            // Frischer Erfolg: als neuen Fallback für künftige Fehlschläge sichern.
+            achievementsCacheWrite($characterCacheFile, $data);
+        } else {
+            // Fehlgeschlagen: auf den letzten bekannten Stand dieses Charakters
+            // zurückfallen, statt ihn komplett aus der Liste zu werfen. Der
+            // Charakter-Cache hat absichtlich keine eigene Ablaufzeit — lieber
+            // einmal veraltete Daten zeigen als den Charakter unsichtbar machen.
+            $fallbackPath = achievementsCacheDirectory() . DIRECTORY_SEPARATOR . $characterCacheFile;
+            if (is_file($fallbackPath)) {
+                $decoded = json_decode((string) file_get_contents($fallbackPath), true);
+                if (is_array($decoded)) {
+                    $data = $decoded;
+                }
+            }
         }
 
-        $data = json_decode($raw, true);
-        if (!is_array($data) || !isset($data['mythic_plus_best_runs']) || !is_array($data['mythic_plus_best_runs'])) {
+        if ($data === null) {
             continue;
         }
 

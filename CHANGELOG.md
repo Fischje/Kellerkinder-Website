@@ -1,5 +1,10 @@
 # Änderungsprotokoll
 
+## 2.3.2
+
+- WoW-Erfolge-Widget zuverlässiger gemacht: Charaktere fielen bisher gelegentlich komplett aus der Liste, wenn eine einzelne Raider.IO-Anfrage fehlschlug (z. B. Timeout) — jetzt gibt es pro Charakter einen Retry sowie einen Fallback auf den letzten bekannten Stand, statt den Charakter unsichtbar zu machen
+- Timeout je Charakter wieder auf 6 Sekunden angehoben, dazu ein User-Agent-Header für die Raider.IO-Anfragen ergänzt
+
 ## 2.3.1
 
 - Hintergrundgrafiken aller drei Themes überarbeitet: cartoonhafte Elemente (Sonnen-Icon mit Strahlen, Emoji-Zeile, Christbäume, geschmückter Kaminofen) durch abstrakte, zur jeweiligen Farbpalette passende Lichteffekte ersetzt (Glow-Flächen, Aurora-Streifen, Horizont-Verläufe)
