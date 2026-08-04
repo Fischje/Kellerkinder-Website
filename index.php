@@ -4,7 +4,7 @@ declare(strict_types=1);
 date_default_timezone_set('Europe/Berlin');
 $appVersion = trim((string) @file_get_contents(__DIR__ . DIRECTORY_SEPARATOR . 'VERSION'));
 if ($appVersion === '') {
-    $appVersion = '2.2.0';
+    $appVersion = '2.3.0';
 }
 ?>
 <!doctype html>
@@ -13,11 +13,11 @@ if ($appVersion === '') {
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" id="themeColorMeta" content="#070914">
-    <meta name="application-name" content="Kellerkinder-Online-Kalender">
+    <meta name="application-name" content="Kellerkinder">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Kellerkinder">
-    <title>Kellerkinder-Online-Kalender</title>
+    <title>Kellerkinder</title>
     <meta name="description" content="Der gemeinsame Kellerkinder-Online-Kalender für eure Spieltage.">
     <link rel="icon" href="assets/kellerkinder-logo.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" href="assets/app-icon-180.png">
@@ -580,6 +580,12 @@ if ($appVersion === '') {
             color: white;
             background: linear-gradient(135deg, #157ca3, #6550d3 58%, #a34093);
             font-weight: 900;
+        }
+
+        .info-link-row {
+            margin: 22px 0 0;
+            display: flex;
+            justify-content: center;
         }
 
         .site-footer {
@@ -1371,6 +1377,328 @@ if ($appVersion === '') {
             overflow-wrap: anywhere;
         }
 
+        .achievements {
+            position: relative;
+            overflow: hidden;
+            margin-top: 19px;
+            padding: 22px;
+            border: 1px solid transparent;
+            border-radius: 9px;
+            color: #e8ecf8;
+            background:
+                linear-gradient(rgba(11,15,27,.93), rgba(11,15,27,.93)) padding-box,
+                linear-gradient(120deg, rgba(53,231,255,.27), rgba(86,116,255,.14), rgba(255,79,200,.27)) border-box;
+            box-shadow: var(--shadow), var(--glow), inset 0 1px 0 rgba(255,255,255,.04);
+        }
+
+        .achievements::before {
+            content: "";
+            position: absolute;
+            width: 260px;
+            height: 260px;
+            right: -130px;
+            top: -170px;
+            border-radius: 50%;
+            background: rgba(169,92,255,.12);
+            filter: blur(20px);
+            pointer-events: none;
+        }
+
+        .achievements-head {
+            position: relative;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 12px;
+            margin: 0 0 16px;
+        }
+
+        .achievements-head h2 {
+            margin: 0;
+            color: #fff;
+            font-size: clamp(1.45rem, 4vw, 1.85rem);
+            text-shadow: 0 0 18px rgba(53,231,255,.18);
+        }
+
+        .section-heading {
+            margin: 22px 0 0;
+            color: #fff;
+            font-size: clamp(1.45rem, 4vw, 1.85rem);
+            text-shadow: 0 0 18px rgba(53,231,255,.18);
+        }
+
+        .achievements-nav {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 10px;
+            border: 1px solid rgba(139,151,190,.24);
+            border-radius: 999px;
+            background: rgba(10,13,24,.7);
+        }
+
+        .nav-arrow {
+            width: 26px;
+            height: 26px;
+            display: grid;
+            place-items: center;
+            border: 1px solid rgba(139,151,190,.3);
+            border-radius: 8px;
+            color: var(--text);
+            background: rgba(21,26,45,.7);
+            cursor: pointer;
+            line-height: 1;
+            transition: border-color .14s ease, transform .14s ease;
+        }
+
+        .nav-arrow:hover { border-color: rgba(53,231,255,.6); transform: translateY(-1px); }
+        .nav-arrow:disabled { opacity: .35; cursor: default; transform: none; }
+
+        .achievements-nav-label {
+            color: var(--muted);
+            font-size: .82rem;
+            font-weight: 800;
+            white-space: nowrap;
+        }
+
+        .achievement-grid {
+            position: relative;
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 14px;
+        }
+
+        .achievement-card {
+            padding: 16px;
+            border: 1px solid rgba(137,151,193,.2);
+            border-radius: 6px;
+            background: rgba(21,26,45,.62);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,.035);
+        }
+
+        .achievement-card-head {
+            display: flex;
+            align-items: center;
+            gap: 11px;
+            margin-bottom: 14px;
+        }
+
+        .achievement-card-head-text { flex: 1; min-width: 0; }
+
+        .achievement-edit-button {
+            flex: none;
+            width: 30px;
+            height: 30px;
+            display: grid;
+            place-items: center;
+            border: 1px solid rgba(139,151,190,.3);
+            border-radius: 4px;
+            background: rgba(21,26,45,.7);
+            color: var(--text);
+            cursor: pointer;
+            transition: border-color .14s ease, color .14s ease;
+        }
+
+        .achievement-edit-button:hover { border-color: rgba(53,231,255,.6); color: #9eeaff; }
+
+        .achievement-edit-rows {
+            display: grid;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .achievement-edit-row {
+            display: grid;
+            grid-template-columns: minmax(0,1fr) minmax(0,1.3fr) auto;
+            gap: 8px;
+        }
+
+        .achievement-edit-row input {
+            width: 100%;
+            padding: 9px 10px;
+            border: 1px solid rgba(139,151,190,.28);
+            border-radius: 8px;
+            background: rgba(10,13,24,.65);
+            color: var(--text);
+            font: inherit;
+        }
+
+        .achievement-edit-row input:focus { outline: none; border-color: rgba(53,231,255,.6); }
+
+        .achievement-edit-row button {
+            width: 34px;
+            border: 1px solid rgba(255,107,133,.35);
+            border-radius: 8px;
+            background: rgba(58,15,23,.5);
+            color: #ff9caf;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+
+        .achievement-edit-row button:hover { background: rgba(90,20,32,.7); }
+
+        .achievement-icon {
+            width: 40px;
+            height: 40px;
+            flex: none;
+            display: grid;
+            place-items: center;
+            border-radius: 5px;
+            font-size: 1.15rem;
+            box-shadow: 0 0 15px currentColor, inset 0 1px 0 rgba(255,255,255,.2);
+        }
+
+        .achievement-icon.wow { background: linear-gradient(135deg, #157ca3, #6550d3 58%, #a34093); color: rgba(53,231,255,.5); }
+        .achievement-icon.d4 { background: linear-gradient(135deg, #7a1f24, #b83a52 58%, #d93d55); color: rgba(255,83,104,.5); }
+        .achievement-icon.hots { background: linear-gradient(135deg, #1f6e7a, #35a3a0 58%, #6be0c8); color: rgba(107,224,200,.5); }
+        .achievement-icon.rocket_league { background: linear-gradient(135deg, #16408f, #3a6ea5 58%, #ffb454); color: rgba(255,180,84,.5); }
+
+        .achievement-card-head h3 {
+            margin: 0;
+            color: #fff;
+            font-size: 1.08rem;
+        }
+
+        .achievement-source {
+            margin: 3px 0 0;
+            color: var(--muted);
+            font-size: .78rem;
+        }
+
+        .mplus-bars {
+            display: grid;
+            gap: 9px;
+        }
+
+        .mplus-bar-row {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .mplus-bar-label {
+            grid-column: 1 / -1;
+            display: flex;
+            justify-content: space-between;
+            color: #dfe4f3;
+            font-size: .84rem;
+        }
+
+        .mplus-bar-label { color: #dfe4f3; }
+
+        .mplus-bar-label a {
+            color: #9eeaff;
+            font-weight: 800;
+            text-decoration: none;
+        }
+
+        .mplus-bar-label a:hover { text-decoration: underline; }
+
+        .mplus-bar-label b { color: #9eeaff; }
+
+        .mplus-bar-track {
+            grid-column: 1 / -1;
+            height: 10px;
+            border-radius: 999px;
+            background: rgba(6,8,15,.6);
+            overflow: hidden;
+            box-shadow: inset 0 1px 3px rgba(0,0,0,.4);
+        }
+
+        .mplus-bar-fill {
+            height: 100%;
+            border-radius: 999px;
+            background: linear-gradient(90deg, #157ca3, #6550d3 60%, #a34093);
+            box-shadow: 0 0 10px rgba(53,231,255,.35);
+        }
+
+        .d4-milestones {
+            display: grid;
+            gap: 9px;
+            margin: 0;
+            padding: 0;
+            list-style: none;
+        }
+
+        .d4-milestones li {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 9px 11px;
+            border: 1px solid rgba(139,151,190,.18);
+            border-radius: 4px;
+            background: rgba(10,13,24,.5);
+            font-size: .88rem;
+        }
+
+        .d4-milestones li span:first-child { color: var(--muted); }
+        .d4-milestones li span:last-child { color: #ffb0c6; font-weight: 800; text-align: right; }
+
+        .achievement-links {
+            display: grid;
+            gap: 9px;
+            margin: 0;
+            padding: 0;
+            list-style: none;
+        }
+
+        .achievement-links li {
+            border: 1px solid rgba(139,151,190,.18);
+            border-radius: 4px;
+            background: rgba(10,13,24,.5);
+            overflow: hidden;
+        }
+
+        .achievement-links li a {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 12px;
+            color: #9eeaff;
+            font-weight: 700;
+            font-size: .88rem;
+            text-decoration: none;
+        }
+
+        .achievement-links li a::after {
+            content: '↗';
+            margin-left: auto;
+            color: var(--muted);
+        }
+
+        .achievement-links li a:hover {
+            background: rgba(53,231,255,.08);
+            text-decoration: underline;
+        }
+
+        .achievement-updated {
+            margin: 12px 0 0;
+            color: var(--muted);
+            font-size: .74rem;
+        }
+
+        .achievement-updated .mock-tag {
+            display: inline-block;
+            margin-left: 6px;
+            padding: 1px 7px;
+            border: 1px solid rgba(255,173,66,.4);
+            border-radius: 999px;
+            color: #ffd28d;
+            font-size: .68rem;
+            letter-spacing: .03em;
+            text-transform: uppercase;
+        }
+
+        .widget-loading,
+        .widget-empty {
+            padding: 14px 10px;
+            color: var(--muted);
+            font-size: .88rem;
+            text-align: center;
+        }
+
         .storage-warning {
             margin: 14px 0;
             padding: 13px 15px;
@@ -1581,6 +1909,23 @@ if ($appVersion === '') {
         .form-stack { display: grid; gap: 15px; }
         .form-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
         .field-help { margin: -2px 0 0; color: #909ab4; font-size: .84rem; line-height: 1.42; }
+
+        .remember-row {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            margin: -4px 0 0;
+            color: #c7cce0;
+            font-size: .9rem;
+            cursor: pointer;
+        }
+
+        .remember-row input[type="checkbox"] {
+            width: 17px;
+            height: 17px;
+            accent-color: #35e7ff;
+            cursor: pointer;
+        }
         .section-heading { margin: 5px 0 0; color: #a9ecff; font-size: 1.02rem; }
 
         input[type="text"],
@@ -1734,6 +2079,9 @@ if ($appVersion === '') {
             .instruction-grid { grid-template-columns: 1fr; gap: 9px; }
             .instruction-item { grid-template-columns: 36px 1fr; padding: 12px; font-size: 1.04rem; }
             .editing-note { padding-inline: 4px; font-size: 1.04rem; }
+            .achievements { padding: 17px 13px; border-radius: 8px; }
+            .achievement-grid { grid-template-columns: 1fr; gap: 10px; }
+            .achievements-head { flex-direction: column; align-items: flex-start; }
         }
 
         @media (max-width: 390px) {
@@ -1828,7 +2176,7 @@ if ($appVersion === '') {
         <div class="crest">
             <img src="assets/kellerkinder-logo.svg" alt="Kellerkinder Gaming-Logo">
         </div>
-        <h1>Kellerkinder-Online-Kalender</h1>
+        <h1>Kellerkinder</h1>
         <div class="subtitle-group">
             <p class="subtitle">Wer ist wann da und zockt mit</p>
         </div>
@@ -1836,7 +2184,7 @@ if ($appVersion === '') {
 
     <section class="account-strip" aria-label="Benutzerkonto">
         <div class="account-summary" id="accountSummary">
-            <strong>Kalender wird geladen …</strong>
+            <strong>Wird geladen …</strong>
             <small>Die Übersicht ist öffentlich sichtbar. Änderungen erfordern ein Benutzerkonto.</small>
         </div>
         <div class="account-actions">
@@ -1855,6 +2203,8 @@ if ($appVersion === '') {
     <div id="passwordCallout" class="password-callout" hidden>
         <strong>Passwortänderung erforderlich:</strong> Ein Administrator hat dein Passwort geändert. Lege jetzt ein eigenes neues Passwort fest.
     </div>
+
+    <h2 class="section-heading">Online-Kalender</h2>
 
     <section class="toolbar" aria-label="Steuerung und Legende">
         <div class="legend" aria-label="Status-Legende">
@@ -1876,7 +2226,7 @@ if ($appVersion === '') {
     </div>
 
     <section class="board" aria-label="Verfügbarkeitsplan">
-        <div id="loading" class="loading">Der Gildenplan wird geladen …</div>
+        <div id="loading" class="loading">Wird geladen …</div>
         <div id="tableScroll" class="table-scroll" hidden>
             <table>
                 <thead>
@@ -1893,8 +2243,39 @@ if ($appVersion === '') {
         </div>
     </section>
 
-    <section class="instructions" aria-labelledby="instructionsTitle">
-        <h2 id="instructionsTitle">So funktioniert der Kellerkinder-Online-Kalender</h2>
+    <section class="achievements" aria-label="Erfolge der Kellerkinder">
+        <div class="achievements-head">
+            <div class="achievements-nav" id="achievementsNav" aria-label="Spielpaar wechseln">
+                <button class="nav-arrow" id="achievementsPrev" type="button" aria-label="Vorheriges Spielpaar" disabled>‹</button>
+                <span class="achievements-nav-label" id="achievementsNavLabel">World of Warcraft · Diablo IV</span>
+                <button class="nav-arrow" id="achievementsNext" type="button" aria-label="Nächstes Spielpaar" disabled>›</button>
+            </div>
+        </div>
+
+        <div class="achievement-grid" id="achievementGrid"></div>
+    </section>
+
+    <div class="info-link-row">
+        <button class="secondary-button" id="infoButton" type="button">Was soll das?</button>
+    </div>
+
+    <footer class="site-footer">Created by Fischje with <span class="heart" aria-label="Love">♥</span> Version <?= htmlspecialchars($appVersion, ENT_QUOTES, 'UTF-8') ?></footer>
+</main>
+
+<dialog id="installDialog">
+    <div class="modal-content">
+        <h2 class="modal-title">Kalender als App speichern</h2>
+        <p class="modal-subtitle" id="installDialogSubtitle">Lege den Kellerkinder-Kalender als Symbol auf deinem Home-Bildschirm ab.</p>
+        <ol class="install-steps" id="installSteps"></ol>
+        <div class="modal-actions">
+            <button class="primary-button" type="button" data-close-dialog="installDialog">Verstanden</button>
+        </div>
+    </div>
+</dialog>
+
+<dialog id="infoDialog" class="wide">
+    <div class="modal-content">
+        <h2 class="modal-title">So funktioniert der Online-Kalender</h2>
         <div class="instruction-grid">
             <div class="instruction-item">
                 <span class="instruction-number">1</span>
@@ -1918,18 +2299,37 @@ if ($appVersion === '') {
             <h3>💬 Auch in Discord nutzbar</h3>
             <p>Im Kellerkinder-Discord könnt ihr den aktuellen Kalender jederzeit mit dem Befehl <code>/kalender</code> aufrufen und anzeigen lassen.</p>
         </div>
-    </section>
-
-    <footer class="site-footer">Created by Fischje with <span class="heart" aria-label="Love">♥</span> Version <?= htmlspecialchars($appVersion, ENT_QUOTES, 'UTF-8') ?></footer>
-</main>
-
-<dialog id="installDialog">
-    <div class="modal-content">
-        <h2 class="modal-title">Kalender als App speichern</h2>
-        <p class="modal-subtitle" id="installDialogSubtitle">Lege den Kellerkinder-Kalender als Symbol auf deinem Home-Bildschirm ab.</p>
-        <ol class="install-steps" id="installSteps"></ol>
         <div class="modal-actions">
-            <button class="primary-button" type="button" data-close-dialog="installDialog">Verstanden</button>
+            <button class="primary-button" type="button" data-close-dialog="infoDialog">Verstanden</button>
+        </div>
+    </div>
+</dialog>
+
+<dialog id="achievementEditDialog" class="wide">
+    <div class="modal-content form-stack">
+        <h2 class="modal-title" id="achievementEditTitle">Widget bearbeiten</h2>
+        <p class="modal-subtitle">Überschrift und Inhalt für dieses Kästchen.</p>
+
+        <div>
+            <label for="achievementEditTitleInput">Überschrift</label>
+            <input type="text" id="achievementEditTitleInput" maxlength="40" placeholder="Standard-Name verwenden">
+        </div>
+
+        <div id="achievementEditStatsSection">
+            <label>Statistik (bis zu 8 Zeilen, je Bezeichnung + Wert)</label>
+            <div id="achievementEditRows" class="achievement-edit-rows"></div>
+            <button class="secondary-button" id="achievementEditAddRow" type="button">+ Zeile hinzufügen</button>
+        </div>
+
+        <div id="achievementEditLinksSection">
+            <label>Links (bis zu 6, je Linktext + URL)</label>
+            <div id="achievementEditLinkRows" class="achievement-edit-rows"></div>
+            <button class="secondary-button" id="achievementEditAddLinkRow" type="button">+ Link hinzufügen</button>
+        </div>
+
+        <div class="modal-actions">
+            <button class="secondary-button" type="button" data-close-dialog="achievementEditDialog">Abbrechen</button>
+            <button class="primary-button" id="achievementEditSave" type="button">Speichern</button>
         </div>
     </div>
 </dialog>
@@ -1948,6 +2348,10 @@ if ($appVersion === '') {
             <label for="loginPassword">Passwort</label>
             <input type="password" id="loginPassword" autocomplete="current-password" required>
         </div>
+        <label class="remember-row">
+            <input type="checkbox" id="loginRemember">
+            <span>Angemeldet bleiben auf diesem Gerät</span>
+        </label>
         <div class="modal-actions">
             <button class="secondary-button" type="button" data-close-dialog="loginDialog">Abbrechen</button>
             <button class="primary-button" type="submit">Anmelden</button>
@@ -1981,6 +2385,10 @@ if ($appVersion === '') {
             </div>
         </div>
         <p class="field-help"><strong>Passwortregel:</strong> Mindestens 8 Zeichen sowie mindestens ein Buchstabe, eine Zahl und ein Sonderzeichen, zum Beispiel <code>! ? # + - _ @ €</code>. Umlaute wie ä, ö und ü zählen als Buchstaben.</p>
+        <label class="remember-row">
+            <input type="checkbox" id="registerRemember" checked>
+            <span>Angemeldet bleiben auf diesem Gerät</span>
+        </label>
         <div class="modal-actions">
             <button class="secondary-button" type="button" data-close-dialog="registerDialog">Abbrechen</button>
             <button class="primary-button" type="submit">Account anlegen</button>
@@ -2249,6 +2657,8 @@ if ($appVersion === '') {
     const accountSummary = byId('accountSummary');
 
     const installDialog = byId('installDialog');
+    const infoDialog = byId('infoDialog');
+    const achievementEditDialog = byId('achievementEditDialog');
     const loginDialog = byId('loginDialog');
     const registerDialog = byId('registerDialog');
     const profileDialog = byId('profileDialog');
@@ -2393,6 +2803,7 @@ if ($appVersion === '') {
         loading.hidden = true;
         renderAuth();
         renderPlan();
+        renderAchievementGrid();
         if (adminDialog.open) renderAdminPanel();
     }
 
@@ -2466,6 +2877,382 @@ if ($appVersion === '') {
             showToast(error.message);
         }
     }
+
+    // Erfolgs-Widgets: jedes Spiel hat GENAU EINE Seite mit zwei Karten —
+    // links Statistik, rechts die dazugehörigen Links. Bei WoW kommt die
+    // Statistik live von Raider.IO, bei den anderen drei ist sie manuell
+    // gepflegt. Titel und Links sind bei allen vier Admin-editierbar.
+    const achievementGames = [
+        { id: 'wow', label: 'World of Warcraft', icon: '⚔', type: 'wow', source: 'Beste Mythisch-Plus-Läufe, live via Raider.IO' },
+        { id: 'hots', label: 'Heroes of the Storm', icon: '🌀', type: 'manual', source: 'Manuell gepflegt' },
+        { id: 'diablo4', label: 'Diablo IV', icon: '🔥', type: 'manual', source: 'Manuell gepflegt' },
+        { id: 'rocket_league', label: 'Rocket League', icon: '🚀', type: 'manual', source: 'Manuell gepflegt' },
+    ];
+    const achievementGamesById = Object.fromEntries(achievementGames.map(game => [game.id, game]));
+    let achievementPairIndex = 0;
+    let achievementsData = null;
+
+    function statsCardTitle(game) {
+        if (game.type === 'wow') return 'M+ Wertungen';
+        const data = achievementsData ? achievementsData[game.id] : null;
+        return (data && data.title) || game.label;
+    }
+
+    function linksCardTitle(game) {
+        const data = achievementsData ? achievementsData[game.id] : null;
+        return (data && data.links_title) || `${game.label} Links`;
+    }
+
+    function renderAchievementNav() {
+        const game = achievementGames[achievementPairIndex];
+        byId('achievementsNavLabel').textContent = game.label;
+        byId('achievementsPrev').disabled = achievementGames.length <= 1;
+        byId('achievementsNext').disabled = achievementGames.length <= 1;
+    }
+
+    function formatUpdatedAt(isoString) {
+        if (!isoString) return '';
+        const date = new Date(isoString);
+        if (Number.isNaN(date.getTime())) return '';
+        return `Aktualisiert ${date.toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}`;
+    }
+
+    function buildWowBody(wow) {
+        const container = document.createElement('div');
+        container.className = 'mplus-bars';
+
+        if (!wow || !wow.configured) {
+            container.innerHTML = '<p class="widget-empty">Noch keine WoW-Charaktere für Raider.IO hinterlegt.</p>';
+            return { body: container, updated: '' };
+        }
+        if (!wow.runs || wow.runs.length === 0) {
+            container.innerHTML = '<p class="widget-empty">Für die hinterlegten Charaktere liegen noch keine Season-Läufe vor.</p>';
+            return { body: container, updated: formatUpdatedAt(wow.updated_at) };
+        }
+
+        const maxLevel = Math.max(...wow.runs.map(run => run.level), 1);
+        for (const run of wow.runs) {
+            const row = document.createElement('div');
+            row.className = 'mplus-bar-row';
+
+            const label = document.createElement('div');
+            label.className = 'mplus-bar-label';
+            const nameHtml = run.profile_url
+                ? `<a href="${run.profile_url}" target="_blank" rel="noopener">${run.character}</a>`
+                : run.character;
+            const scoreHtml = run.score ? ` <small>· Score ${run.score}</small>` : '';
+            label.innerHTML = `<span>${nameHtml}${scoreHtml} — ${run.dungeon}</span><b>+${run.level}</b>`;
+
+            const track = document.createElement('div');
+            track.className = 'mplus-bar-track';
+            const fill = document.createElement('div');
+            fill.className = 'mplus-bar-fill';
+            fill.style.width = `${Math.max(6, Math.round((run.level / maxLevel) * 100))}%`;
+            track.appendChild(fill);
+
+            row.append(label, track);
+            container.appendChild(row);
+        }
+
+        return { body: container, updated: formatUpdatedAt(wow.updated_at) };
+    }
+
+    function buildManualStatsBody(data) {
+        const list = document.createElement('ul');
+        list.className = 'd4-milestones';
+
+        const milestones = (data && data.milestones) || [];
+        if (milestones.length === 0) {
+            list.innerHTML = '<li class="widget-empty">Noch keine Einträge hinterlegt.</li>';
+        } else {
+            for (const milestone of milestones) {
+                const item = document.createElement('li');
+                const label = document.createElement('span');
+                label.textContent = milestone.label;
+                const value = document.createElement('span');
+                value.textContent = milestone.value;
+                item.append(label, value);
+                list.appendChild(item);
+            }
+        }
+
+        const updated = data && data.updated_at
+            ? formatUpdatedAt(data.updated_at)
+            : 'Noch nicht aktualisiert';
+
+        return { body: list, updated };
+    }
+
+    function buildLinksBody(data) {
+        const list = document.createElement('ul');
+        list.className = 'achievement-links';
+
+        const links = (data && data.links) || [];
+        if (links.length === 0) {
+            list.innerHTML = '<li class="widget-empty">Noch keine Links hinterlegt.</li>';
+        } else {
+            for (const link of links) {
+                const item = document.createElement('li');
+                const anchor = document.createElement('a');
+                anchor.href = link.url;
+                anchor.target = '_blank';
+                anchor.rel = 'noopener';
+                anchor.textContent = link.label;
+                item.appendChild(anchor);
+                list.appendChild(item);
+            }
+        }
+
+        return { body: list, updated: '' };
+    }
+
+    function buildAchievementCardShell(game, cardType) {
+        const card = document.createElement('article');
+        card.className = 'achievement-card';
+        card.dataset.widget = `${game.id}-${cardType}`;
+
+        const head = document.createElement('div');
+        head.className = 'achievement-card-head';
+
+        const icon = document.createElement('span');
+        icon.className = `achievement-icon ${game.id}`;
+        icon.setAttribute('aria-hidden', 'true');
+        icon.textContent = cardType === 'links' ? '🔗' : game.icon;
+
+        const headText = document.createElement('div');
+        headText.className = 'achievement-card-head-text';
+        const title = document.createElement('h3');
+        title.textContent = cardType === 'links' ? linksCardTitle(game) : statsCardTitle(game);
+        const source = document.createElement('p');
+        source.className = 'achievement-source';
+        source.textContent = cardType === 'links' ? 'Nützliche Links' : game.source;
+        headText.append(title, source);
+
+        head.append(icon, headText);
+
+        const canEdit = cardType === 'links' ? state.admin : (state.admin && game.type === 'manual');
+        if (canEdit) {
+            const editButton = document.createElement('button');
+            editButton.type = 'button';
+            editButton.className = 'achievement-edit-button';
+            editButton.title = `${game.label} bearbeiten`;
+            editButton.setAttribute('aria-label', `${game.label} bearbeiten`);
+            editButton.textContent = '✎';
+            editButton.addEventListener('click', () => openAchievementEditDialog(game.id, cardType));
+            head.appendChild(editButton);
+        }
+
+        card.appendChild(head);
+        return card;
+    }
+
+    function buildAchievementCard(game, cardType) {
+        const card = buildAchievementCardShell(game, cardType);
+        const gameData = achievementsData ? achievementsData[game.id] : null;
+
+        if (!achievementsData) {
+            const loading = document.createElement('p');
+            loading.className = 'widget-loading';
+            loading.textContent = 'Wird geladen …';
+            card.appendChild(loading);
+            card.appendChild(document.createElement('p')).className = 'achievement-updated';
+            return card;
+        }
+
+        let built;
+        if (cardType === 'links') {
+            built = buildLinksBody(gameData);
+        } else {
+            built = game.type === 'wow' ? buildWowBody(gameData) : buildManualStatsBody(gameData);
+        }
+        card.appendChild(built.body);
+
+        const updated = document.createElement('p');
+        updated.className = 'achievement-updated';
+        if (cardType === 'stats' && game.type === 'manual' && (!gameData || !gameData.configured)) {
+            updated.innerHTML = 'Platzhalter-Daten <span class="mock-tag">Beispiel</span>';
+        } else {
+            updated.textContent = built.updated;
+        }
+        card.appendChild(updated);
+
+        return card;
+    }
+
+    function renderAchievementGrid() {
+        renderAchievementNav();
+        const grid = byId('achievementGrid');
+        grid.replaceChildren();
+        const game = achievementGames[achievementPairIndex];
+        grid.appendChild(buildAchievementCard(game, 'stats'));
+        grid.appendChild(buildAchievementCard(game, 'links'));
+    }
+
+    async function loadAchievements() {
+        renderAchievementGrid();
+        try {
+            const data = await api('achievements');
+            achievementsData = {
+                wow: data.wow,
+                hots: data.hots,
+                diablo4: data.diablo4,
+                rocket_league: data.rocket_league,
+            };
+        } catch (error) {
+            achievementsData = null;
+            showToast('Die Erfolge konnten nicht geladen werden.');
+        }
+        renderAchievementGrid();
+    }
+
+    let achievementEditRowId = 0;
+
+    function addAchievementEditRow(label = '', value = '') {
+        const rowId = `achievementRow${achievementEditRowId++}`;
+        const row = document.createElement('div');
+        row.className = 'achievement-edit-row';
+        row.dataset.rowId = rowId;
+
+        const labelInput = document.createElement('input');
+        labelInput.type = 'text';
+        labelInput.placeholder = 'Bezeichnung, z. B. „Rang“';
+        labelInput.maxLength = 40;
+        labelInput.value = label;
+        labelInput.className = 'achievement-edit-label';
+
+        const valueInput = document.createElement('input');
+        valueInput.type = 'text';
+        valueInput.placeholder = 'Wert, z. B. „Diamant 2“';
+        valueInput.maxLength = 60;
+        valueInput.value = value;
+        valueInput.className = 'achievement-edit-value';
+
+        const removeButton = document.createElement('button');
+        removeButton.type = 'button';
+        removeButton.textContent = '✕';
+        removeButton.setAttribute('aria-label', 'Zeile entfernen');
+        removeButton.addEventListener('click', () => row.remove());
+
+        row.append(labelInput, valueInput, removeButton);
+        byId('achievementEditRows').appendChild(row);
+    }
+
+    function addAchievementEditLinkRow(label = '', url = '') {
+        const row = document.createElement('div');
+        row.className = 'achievement-edit-row';
+
+        const labelInput = document.createElement('input');
+        labelInput.type = 'text';
+        labelInput.placeholder = 'Linktext, z. B. „Raider.IO Gilde“';
+        labelInput.maxLength = 30;
+        labelInput.value = label;
+        labelInput.className = 'achievement-edit-link-label';
+
+        const urlInput = document.createElement('input');
+        urlInput.type = 'url';
+        urlInput.placeholder = 'https://…';
+        urlInput.maxLength = 200;
+        urlInput.value = url;
+        urlInput.className = 'achievement-edit-link-url';
+
+        const removeButton = document.createElement('button');
+        removeButton.type = 'button';
+        removeButton.textContent = '✕';
+        removeButton.setAttribute('aria-label', 'Link entfernen');
+        removeButton.addEventListener('click', () => row.remove());
+
+        row.append(labelInput, urlInput, removeButton);
+        byId('achievementEditLinkRows').appendChild(row);
+    }
+
+    function openAchievementEditDialog(gameId, part) {
+        const game = achievementGamesById[gameId];
+        const data = achievementsData ? achievementsData[gameId] : null;
+
+        const statsSection = byId('achievementEditStatsSection');
+        const linksSection = byId('achievementEditLinksSection');
+        statsSection.hidden = part !== 'stats';
+        linksSection.hidden = part !== 'links';
+
+        const titleInput = byId('achievementEditTitleInput');
+        if (part === 'stats') {
+            byId('achievementEditTitle').textContent = `${statsCardTitle(game)} bearbeiten`;
+            titleInput.value = (data && data.title) || '';
+            titleInput.placeholder = game.label;
+
+            byId('achievementEditRows').replaceChildren();
+            const currentMilestones = (data && data.milestones) || [];
+            if (currentMilestones.length === 0) {
+                addAchievementEditRow();
+            } else {
+                for (const milestone of currentMilestones) addAchievementEditRow(milestone.label, milestone.value);
+            }
+        } else {
+            byId('achievementEditTitle').textContent = `${linksCardTitle(game)} bearbeiten`;
+            titleInput.value = (data && data.links_title) || '';
+            titleInput.placeholder = `${game.label} Links`;
+
+            byId('achievementEditLinkRows').replaceChildren();
+            const currentLinks = (data && data.links) || [];
+            if (currentLinks.length === 0) {
+                addAchievementEditLinkRow();
+            } else {
+                for (const link of currentLinks) addAchievementEditLinkRow(link.label, link.url);
+            }
+        }
+
+        const saveButton = byId('achievementEditSave');
+        saveButton.onclick = async () => {
+            const title = titleInput.value.trim();
+            const payload = { game: gameId, part };
+
+            if (part === 'stats') {
+                const milestoneRows = [...byId('achievementEditRows').querySelectorAll('.achievement-edit-row')];
+                payload.title = title;
+                payload.milestones = milestoneRows
+                    .map(row => ({
+                        label: row.querySelector('.achievement-edit-label').value.trim(),
+                        value: row.querySelector('.achievement-edit-value').value.trim(),
+                    }))
+                    .filter(entry => entry.label !== '' && entry.value !== '');
+            } else {
+                const linkRows = [...byId('achievementEditLinkRows').querySelectorAll('.achievement-edit-row')];
+                const links = linkRows
+                    .map(row => ({
+                        label: row.querySelector('.achievement-edit-link-label').value.trim(),
+                        url: row.querySelector('.achievement-edit-link-url').value.trim(),
+                    }))
+                    .filter(entry => entry.label !== '' && entry.url !== '');
+
+                for (const link of links) {
+                    if (!/^https?:\/\//i.test(link.url)) {
+                        showToast(`Der Link „${link.label}“ muss mit http:// oder https:// beginnen.`);
+                        return;
+                    }
+                }
+                payload.links_title = title;
+                payload.links = links;
+            }
+
+            saveButton.disabled = true;
+            try {
+                await api('admin_save_achievement', payload);
+                achievementEditDialog.close();
+                showToast('Wurde aktualisiert.');
+                await loadAchievements();
+            } catch (error) {
+                handleApiError(error);
+                showToast(error.message);
+            } finally {
+                saveButton.disabled = false;
+            }
+        };
+
+        achievementEditDialog.showModal();
+    }
+
+    byId('achievementEditAddRow').addEventListener('click', () => addAchievementEditRow());
+    byId('achievementEditAddLinkRow').addEventListener('click', () => addAchievementEditLinkRow());
 
     function handleApiError(error) {
         if (error.code === 'storage_not_writable') storageWarning.hidden = false;
@@ -2848,6 +3635,7 @@ if ($appVersion === '') {
     }
 
     byId('installAppButton').addEventListener('click', installApp);
+    byId('infoButton').addEventListener('click', () => infoDialog.showModal());
     byId('loginButton').addEventListener('click', openLoginDialog);
     byId('registerButton').addEventListener('click', openRegisterDialog);
     byId('profileButton').addEventListener('click', openProfileDialog);
@@ -2885,7 +3673,7 @@ if ($appVersion === '') {
     byId('logoutButton').addEventListener('click', async () => {
         try {
             await api('logout', {});
-            [installDialog, profileDialog, passwordDialog, adminDialog, adminUserDialog, playerDialog, dateDialog, statusDialog].forEach(dialog => dialog.open && dialog.close());
+            [installDialog, infoDialog, achievementEditDialog, profileDialog, passwordDialog, adminDialog, adminUserDialog, playerDialog, dateDialog, statusDialog].forEach(dialog => dialog.open && dialog.close());
             await loadPlan();
             showToast('Du wurdest abgemeldet.');
         } catch (error) { handleApiError(error); }
@@ -2911,7 +3699,8 @@ if ($appVersion === '') {
         try {
             const data = await api('login', {
                 username: byId('loginUsername').value,
-                password: byId('loginPassword').value
+                password: byId('loginPassword').value,
+                remember: byId('loginRemember').checked
             });
             loginDialog.close();
             applyData(data);
@@ -2930,7 +3719,8 @@ if ($appVersion === '') {
                 username: byId('registerUsername').value,
                 player_name: byId('registerPlayerName').value,
                 password,
-                password_confirmation: passwordConfirmation
+                password_confirmation: passwordConfirmation,
+                remember: byId('registerRemember').checked
             });
             registerDialog.close();
             applyData(data);
@@ -3083,7 +3873,7 @@ if ($appVersion === '') {
         if (passwordChangeForced) event.preventDefault();
     });
 
-    [installDialog, loginDialog, registerDialog, profileDialog, passwordDialog, adminDialog, adminUserDialog, playerDialog, dateDialog, statusDialog].forEach(dialog => {
+    [installDialog, infoDialog, achievementEditDialog, loginDialog, registerDialog, profileDialog, passwordDialog, adminDialog, adminUserDialog, playerDialog, dateDialog, statusDialog].forEach(dialog => {
         dialog.addEventListener('click', event => {
             if (event.target !== dialog) return;
             if (dialog === passwordDialog && passwordChangeForced) return;
@@ -3169,7 +3959,17 @@ if ($appVersion === '') {
         });
     })();
 
+    byId('achievementsPrev').addEventListener('click', () => {
+        achievementPairIndex = (achievementPairIndex - 1 + achievementGames.length) % achievementGames.length;
+        renderAchievementGrid();
+    });
+    byId('achievementsNext').addEventListener('click', () => {
+        achievementPairIndex = (achievementPairIndex + 1) % achievementGames.length;
+        renderAchievementGrid();
+    });
+
     loadPlan();
+    loadAchievements();
 </script>
 </body>
 </html>

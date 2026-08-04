@@ -1,5 +1,15 @@
 # Änderungsprotokoll
 
+## 2.3.0
+
+- Erfolge-Bereich unter dem Kalender ergänzt: pro Spiel (WoW, Heroes of the Storm, Diablo IV, Rocket League) ein Statistik- und ein Link-Kästchen, per Pfeilen durchblätterbar
+- WoW-Mythisch-Plus-Statistik läuft automatisch über die Raider.IO-API (Charakterliste konfigurierbar)
+- Statistik- und Link-Kästchen (Überschrift, Inhalte) sind für die anderen drei Spiele sowie die Links aller Spiele über die Adminoberfläche einzeln bearbeitbar
+- Ausführlicher Erklärtext („So funktioniert der Kalender“) aus der Hauptseite in einen eigenen „Was soll das?“-Dialog ausgelagert
+- „Angemeldet bleiben“-Option beim Anmelden/Registrieren (30 Tage, gerätebezogen)
+- PHP-Session-Sperre wird beim Erfolge-Abruf sofort freigegeben, damit lang laufende externe Anfragen nicht mehr andere Anfragen (z. B. Admin-Speichern) blockieren
+- Ladeanzeigen im gesamten Kalender vereinheitlicht
+
 ## 2.2.0
 
 - Spielwunsch je Spieler und Termin ergänzt

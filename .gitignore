@@ -8,6 +8,9 @@
 *.tmp
 *.log
 
+# Zwischengespeicherte Erfolgs-Widget-Daten (Raider.IO u.ä.)
+/data/cache/
+
 # Betriebssysteme und Editoren
 .DS_Store
 Thumbs.db

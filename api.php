@@ -18,6 +18,33 @@ const ALLOWED_STATUSES = ['', 'online', 'late', 'absent', 'vacation'];
 const ALLOWED_THEMES = ['default', 'summer', 'winter'];
 const STORE_PREFIX = "<?php http_response_code(403); exit; ?>\n";
 
+// Erfolgs-Widgets: WoW-Charaktere, die für die Mythisch-Plus-Anzeige über
+// Raider.IO abgefragt werden. Leer lassen, bis Charakternamen feststehen –
+// das Widget zeigt dann automatisch einen "noch nicht eingerichtet"-Hinweis.
+const WOW_ACHIEVEMENT_CHARACTERS = [
+    ['name' => 'Fischjö', 'realm' => 'alexstrasza', 'region' => 'eu'],
+    ['name' => 'Crydamoure', 'realm' => 'mannoroth', 'region' => 'eu'],
+    ['name' => 'Redan', 'realm' => 'rexxar', 'region' => 'eu'],
+    ['name' => 'Baalgrim', 'realm' => 'rexxar', 'region' => 'eu'],
+    ['name' => 'Shootingjack', 'realm' => 'rexxar', 'region' => 'eu'],
+    ['name' => 'Vakur', 'realm' => 'rexxar', 'region' => 'eu'],
+    ['name' => 'Idran', 'realm' => 'rexxar', 'region' => 'eu'],
+];
+
+const ACHIEVEMENTS_CACHE_TTL_SECONDS = 1800;
+const ACHIEVEMENT_MANUAL_GAMES = ['hots', 'diablo4', 'rocket_league']; // Spiele mit manuell gepflegter Statistik
+const ACHIEVEMENT_GAMES = ['wow', 'hots', 'diablo4', 'rocket_league']; // Alle Spiele (inkl. WoW, das Titel/Links aber nicht Stats manuell hat)
+const ACHIEVEMENT_LABEL_MAX = 40;
+const ACHIEVEMENT_VALUE_MAX = 60;
+const ACHIEVEMENT_MILESTONES_MAX = 8;
+const ACHIEVEMENT_TITLE_MAX = 40;
+const ACHIEVEMENT_LINK_LABEL_MAX = 30;
+const ACHIEVEMENT_LINK_URL_MAX = 200;
+const ACHIEVEMENT_LINKS_MAX = 6;
+const REMEMBER_ME_SECONDS = 60 * 60 * 24 * 30; // 30 Tage
+const CALENDAR_UPCOMING_DAYS_LIMIT = 7; // Maximal so viele kommende Spieltage werden angezeigt
+const CALENDAR_PAST_DAY_VISIBLE_DAYS = 1; // So viele Tage bleibt der letzte vergangene Spieltag noch sichtbar
+
 function isHttpsRequest(): bool
 {
     if (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') {
@@ -34,8 +61,34 @@ session_set_cookie_params([
     'httponly' => true,
     'samesite' => 'Lax',
 ]);
+// Ohne diese Anhebung räumt PHP serverseitige Sitzungsdateien standardmäßig
+// schon nach recht kurzer Inaktivität weg (oft ~24 Minuten) – dann würde
+// "Angemeldet bleiben" trotz gültigem Cookie nach kurzer Pause nicht mehr
+// funktionieren, weil die Sitzungsdaten auf dem Server bereits gelöscht sind.
+$configuredGcLifetime = (int) ini_get('session.gc_maxlifetime');
+if ($configuredGcLifetime < REMEMBER_ME_SECONDS) {
+    ini_set('session.gc_maxlifetime', (string) REMEMBER_ME_SECONDS);
+}
 if (session_status() !== PHP_SESSION_ACTIVE) {
     session_start();
+}
+
+function applyRememberMeCookie(bool $remember): void
+{
+    if (!$remember) {
+        return;
+    }
+    // Überschreibt den zuvor von session_start()/session_regenerate_id()
+    // gesendeten Session-Cookie (der beim Schließen des Browsers ausläuft)
+    // mit einer lang laufenden Variante, ohne die Sitzungsdaten selbst
+    // anzufassen.
+    setcookie(session_name(), session_id(), [
+        'expires' => time() + REMEMBER_ME_SECONDS,
+        'path' => '/',
+        'secure' => isHttpsRequest(),
+        'httponly' => true,
+        'samesite' => 'Lax',
+    ]);
 }
 
 function respond(array $payload, int $status = 200): void
@@ -96,6 +149,129 @@ function ensureStorageDirectory(): bool
     return @mkdir($directory, 0775, true) || is_dir($directory);
 }
 
+function achievementsCacheDirectory(): string
+{
+    return storageDirectory() . DIRECTORY_SEPARATOR . 'cache';
+}
+
+function achievementsCacheRead(string $file): ?array
+{
+    $path = achievementsCacheDirectory() . DIRECTORY_SEPARATOR . $file;
+    if (!is_file($path) || (time() - filemtime($path)) >= ACHIEVEMENTS_CACHE_TTL_SECONDS) {
+        return null;
+    }
+    $decoded = json_decode((string) file_get_contents($path), true);
+    return is_array($decoded) ? $decoded : null;
+}
+
+function achievementsCacheWrite(string $file, array $data): void
+{
+    $directory = achievementsCacheDirectory();
+    if (!is_dir($directory) && !@mkdir($directory, 0750, true) && !is_dir($directory)) {
+        return;
+    }
+    @file_put_contents(
+        $directory . DIRECTORY_SEPARATOR . $file,
+        json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
+    );
+}
+
+function achievementsWowData(): array
+{
+    if (WOW_ACHIEVEMENT_CHARACTERS === []) {
+        return ['configured' => false, 'runs' => [], 'updated_at' => null];
+    }
+
+    $cached = achievementsCacheRead('wow-mplus.json');
+    if ($cached !== null) {
+        return $cached;
+    }
+
+    $runs = [];
+    foreach (WOW_ACHIEVEMENT_CHARACTERS as $character) {
+        $name = (string) ($character['name'] ?? '');
+        $realm = (string) ($character['realm'] ?? '');
+        $region = (string) ($character['region'] ?? 'eu');
+        if ($name === '' || $realm === '') {
+            continue;
+        }
+
+        $url = 'https://raider.io/api/v1/characters/profile'
+            . '?region=' . rawurlencode($region)
+            . '&realm=' . rawurlencode($realm)
+            . '&name=' . rawurlencode($name)
+            . '&fields=' . rawurlencode('mythic_plus_best_runs,mythic_plus_scores_by_season:current');
+
+        $context = stream_context_create(['http' => ['timeout' => 3, 'ignore_errors' => true]]);
+        $raw = @file_get_contents($url, false, $context);
+        if ($raw === false) {
+            continue;
+        }
+
+        $data = json_decode($raw, true);
+        if (!is_array($data) || !isset($data['mythic_plus_best_runs']) || !is_array($data['mythic_plus_best_runs'])) {
+            continue;
+        }
+
+        // Nur den besten Run des Charakters übernehmen (höchster Schlüsselstufe).
+        $bestRun = null;
+        foreach ($data['mythic_plus_best_runs'] as $run) {
+            $level = (int) ($run['mythic_level'] ?? 0);
+            if ($bestRun === null || $level > $bestRun['level']) {
+                $bestRun = [
+                    'dungeon' => (string) ($run['dungeon'] ?? '?'),
+                    'level' => $level,
+                    'upgrades' => (int) ($run['num_keystone_upgrades'] ?? 0),
+                ];
+            }
+        }
+        if ($bestRun === null) {
+            continue;
+        }
+
+        $score = 0.0;
+        $seasons = $data['mythic_plus_scores_by_season'] ?? [];
+        if (is_array($seasons) && isset($seasons[0]['scores']['all'])) {
+            $score = (float) $seasons[0]['scores']['all'];
+        }
+
+        $runs[] = [
+            'character' => (string) ($data['name'] ?? $name),
+            'dungeon' => $bestRun['dungeon'],
+            'level' => $bestRun['level'],
+            'upgrades' => $bestRun['upgrades'],
+            'score' => round($score, 1),
+            'profile_url' => (string) ($data['profile_url'] ?? ''),
+        ];
+    }
+
+    usort($runs, static fn(array $a, array $b): int => $b['score'] <=> $a['score']);
+
+    $result = [
+        'configured' => true,
+        'runs' => $runs,
+        'updated_at' => date('c'),
+    ];
+
+    achievementsCacheWrite('wow-mplus.json', $result);
+
+    return $result;
+}
+
+function achievementsManualData(array $store, string $game): array
+{
+    $entry = $store['achievements_manual'][$game] ?? ['title' => null, 'milestones' => [], 'links_title' => null, 'links' => [], 'updated_at' => null];
+    $milestones = $entry['milestones'] ?? [];
+    return [
+        'configured' => $milestones !== [],
+        'title' => $entry['title'] ?? null,
+        'milestones' => $milestones,
+        'links_title' => $entry['links_title'] ?? null,
+        'links' => $entry['links'] ?? [],
+        'updated_at' => $entry['updated_at'] ?? null,
+    ];
+}
+
 function storageIsWritable(): bool
 {
     $path = storagePath();
@@ -119,6 +295,46 @@ function defaultStore(): array
         'settings' => [
             'admin_player_names' => [],
             'theme' => 'default',
+        ],
+        'achievements_manual' => [
+            'wow' => [
+                'title' => null,
+                'milestones' => [],
+                'links_title' => null,
+                'links' => [
+                    ['label' => 'Raider.IO Gilde', 'url' => 'https://raider.io/'],
+                ],
+                'updated_at' => null,
+            ],
+            'hots' => [
+                'title' => null,
+                'milestones' => [
+                    ['label' => 'Rang', 'value' => 'Noch nicht gepflegt'],
+                ],
+                'links_title' => null,
+                'links' => [],
+                'updated_at' => null,
+            ],
+            'diablo4' => [
+                'title' => null,
+                'milestones' => [
+                    ['label' => 'Season-Reise', 'value' => 'Kapitel 3 von 7 abgeschlossen'],
+                    ['label' => 'Höchste Weltstufe', 'value' => 'Weltstufe 4'],
+                    ['label' => 'Letzter besiegter Boss', 'value' => 'Uber-Lilith (Gruppe)'],
+                ],
+                'links_title' => null,
+                'links' => [],
+                'updated_at' => null,
+            ],
+            'rocket_league' => [
+                'title' => null,
+                'milestones' => [
+                    ['label' => 'Rang', 'value' => 'Noch nicht gepflegt'],
+                ],
+                'links_title' => null,
+                'links' => [],
+                'updated_at' => null,
+            ],
         ],
     ];
 }
@@ -161,6 +377,22 @@ function normalizeStore(array $store): array
         ? array_values($store['settings']['admin_player_names'])
         : [];
     $store['settings']['theme'] = validateThemeValue($store['settings']['theme'] ?? 'default', 'default');
+
+    $defaultAchievements = $defaults['achievements_manual'];
+    $rawAchievements = is_array($store['achievements_manual'] ?? null) ? $store['achievements_manual'] : [];
+    $store['achievements_manual'] = [];
+    foreach (ACHIEVEMENT_GAMES as $game) {
+        $entry = is_array($rawAchievements[$game] ?? null) ? $rawAchievements[$game] : $defaultAchievements[$game];
+        $title = trim((string) ($entry['title'] ?? ''));
+        $linksTitle = trim((string) ($entry['links_title'] ?? ''));
+        $store['achievements_manual'][$game] = [
+            'title' => $title === '' ? null : mb_substr($title, 0, ACHIEVEMENT_TITLE_MAX, 'UTF-8'),
+            'milestones' => normalizeAchievementMilestones($entry['milestones'] ?? []),
+            'links_title' => $linksTitle === '' ? null : mb_substr($linksTitle, 0, ACHIEVEMENT_TITLE_MAX, 'UTF-8'),
+            'links' => normalizeAchievementLinks($entry['links'] ?? []),
+            'updated_at' => is_string($entry['updated_at'] ?? null) ? $entry['updated_at'] : null,
+        ];
+    }
 
     $maxPlayerId = 0;
     foreach ($store['players'] as &$player) {
@@ -474,6 +706,139 @@ function validateGame($value): string
     return $game;
 }
 
+function validateAchievementGame($value): string
+{
+    $game = (string) $value;
+    if (!in_array($game, ACHIEVEMENT_GAMES, true)) {
+        respond(['ok' => false, 'error' => 'Unbekanntes Erfolge-Widget.'], 422);
+    }
+    return $game;
+}
+
+function validateAchievementTitle($value): ?string
+{
+    $title = trim((string) $value);
+    if ($title === '') {
+        return null;
+    }
+    if (textLength($title) > ACHIEVEMENT_TITLE_MAX) {
+        respond(['ok' => false, 'error' => 'Die Überschrift ist zu lang.'], 422);
+    }
+    return $title;
+}
+
+function isLikelyHttpUrl(string $url): bool
+{
+    return (bool) preg_match('#^https?://[^\s]+\.[^\s]+$#i', $url);
+}
+
+function validateAchievementLinks($value): array
+{
+    if (!is_array($value)) {
+        return [];
+    }
+    $links = [];
+    foreach ($value as $entry) {
+        if (!is_array($entry)) {
+            continue;
+        }
+        $label = trim((string) ($entry['label'] ?? ''));
+        $url = trim((string) ($entry['url'] ?? ''));
+        if ($label === '' || $url === '') {
+            continue;
+        }
+        if (!isLikelyHttpUrl($url)) {
+            respond(['ok' => false, 'error' => 'Ein Link ist ungültig. Bitte mit http:// oder https:// beginnen.'], 422);
+        }
+        if (textLength($label) > ACHIEVEMENT_LINK_LABEL_MAX || textLength($url) > ACHIEVEMENT_LINK_URL_MAX) {
+            respond(['ok' => false, 'error' => 'Ein Link ist zu lang.'], 422);
+        }
+        $links[] = ['label' => $label, 'url' => $url];
+        if (count($links) >= ACHIEVEMENT_LINKS_MAX) {
+            break;
+        }
+    }
+    return $links;
+}
+
+function normalizeAchievementLinks($value): array
+{
+    if (!is_array($value)) {
+        return [];
+    }
+    $links = [];
+    foreach ($value as $entry) {
+        if (!is_array($entry)) {
+            continue;
+        }
+        $label = trim((string) ($entry['label'] ?? ''));
+        $url = trim((string) ($entry['url'] ?? ''));
+        if ($label === '' || $url === '' || !isLikelyHttpUrl($url)) {
+            continue;
+        }
+        $links[] = [
+            'label' => mb_substr($label, 0, ACHIEVEMENT_LINK_LABEL_MAX, 'UTF-8'),
+            'url' => mb_substr($url, 0, ACHIEVEMENT_LINK_URL_MAX, 'UTF-8'),
+        ];
+        if (count($links) >= ACHIEVEMENT_LINKS_MAX) {
+            break;
+        }
+    }
+    return $links;
+}
+
+function validateAchievementMilestones($value): array
+{
+    if (!is_array($value)) {
+        return [];
+    }
+    $milestones = [];
+    foreach ($value as $entry) {
+        if (!is_array($entry)) {
+            continue;
+        }
+        $label = trim((string) ($entry['label'] ?? ''));
+        $milestoneValue = trim((string) ($entry['value'] ?? ''));
+        if ($label === '' || $milestoneValue === '') {
+            continue;
+        }
+        if (textLength($label) > ACHIEVEMENT_LABEL_MAX || textLength($milestoneValue) > ACHIEVEMENT_VALUE_MAX) {
+            respond(['ok' => false, 'error' => 'Ein Eintrag ist zu lang.'], 422);
+        }
+        $milestones[] = ['label' => $label, 'value' => $milestoneValue];
+        if (count($milestones) >= ACHIEVEMENT_MILESTONES_MAX) {
+            break;
+        }
+    }
+    return $milestones;
+}
+
+function normalizeAchievementMilestones($value): array
+{
+    if (!is_array($value)) {
+        return [];
+    }
+    $milestones = [];
+    foreach ($value as $entry) {
+        if (!is_array($entry)) {
+            continue;
+        }
+        $label = trim((string) ($entry['label'] ?? ''));
+        $milestoneValue = trim((string) ($entry['value'] ?? ''));
+        if ($label === '' || $milestoneValue === '') {
+            continue;
+        }
+        $milestones[] = [
+            'label' => mb_substr($label, 0, ACHIEVEMENT_LABEL_MAX, 'UTF-8'),
+            'value' => mb_substr($milestoneValue, 0, ACHIEVEMENT_VALUE_MAX, 'UTF-8'),
+        ];
+        if (count($milestones) >= ACHIEVEMENT_MILESTONES_MAX) {
+            break;
+        }
+    }
+    return $milestones;
+}
+
 function validateThemeValue($value, ?string $fallback = null): string
 {
     $theme = trim((string) $value);
@@ -711,19 +1076,39 @@ function buildEventDates(array $customDates): array
     }
 
     $visible = [];
+
+    // Der letzte vergangene Spieltag bleibt nur für 24 Stunden sichtbar, also
+    // ausschließlich am unmittelbar folgenden Kalendertag — danach verschwindet
+    // er, auch wenn noch kein neuerer vergangener Termin nachgerückt ist.
     if ($pastCandidates !== []) {
         rsort($pastCandidates, SORT_STRING);
-        $visible[$pastCandidates[0]] = true;
+        $mostRecentPast = $pastCandidates[0];
+        $mostRecentPastDate = new DateTimeImmutable($mostRecentPast, $tz);
+        $hiddenFrom = $mostRecentPastDate->modify('+' . (1 + CALENDAR_PAST_DAY_VISIBLE_DAYS) . ' days')->format('Y-m-d');
+        if ($todayIso < $hiddenFrom) {
+            $visible[$mostRecentPast] = true;
+        }
     }
+
+    // Kommende Spieltage aus automatischen und zusätzlichen Terminen
+    // zusammenführen, dann unabhängig von der Quelle auf die nächsten
+    // CALENDAR_UPCOMING_DAYS_LIMIT Tage begrenzen.
+    $upcoming = [];
     foreach (array_keys($automaticDates) as $date) {
         if ($date >= $todayIso) {
-            $visible[$date] = true;
+            $upcoming[$date] = true;
         }
     }
     foreach (array_keys($customMap) as $date) {
         if ($date >= $todayIso) {
-            $visible[$date] = true;
+            $upcoming[$date] = true;
         }
+    }
+    $upcomingList = array_keys($upcoming);
+    sort($upcomingList, SORT_STRING);
+    $upcomingList = array_slice($upcomingList, 0, CALENDAR_UPCOMING_DAYS_LIMIT);
+    foreach ($upcomingList as $date) {
+        $visible[$date] = true;
     }
 
     ksort($visible, SORT_STRING);
@@ -1035,6 +1420,29 @@ if ($action === 'bootstrap') {
     respond(bootstrapResponse(readStore()));
 }
 
+if ($action === 'achievements') {
+    // Setzt keine Session-Werte und kann mehrere Sekunden dauern (externe
+    // Raider.IO-Abfragen). Die Session-Sperre sofort freigeben, damit dieser
+    // Request nicht alle anderen Anfragen derselben Sitzung blockiert
+    // (z. B. einen Admin-Speichervorgang in einem anderen Tab).
+    session_write_close();
+
+    $achievementsStore = readStore();
+    $wow = achievementsWowData();
+    $wowMeta = $achievementsStore['achievements_manual']['wow'] ?? ['title' => null, 'links_title' => null, 'links' => []];
+    $wow['title'] = $wowMeta['title'] ?? null;
+    $wow['links_title'] = $wowMeta['links_title'] ?? null;
+    $wow['links'] = $wowMeta['links'] ?? [];
+
+    respond([
+        'ok' => true,
+        'wow' => $wow,
+        'hots' => achievementsManualData($achievementsStore, 'hots'),
+        'diablo4' => achievementsManualData($achievementsStore, 'diablo4'),
+        'rocket_league' => achievementsManualData($achievementsStore, 'rocket_league'),
+    ]);
+}
+
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     respond(['ok' => false, 'error' => 'Diese Aktion ist nur per POST verfügbar.'], 405);
 }
@@ -1103,6 +1511,7 @@ withWritableStore(function (array &$store) use ($action, $payload): array {
             session_regenerate_id(true);
             $_SESSION['user_id'] = $userId;
             $_SESSION['auth_version'] = 1;
+            applyRememberMeCookie(!empty($payload['remember']));
             return [bootstrapResponse($store), 201, true];
 
         case 'login':
@@ -1123,6 +1532,7 @@ withWritableStore(function (array &$store) use ($action, $payload): array {
             session_regenerate_id(true);
             $_SESSION['user_id'] = (int) $store['users'][$index]['id'];
             $_SESSION['auth_version'] = max(1, (int) ($store['users'][$index]['session_version'] ?? 1));
+            applyRememberMeCookie(!empty($payload['remember']));
             return [bootstrapResponse($store), 200, true];
 
         case 'change_password':
@@ -1368,6 +1778,35 @@ withWritableStore(function (array &$store) use ($action, $payload): array {
             $response = bootstrapResponse($store);
             $response['deleted_self'] = $deletingSelf;
             return [$response, 200, true];
+
+        case 'admin_save_achievement':
+            requireAdmin($store);
+            $achievementGame = validateAchievementGame($payload['game'] ?? '');
+            $part = (string) ($payload['part'] ?? '');
+            $existingEntry = $store['achievements_manual'][$achievementGame]
+                ?? ['title' => null, 'milestones' => [], 'links_title' => null, 'links' => [], 'updated_at' => null];
+
+            if ($part === 'stats') {
+                if ($achievementGame === 'wow') {
+                    return [['ok' => false, 'error' => 'Die WoW-Statistik kommt automatisch von Raider.IO und kann nicht bearbeitet werden.'], 422, false];
+                }
+                $existingEntry['title'] = validateAchievementTitle($payload['title'] ?? '');
+                $existingEntry['milestones'] = validateAchievementMilestones($payload['milestones'] ?? []);
+            } elseif ($part === 'links') {
+                $existingEntry['links_title'] = validateAchievementTitle($payload['links_title'] ?? '');
+                $existingEntry['links'] = validateAchievementLinks($payload['links'] ?? []);
+            } else {
+                return [['ok' => false, 'error' => 'Unbekannter Bereich.'], 422, false];
+            }
+
+            $existingEntry['updated_at'] = gmdate('c');
+            $store['achievements_manual'][$achievementGame] = $existingEntry;
+            return [[
+                'ok' => true,
+                'game' => $achievementGame,
+                'part' => $part,
+                'entry' => $existingEntry,
+            ], 200, true];
 
         case 'admin_save_settings':
             requireAdmin($store);
