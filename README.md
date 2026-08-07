@@ -75,8 +75,10 @@ Die bisherige Datei `data/store.php` kann unverändert weiterverwendet werden. S
 Vor dem Update empfiehlt sich trotzdem eine manuelle Sicherung:
 
 ```bash
-cp data/store.php data/store.php.backup-manual
+cp data/store.php data/store-backup-manual.php
 ```
+
+**Wichtig:** Der Dateiname muss auf `.php` enden, sonst liefert der Webserver die Sicherung bei direktem Aufruf als reinen Text aus — inklusive aller Passwort-Hashes. `data/store.php` selbst beginnt mit einer Schutzzeile, die nur wirkt, wenn die Datei vom Webserver als PHP ausgeführt wird.
 
 Danach die neuen Programmdateien einspielen oder aus GitHub aktualisieren:
 
@@ -89,7 +91,7 @@ chmod 750 data
 Beim ersten Speichervorgang mit der neuen Account-Version wird automatisch eine zusätzliche Sicherung angelegt:
 
 ```text
-data/store.php.before-accounts-backup
+data/store-before-accounts-backup.php
 ```
 
 Diese Sicherung und die aktive Datendatei werden durch `.gitignore` nicht zu GitHub hochgeladen.
@@ -187,6 +189,10 @@ Die Laufzeitdateien unter `data/store.php*` werden von Git ignoriert und dadurch
 │   ├── app-icon-180.png
 │   ├── app-icon-192.png
 │   ├── app-icon-512.png
+│   ├── backgrounds/
+│   │   ├── default/   (mehrere Bilder, eines wird pro Seitenaufruf zufällig gewählt)
+│   │   ├── summer/     (genau ein Bild, wird immer verwendet)
+│   │   └── winter/     (genau ein Bild, wird immer verwendet)
 │   ├── kellerkinder-logo.svg
 │   └── smartphone-install.svg
 ├── data/
@@ -203,6 +209,29 @@ Die Laufzeitdateien unter `data/store.php*` werden von Git ignoriert und dadurch
 ├── README.md
 └── VERSION
 ```
+
+## Hintergrundbilder
+
+Für jedes der drei Themes (Standard/RGB, Sommer, Winter) gibt es einen eigenen
+Ordner unter `assets/backgrounds/`. Bilder dort können unbearbeitet (JPG,
+JPEG, PNG oder WEBP) hochgeladen werden — Abdunkeln und der Verlauf ins
+Schwarze an den Rändern übernimmt die Website automatisch per CSS, keine
+Bildbearbeitung nötig.
+
+- **`assets/backgrounds/default/`**: beliebig viele Bilder ablegen. Bei jedem
+  Seitenaufruf wird eines zufällig gewählt.
+- **`assets/backgrounds/summer/`** und **`assets/backgrounds/winter/`**:
+  jeweils genau ein Bild ablegen. Es wird immer verwendet und nicht
+  gewechselt. Liegen mehrere Dateien im Ordner, wird die alphabetisch erste
+  genommen.
+
+Ist ein Ordner leer, wird kein Foto angezeigt — beim Sommer- und
+Winter-Theme bleibt dann nur das bestehende Wellen-/Sonnen- bzw.
+Tannenbaum-/Schnee-Muster sichtbar, beim Standard-Theme nur das Raster.
+
+Die Bilder selbst sind nicht Teil des Git-Repositories (siehe `.gitignore`)
+und müssen direkt auf den Server hochgeladen werden (z. B. per FTP/SCP oder
+über den Datei-Manager des Hosters).
 
 ## Sicherheit
 

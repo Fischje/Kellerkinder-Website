@@ -76,10 +76,10 @@ chmod 640 data/store.php
 
 ## 6. Upgrade auf die Account-Version
 
-Vor dem ersten `git pull` eine Sicherung anlegen:
+Vor dem ersten `git pull` eine Sicherung anlegen (Dateiname muss auf `.php` enden, siehe README):
 
 ```bash
-cp data/store.php data/store.php.backup-manual
+cp data/store.php data/store-backup-manual.php
 ```
 
 Nach dem Update die Website öffnen und sofort den ersten Account registrieren. Der erste Account wird automatisch Administrator. Die vorhandenen Spieler, Termine und Statusangaben bleiben erhalten.

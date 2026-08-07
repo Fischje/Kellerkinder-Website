@@ -2,11 +2,14 @@
 declare(strict_types=1);
 
 header('Content-Type: text/html; charset=utf-8');
+header('X-Content-Type-Options: nosniff');
+header('X-Frame-Options: DENY');
+header('X-Robots-Tag: noindex, nofollow');
 date_default_timezone_set('Europe/Berlin');
 
 $dataDir = __DIR__ . DIRECTORY_SEPARATOR . 'data';
 $storeFile = $dataDir . DIRECTORY_SEPARATOR . 'store.php';
-$backupFile = $dataDir . DIRECTORY_SEPARATOR . 'store.php.before-accounts-backup';
+$backupFile = $dataDir . DIRECTORY_SEPARATOR . 'store-before-accounts-backup.php';
 $testFile = $dataDir . DIRECTORY_SEPARATOR . '.write-test-' . bin2hex(random_bytes(4));
 $writeTest = false;
 $writeMessage = '';

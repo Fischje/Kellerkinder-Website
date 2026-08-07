@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
+header('X-Content-Type-Options: nosniff');
 
 date_default_timezone_set('Europe/Berlin');
 
@@ -42,8 +43,8 @@ const ACHIEVEMENT_LINK_LABEL_MAX = 30;
 const ACHIEVEMENT_LINK_URL_MAX = 200;
 const ACHIEVEMENT_LINKS_MAX = 6;
 const REMEMBER_ME_SECONDS = 60 * 60 * 24 * 30; // 30 Tage
-const CALENDAR_UPCOMING_DAYS_LIMIT = 7; // Maximal so viele kommende Spieltage werden angezeigt
-const CALENDAR_PAST_DAY_VISIBLE_DAYS = 1; // So viele Tage bleibt der letzte vergangene Spieltag noch sichtbar
+const CALENDAR_UPCOMING_DAYS_LIMIT = 21; // Server liefert bis zu so viele kommende Spieltage; wie viele angezeigt werden, entscheidet das Frontend anhand der verfügbaren Breite (mindestens 7)
+const CALENDAR_PAST_DAY_VISIBLE_UNTIL_HOUR = 12; // Letzter vergangener Spieltag ist nur bis zu dieser Uhrzeit (Folgetag) sichtbar
 
 function isHttpsRequest(): bool
 {
@@ -146,7 +147,7 @@ function ensureStorageDirectory(): bool
     if (is_dir($directory)) {
         return true;
     }
-    return @mkdir($directory, 0775, true) || is_dir($directory);
+    return @mkdir($directory, 0750, true) || is_dir($directory);
 }
 
 function achievementsCacheDirectory(): string
@@ -574,9 +575,16 @@ function withWritableStore(callable $callback): void
 
         if ($shouldSave) {
             if ($needsLegacyBackup) {
-                $backupPath = storageDirectory() . DIRECTORY_SEPARATOR . 'store.php.before-accounts-backup';
+                // WICHTIG: Dateiname muss auf .php enden, damit der Webserver
+                // sie als PHP ausführt und der Schutzvorspann (STORE_PREFIX)
+                // greift — sonst würde die Backup-Datei bei direktem Aufruf
+                // Passwort-Hashes und Kontodaten im Klartext ausliefern.
+                $backupPath = storageDirectory() . DIRECTORY_SEPARATOR . 'store-before-accounts-backup.php';
                 if (!is_file($backupPath)) {
-                    @file_put_contents($backupPath, $rawContents, LOCK_EX);
+                    $backupPayload = str_starts_with($rawContents, '<?php')
+                        ? $rawContents
+                        : STORE_PREFIX . $rawContents;
+                    @file_put_contents($backupPath, $backupPayload, LOCK_EX);
                 }
             }
             $store = normalizeStore($store);
@@ -806,11 +814,11 @@ function validateAchievementLinks($value): array
         if ($label === '' || $url === '') {
             continue;
         }
-        if (!isLikelyHttpUrl($url)) {
-            respond(['ok' => false, 'error' => 'Ein Link ist ungültig. Bitte mit http:// oder https:// beginnen.'], 422);
-        }
         if (textLength($label) > ACHIEVEMENT_LINK_LABEL_MAX || textLength($url) > ACHIEVEMENT_LINK_URL_MAX) {
             respond(['ok' => false, 'error' => 'Ein Link ist zu lang.'], 422);
+        }
+        if (!isLikelyHttpUrl($url)) {
+            respond(['ok' => false, 'error' => 'Ein Link ist ungültig. Bitte mit http:// oder https:// beginnen.'], 422);
         }
         $links[] = ['label' => $label, 'url' => $url];
         if (count($links) >= ACHIEVEMENT_LINKS_MAX) {
@@ -1104,7 +1112,8 @@ function isAutomaticWeekday(string $date): bool
 function buildEventDates(array $customDates): array
 {
     $tz = new DateTimeZone('Europe/Berlin');
-    $today = new DateTimeImmutable('today', $tz);
+    $now = new DateTimeImmutable('now', $tz);
+    $today = $now->setTime(0, 0, 0);
     $todayIso = $today->format('Y-m-d');
     $automaticDates = [];
 
@@ -1136,15 +1145,18 @@ function buildEventDates(array $customDates): array
 
     $visible = [];
 
-    // Der letzte vergangene Spieltag bleibt nur für 24 Stunden sichtbar, also
-    // ausschließlich am unmittelbar folgenden Kalendertag — danach verschwindet
-    // er, auch wenn noch kein neuerer vergangener Termin nachgerückt ist.
+    // Der letzte vergangene Spieltag bleibt nur bis zu einer festen Uhrzeit am
+    // folgenden Kalendertag sichtbar (Standard: 12 Uhr mittags) — danach
+    // verschwindet er, auch wenn noch kein neuerer vergangener Termin
+    // nachgerückt ist.
     if ($pastCandidates !== []) {
         rsort($pastCandidates, SORT_STRING);
         $mostRecentPast = $pastCandidates[0];
         $mostRecentPastDate = new DateTimeImmutable($mostRecentPast, $tz);
-        $hiddenFrom = $mostRecentPastDate->modify('+' . (1 + CALENDAR_PAST_DAY_VISIBLE_DAYS) . ' days')->format('Y-m-d');
-        if ($todayIso < $hiddenFrom) {
+        $visibleUntil = $mostRecentPastDate
+            ->modify('+1 day')
+            ->setTime(CALENDAR_PAST_DAY_VISIBLE_UNTIL_HOUR, 0, 0);
+        if ($now < $visibleUntil) {
             $visible[$mostRecentPast] = true;
         }
     }
@@ -1176,6 +1188,7 @@ function buildEventDates(array $customDates): array
         $events[] = [
             'date' => $date,
             'is_past' => $date < $todayIso,
+            'is_today' => $date === $todayIso,
             'is_custom' => isset($customMap[$date]),
         ];
     }
