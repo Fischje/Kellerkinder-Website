@@ -85,7 +85,7 @@ require __DIR__ . '/includes/bootstrap.php';
         </aside>
     </div>
 
-    <footer class="site-footer">Created by Fischje with <span class="heart" aria-label="Love">♥</span> · Made with AI · Version <?= htmlspecialchars($appVersion, ENT_QUOTES, 'UTF-8') ?></footer>
+    <footer class="site-footer">Created by Fischje with <span class="heart" aria-label="Love">♥</span> Version <?= htmlspecialchars($appVersion, ENT_QUOTES, 'UTF-8') ?></footer>
 </main>
 
 <dialog id="editorDialog" class="wide">
