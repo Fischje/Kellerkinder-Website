@@ -706,6 +706,7 @@ if (!isset($backgroundImages) || !is_array($backgroundImages)) { $backgroundImag
             padding: 10px 16px;
             border: 1px solid;
             cursor: pointer;
+            font-size: .92rem;
             font-weight: 700;
             letter-spacing: .01em;
             transition: transform .12s ease, background-color .14s ease, border-color .14s ease;
@@ -1805,6 +1806,7 @@ if (!isset($backgroundImages) || !is_array($backgroundImages)) { $backgroundImag
             color: #edf2ff;
             background: linear-gradient(180deg, rgba(34,42,68,.94), rgba(17,22,38,.96));
             cursor: pointer;
+            font-size: .92rem;
             font-weight: 800;
         }
 
