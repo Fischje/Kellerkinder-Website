@@ -1,33 +1,14 @@
-# Laufzeitdaten des Kalenders einschließlich Account- und Passwortdaten
-/data/store.php
-/data/store.php.*
-/data/store-*.php
-
-# Sicherungs- und temporäre Dateien
-/data/*.backup
-/data/*.backup-*
-*.tmp
+.env
+.env.*
+config.php
+vendor/
+node_modules/
+*.bak
+*.backup*
+*.sqlite*
+*.db
 *.log
-
-# Zwischengespeicherte Erfolgs-Widget-Daten (Raider.IO u.ä.)
-/data/cache/
-
-# Selbst hochgeladene Hintergrundbilder (persönlicher Inhalt, nicht fürs Repo)
-/assets/backgrounds/default/*.jpg
-/assets/backgrounds/default/*.jpeg
-/assets/backgrounds/default/*.png
-/assets/backgrounds/default/*.webp
-/assets/backgrounds/summer/*.jpg
-/assets/backgrounds/summer/*.jpeg
-/assets/backgrounds/summer/*.png
-/assets/backgrounds/summer/*.webp
-/assets/backgrounds/winter/*.jpg
-/assets/backgrounds/winter/*.jpeg
-/assets/backgrounds/winter/*.png
-/assets/backgrounds/winter/*.webp
-
-# Betriebssysteme und Editoren
-.DS_Store
-Thumbs.db
-.vscode/
-.idea/
+data/*
+!data/.htaccess
+!data/index.php
+bk/

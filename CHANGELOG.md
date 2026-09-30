@@ -1,5 +1,178 @@
 # Änderungsprotokoll
 
+## 2.10.0 — Urlaub für einen Zeitraum eintragen
+
+- Im Bereich „Mein Account" lässt sich jetzt ein Zeitraum (Von–Bis) wählen und
+  per Knopfdruck als Urlaub eintragen
+- Gesetzt wird der Status „Urlaub" für alle Spieltage im Zeitraum, die aktuell
+  im Kalender sichtbar sind — bewusst nicht für Termine, die es dort (noch)
+  gar nicht gibt
+- „Urlaub entfernen" nimmt im gewählten Zeitraum ausschließlich die eigenen
+  Urlaubseinträge zurück; andere Angaben wie „Online" bleiben unangetastet
+- Eine Rückmeldung nennt, für wie viele Spieltage der Urlaub gesetzt bzw.
+  entfernt wurde, und weist darauf hin, wenn im Zeitraum kein sichtbarer
+  Spieltag liegt
+- Jeder kann damit nur den eigenen Spieler bearbeiten
+
+## 2.9.2 — Absturz beim Laden behoben (Regression aus 2.9.0)
+
+**Fehler:** Nach dem Blog-Update konnte die Seite auf Geräten mit gesetztem
+„Angemeldet bleiben"-Cookie gar nicht mehr laden („Die Anfrage konnte nicht
+verarbeitet werden"). Am Computer mit noch aktiver Sitzung fiel es nicht auf,
+auf dem Handy nach längerer Pause dagegen sofort.
+
+**Ursache:** Die neuen Blog-Konstanten (`BLOG_TITLE_MAX` und weitere) standen
+in `api.php` weiter unten als der Programmteil, der die Anmeldung aus dem
+dauerhaften Token wiederherstellt. Dieser Teil liest die Datendatei ein, wobei
+die Blogbeiträge geprüft werden — und dabei werden genau diese Konstanten
+gebraucht. Anders als Funktionen werden Konstanten in PHP nicht vorgezogen,
+sondern erst an ihrer Stelle im Ablauf angelegt. Ergebnis: schwerer Fehler,
+sobald die Anmeldung aus dem Token wiederhergestellt werden sollte.
+
+**Behoben:** Die Blog-Konstanten stehen jetzt vor dem gesamten ausführbaren
+Teil der Datei. Zusätzlich wurde geprüft, dass keine weitere Konstante
+irgendwo zu spät definiert wird.
+
+## 2.9.1 — Blog-Hinweis über dem Kalender
+
+- Über dem Kalender erscheint jetzt ein kompaktes Fenster mit dem Titel des
+  zuletzt veröffentlichten Blogbeitrags, inklusive Datum und Autor; ein Klick
+  führt direkt zum Blog
+- Entwürfe werden dort nicht angezeigt, nur veröffentlichte Beiträge
+- Gibt es noch keinen Beitrag oder lässt sich der Blog nicht abrufen, bleibt
+  das Fenster ausgeblendet — der Kalender funktioniert unabhängig davon
+
+## 2.9.0 — Blog mit Autorenrecht, Editor, Tags und RSS
+
+Der bisherige Menü-Platzhalter „Tagebuch" ist jetzt ein vollwertiger Blog
+unter `blog.php`.
+
+**Neues Recht „Autor"**
+- Admins vergeben das Recht im Adminbereich über eine Checkbox im
+  Benutzer-Dialog; in der Benutzerliste erscheint ein „Autor"-Abzeichen
+- Administratoren haben das Autorenrecht automatisch
+- Autoren dürfen eigene Beiträge schreiben, bearbeiten und löschen;
+  Administratoren zusätzlich alle fremden Beiträge
+
+**Editor**
+- Selbst gebauter WYSIWYG-Editor (bewusst ohne externe Bibliothek: keine
+  Abhängigkeit von fremden CDNs, keine Lockerung der Sicherheits-Header,
+  funktioniert auch offline in der installierten App)
+- Fett, kursiv, unterstrichen, durchgestrichen, Überschriften, Aufzählungen,
+  nummerierte Listen, Zitate, Formatierung entfernen
+- Links auf externe Inhalte (Pflicht: `http://` oder `https://`)
+- Bild-Upload: Server prüft den tatsächlichen Dateiinhalt statt nur der
+  Endung, verkleinert automatisch auf maximal 1600 Pixel Breite und speichert
+  unter einem Zufallsnamen in `assets/blog/`. Die Anzeigebreite je Bild lässt
+  sich beim Einfügen festlegen.
+- YouTube-Links werden erkannt und als anklickbares Vorschaubild mit
+  Play-Symbol eingebettet
+- Beiträge lassen sich als Entwurf speichern (nicht öffentlich sichtbar)
+
+**Tags & Filter**
+- Bis zu 8 Tags je Beitrag, kommagetrennt erfassbar
+- Filter-Widget rechts neben den Beiträgen mit Anzahl je Thema; im
+  Responsive-Design rutscht es unter die Beitragsliste
+- Der gewählte Filter steht in der Adresszeile und ist damit teilbar
+
+**RSS**
+- Feed unter `feed.php` (RSS 2.0, inkl. Volltext und Kategorien), im Blog
+  verlinkt und im Seitenkopf für Reader hinterlegt
+
+**Sicherheit**
+- Beitragsinhalte werden serverseitig gegen eine Positivliste erlaubter
+  HTML-Elemente und Attribute gefiltert, bevor sie gespeichert werden —
+  ohne diesen Filter könnte ein Autor Schadcode einschleusen, der bei allen
+  Besuchern im Browser ausgeführt wird
+- Bildquellen sind auf eigene Uploads und YouTube-Vorschaubilder beschränkt
+- Der Upload-Ordner ist gegen die Ausführung von Programmcode abgesichert
+
+**Aufräumen**
+- Gemeinsames Stylesheet und Seiten-Vorspann liegen jetzt in `includes/`,
+  damit Kalender und Blog garantiert identisch aussehen
+
+## 2.8.1 — "Angemeldet bleiben" wirklich dauerhaft (Ursache behoben)
+
+**Ursache gefunden:** "Angemeldet bleiben" verlängerte bisher nur den
+Browser-Cookie (30 Tage) und versuchte per `ini_set()`, PHPs serverseitige
+Sitzungs-Aufräumung zu verzögern. Auf vielen Servern (u. a. Debian/Ubuntu,
+vermutlich auch bei dir) räumt aber ein Cron-/Systemd-Job Sitzungsdateien
+anhand der echten `php.ini`-Einstellung auf — ein `ini_set()` zur Laufzeit
+hat darauf keinen Einfluss. Nach der System-Standardzeit (oft ~24 Minuten
+Inaktivität) war die Sitzung serverseitig weg, der Cookie im Browser aber
+noch gültig — Ergebnis: ungewollter Logout trotz gesetztem Haken.
+
+**Fix:** "Angemeldet bleiben" läuft jetzt komplett unabhängig von PHPs
+Sitzungsverwaltung:
+
+- Beim Login/Registrieren mit gesetztem Haken wird ein eigenes, dauerhaftes
+  Token erzeugt und in der normalen Datenspeicherung (`data/store.php`)
+  abgelegt — nicht in der von der Server-Aufräumung betroffenen Sitzung
+- Das Token besteht aus einem Selektor (Nachschlage-Schlüssel) und einem
+  Validator, von dem nur der Hash gespeichert wird (wie bei Passwörtern) —
+  ein Leck der Datendatei macht die Tokens nicht direkt nutzbar
+- Fehlt beim nächsten Seitenaufruf die Sitzung, aber ein gültiges Token-Cookie
+  ist vorhanden, wird die Anmeldung automatisch und unbemerkt wiederhergestellt
+- Tokens laufen nach 30 Tagen ab und werden bei jedem Speichervorgang
+  automatisch aufgeräumt
+- Abmelden, Passwortänderung (eigenständig wie durch Admin) und
+  Konto-Löschung widerrufen die zugehörigen Tokens jetzt korrekt
+
+## 2.8.0 — Spieltage entstehen aus den Accounts statt aus festen Wochentagen
+
+**Fehler behoben:** Feste Wochentage aus dem Account (z. B. Freitag) tauchten
+gar nicht im Kalender auf. Ursache: Der Kalender erzeugte seine Termine
+ausschließlich aus fest einprogrammierten Mittwochen und Sonntagen. Die
+persönlichen Wochentage wurden nur auf bereits vorhandene Termine angewendet —
+lag ein Wochentag außerhalb von Mi/So, gab es schlicht keine Spalte dafür.
+
+**Neue Logik:** Spieltage entstehen jetzt aus drei Quellen, ohne feste Vorgabetage:
+
+1. den festen Wochentagen, die Spieler in ihrem Account hinterlegt haben
+2. Terminen, an denen ein Spieler ausdrücklich einen Status gesetzt hat
+3. zusätzlich von Hand angelegten Spieltagen
+
+- Mittwoch und Sonntag sind damit nichts Besonderes mehr — sie erscheinen nur
+  noch, wenn sie tatsächlich jemandes fester Tag sind, jemand dort einen Status
+  gesetzt hat oder sie von Hand angelegt wurden
+- Mittwoche und Sonntage lassen sich jetzt auch von Hand als Spieltag anlegen
+  (war vorher blockiert, weil sie automatisch erschienen)
+- Wie viele der so ermittelten Tage angezeigt werden, regelt weiterhin die
+  Breiten-Automatik (mindestens 4, normal 8, bei mehr Platz mehr)
+
+## 2.7.1 — Status-Zellen wieder zusammengefasst, Legende ohne Badge-Rahmen
+
+- Status-Zellen wieder als eine einzige zusammenhängende Box (Rand + Hintergrund nur einmal um Status, Spiel und Notiz herum) statt drei separater Einzel-Pillen, weiterhin ohne Icon
+- Legende oben (Online/Später/Verhindert/Urlaub/Offen) zeigt jetzt nur noch den farbigen Punkt plus Text, ganz ohne umrandete Badge-Fläche drumherum
+
+## 2.7.0 — Kalender-Badges im Vorschau-Stil, Transparenz-Feinabstimmung
+
+- Status-Zellen umgebaut auf saubere, gestapelte Pillen-Badges (passend zur früheren Archon-Vorschau): Hauptstatus ohne Icon als runde Pille, darunter bei Bedarf eine eigene Pille für das Spiel und eine für die Notiz
+- Kalender-Tabelle bleibt zu ~90% deckend (gut lesbar), die umgebende Box drumherum ist jetzt zu ~50% transparent und lässt den Seitenhintergrund stärker durchscheinen — themenabhängig berechnet, damit Sommer/Winter ihre Farbstimmung behalten
+
+## 2.6.4 — Stale-Cache-Problem behoben (Updates ohne Strg+F5)
+
+Vermutlich die eigentliche Ursache des Registrierungs-Problems von eben: die
+Website wurde vom Browser zwischengespeichert, sodass nach einem Update
+weiterhin die alte Version geladen wurde, bis manuell hart neu geladen
+wurde (Strg+F5).
+
+- `index.php` sendet jetzt `Cache-Control: no-store` — der Browser darf die
+  Seite gar nicht erst zwischenspeichern, jeder Aufruf lädt garantiert die
+  aktuelle Version (kleiner Kompromiss: etwas mehr Datenübertragung pro
+  Aufruf, für eine kleine Gruppen-Website unproblematisch)
+- Service-Worker-Cache-Version war seit Version 2.2.0 nie mehr hochgezählt
+  worden — jetzt aktualisiert und wird ab sofort bei jedem Release mitgezogen
+- Seite lädt sich jetzt automatisch neu, sobald im Hintergrund ein neuer
+  Service Worker aktiv wird — bisher musste man das manuell per Hard-Refresh
+  anstoßen, jetzt passiert es von selbst
+
+## 2.6.3 — Deutlichere Passwort-Fehler bei der Registrierung
+
+- Live-Checkliste unter den Passwortfeldern im „Account anlegen"-Dialog: zeigt in Echtzeit beim Tippen, welche Regel (Länge, Buchstabe, Zahl, Sonderzeichen, Übereinstimmung) schon erfüllt ist (grüner Haken) und welche noch fehlt
+- Beim Absenden mit fehlerhaftem Passwort werden die offenen Punkte rot markiert, das betroffene Feld bekommt einen roten Rahmen und wird automatisch fokussiert, zusätzlich weiterhin eine Toast-Meldung
+- Damit sollte ein Passwortfehler beim Registrieren nicht mehr unbemerkt bleiben
+
 ## 2.6.2 — M+-Balken nach Gesamtwertung statt höchstem Key
 
 - Balkenlänge und Gold-Hervorhebung im M+-Widget richten sich jetzt nach der Raider.IO-Gesamtwertung (Score) statt nach dem höchsten geschafften Schlüsselstufen-Level

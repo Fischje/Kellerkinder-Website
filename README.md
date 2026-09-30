@@ -12,7 +12,7 @@ Mobiloptimierter PHP-Kalender zur Planung gemeinsamer Spielabende mit Benutzerko
 - Administratoren verwalten Benutzer, Spieler, Termine und sämtliche Statusangaben
 - Adminrechte werden in `settings.admin_player_names` anhand der Spielernamen gespeichert
 - Administratoren ändern den globalen Style für alle Besucher und Benutzer
-- Automatische Anzeige der nächsten drei Mittwoche und Sonntage
+- Spieltage entstehen automatisch aus den festen Wochentagen der Accounts und aus Terminen, an denen jemand einen Status gesetzt hat (keine fest vorgegebenen Mittwoche/Sonntage mehr)
 - Zusätzliche, frei wählbare Spieltage durch alle angemeldeten Benutzer
 - Anzeige von genau einem vergangenen Termin
 - Wiederkehrende Standardtage: Ein Benutzer kann festlegen, an welchen Wochentagen er normalerweise online ist
@@ -189,6 +189,7 @@ Die Laufzeitdateien unter `data/store.php*` werden von Git ignoriert und dadurch
 │   ├── app-icon-180.png
 │   ├── app-icon-192.png
 │   ├── app-icon-512.png
+│   ├── blog/           (im Blog hochgeladene Bilder)
 │   ├── backgrounds/
 │   │   ├── default/   (mehrere Bilder, eines wird pro Seitenaufruf zufällig gewählt)
 │   │   ├── summer/     (genau ein Bild, wird immer verwendet)
@@ -198,8 +199,14 @@ Die Laufzeitdateien unter `data/store.php*` werden von Git ignoriert und dadurch
 ├── data/
 │   ├── .htaccess
 │   └── index.php
+├── includes/
+│   ├── bootstrap.php   (Version, Hintergrundbilder, Sicherheits-Header)
+│   ├── styles.php      (gemeinsames Stylesheet für alle Seiten)
+│   └── blog-styles.php
 ├── .gitignore
 ├── api.php
+├── blog.php
+├── feed.php
 ├── check.php
 ├── index.php
 ├── manifest.webmanifest
@@ -232,6 +239,32 @@ Tannenbaum-/Schnee-Muster sichtbar, beim Standard-Theme nur das Raster.
 Die Bilder selbst sind nicht Teil des Git-Repositories (siehe `.gitignore`)
 und müssen direkt auf den Server hochgeladen werden (z. B. per FTP/SCP oder
 über den Datei-Manager des Hosters).
+
+## Blog
+
+Unter `blog.php` steht ein Blog für Spielerlebnisse und News bereit.
+
+**Autorenrecht:** Nur Benutzer mit dem Recht „Autor" dürfen Beiträge
+schreiben. Ein Administrator vergibt es im Adminbereich über die Checkbox
+„Autorenrecht" im Benutzer-Dialog. Administratoren sind automatisch Autoren
+und dürfen zusätzlich fremde Beiträge bearbeiten und löschen.
+
+**Editor:** Formatierung (fett, kursiv, Überschriften, Listen, Zitate),
+Links, Bild-Upload und YouTube-Einbettung. Hochgeladene Bilder werden
+serverseitig geprüft, auf maximal 1600 Pixel Breite verkleinert und unter
+einem Zufallsnamen in `assets/blog/` abgelegt. Beiträge lassen sich als
+Entwurf speichern, dann sind sie noch nicht öffentlich sichtbar.
+
+**Tags:** Bis zu acht Schlagworte je Beitrag, kommagetrennt. Über das
+Themen-Widget lässt sich die Liste filtern; der Filter steht in der
+Adresszeile und ist damit teilbar.
+
+**RSS:** Der Feed liegt unter `feed.php` und ist im Blog verlinkt sowie im
+Seitenkopf für Reader hinterlegt.
+
+**Hinweis zur Sicherheit:** Beitragsinhalte werden vor dem Speichern gegen
+eine Positivliste erlaubter HTML-Elemente gefiltert. Vergib das Autorenrecht
+trotzdem nur an Personen, denen du vertraust.
 
 ## Sicherheit
 

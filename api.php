@@ -1,9 +1,13 @@
 <?php
 declare(strict_types=1);
 
-header('Content-Type: application/json; charset=utf-8');
-header('Cache-Control: no-store');
-header('X-Content-Type-Options: nosniff');
+// feed.php bindet diese Datei nur ein, um die Lesefunktionen zu nutzen.
+// In dem Fall keine JSON-Header senden und keine Anfrage verarbeiten.
+if (!defined('BLOG_FEED_ONLY')) {
+    header('Content-Type: application/json; charset=utf-8');
+    header('Cache-Control: no-store');
+    header('X-Content-Type-Options: nosniff');
+}
 
 date_default_timezone_set('Europe/Berlin');
 
@@ -43,6 +47,31 @@ const ACHIEVEMENT_LINK_LABEL_MAX = 30;
 const ACHIEVEMENT_LINK_URL_MAX = 200;
 const ACHIEVEMENT_LINKS_MAX = 6;
 const REMEMBER_ME_SECONDS = 60 * 60 * 24 * 30; // 30 Tage
+
+const BLOG_TITLE_MAX = 120;
+const BLOG_TAG_MAX = 24;
+const BLOG_TAGS_MAX = 8;
+const BLOG_CONTENT_MAX = 120000;
+const BLOG_IMAGE_MAX_WIDTH = 1600;
+const BLOG_IMAGE_MAX_BYTES = 6000000;
+
+/**
+ * Erlaubte Tags und Attribute für Blog-Inhalte. Alles andere wird entfernt.
+ * Das ist die zentrale Absicherung gegen eingeschleusten Schadcode: Autoren
+ * schreiben HTML, das später bei allen Besuchern im Browser dargestellt wird.
+ */
+const BLOG_ALLOWED_HTML = [
+    'p' => [], 'br' => [], 'strong' => [], 'b' => [], 'em' => [], 'i' => [],
+    'u' => [], 's' => [], 'h2' => [], 'h3' => [], 'h4' => [],
+    'ul' => [], 'ol' => [], 'li' => [], 'blockquote' => [], 'hr' => [],
+    'code' => [], 'pre' => [],
+    'a' => ['href', 'title'],
+    'img' => ['src', 'alt', 'width'],
+    'figure' => ['class'], 'figcaption' => [],
+    'div' => ['class'], 'span' => ['class'],
+];
+
+const BLOG_ALLOWED_CLASSES = ['yt-embed', 'yt-embed-thumb', 'yt-embed-play', 'blog-figure'];
 const CALENDAR_UPCOMING_DAYS_LIMIT = 21; // Server liefert bis zu so viele kommende Spieltage; wie viele angezeigt werden, entscheidet das Frontend anhand der verfügbaren Breite (mindestens 7)
 const CALENDAR_PAST_DAY_VISIBLE_UNTIL_HOUR = 12; // Letzter vergangener Spieltag ist nur bis zu dieser Uhrzeit (Folgetag) sichtbar
 
@@ -54,6 +83,7 @@ function isHttpsRequest(): bool
     return strtolower((string) ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '')) === 'https';
 }
 
+if (!defined('BLOG_FEED_ONLY')) {
 session_name('kellerkinder_session');
 session_set_cookie_params([
     'lifetime' => 0,
@@ -62,10 +92,11 @@ session_set_cookie_params([
     'httponly' => true,
     'samesite' => 'Lax',
 ]);
-// Ohne diese Anhebung räumt PHP serverseitige Sitzungsdateien standardmäßig
-// schon nach recht kurzer Inaktivität weg (oft ~24 Minuten) – dann würde
-// "Angemeldet bleiben" trotz gültigem Cookie nach kurzer Pause nicht mehr
-// funktionieren, weil die Sitzungsdaten auf dem Server bereits gelöscht sind.
+// Zusätzliche, aber allein nicht ausreichende Absicherung: hebt PHPs eigene
+// probabilistische Aufräumung an. Viele Server (u. a. Debian/Ubuntu) räumen
+// Sitzungsdateien aber per Cron/Systemd-Timer anhand der echten php.ini auf,
+// worauf dieses ini_set() zur Laufzeit keinen Einfluss hat — deshalb gibt es
+// zusätzlich das dauerhafte, store-gestützte Token weiter unten.
 $configuredGcLifetime = (int) ini_get('session.gc_maxlifetime');
 if ($configuredGcLifetime < REMEMBER_ME_SECONDS) {
     ini_set('session.gc_maxlifetime', (string) REMEMBER_ME_SECONDS);
@@ -74,22 +105,347 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
     session_start();
 }
 
-function applyRememberMeCookie(bool $remember): void
-{
-    if (!$remember) {
-        return;
+if (empty($_SESSION['user_id']) && isset($_COOKIE['kellerkinder_remember'])) {
+    $rememberParts = explode(':', (string) $_COOKIE['kellerkinder_remember'], 2);
+    $rememberRestored = false;
+    if (count($rememberParts) === 2 && $rememberParts[0] !== '' && $rememberParts[1] !== '') {
+        [$rememberSelector, $rememberValidator] = $rememberParts;
+        $rememberStore = readStore();
+        foreach ($rememberStore['remember_tokens'] as $rememberToken) {
+            if (!hash_equals($rememberToken['selector'], $rememberSelector)) {
+                continue;
+            }
+            if (hash_equals($rememberToken['validator_hash'], hash('sha256', $rememberValidator))) {
+                $rememberUserIndex = findUserIndex($rememberStore['users'], (int) $rememberToken['user_id']);
+                if ($rememberUserIndex !== null) {
+                    session_regenerate_id(true);
+                    $_SESSION['user_id'] = (int) $rememberStore['users'][$rememberUserIndex]['id'];
+                    $_SESSION['auth_version'] = max(1, (int) ($rememberStore['users'][$rememberUserIndex]['session_version'] ?? 1));
+                    $rememberRestored = true;
+                }
+            }
+            break;
+        }
     }
-    // Überschreibt den zuvor von session_start()/session_regenerate_id()
-    // gesendeten Session-Cookie (der beim Schließen des Browsers ausläuft)
-    // mit einer lang laufenden Variante, ohne die Sitzungsdaten selbst
-    // anzufassen.
-    setcookie(session_name(), session_id(), [
-        'expires' => time() + REMEMBER_ME_SECONDS,
+    if (!$rememberRestored) {
+        clearRememberCookie();
+    }
+}
+} // Ende: if (!defined('BLOG_FEED_ONLY'))
+
+
+function sanitizeBlogHtml(string $html): string
+{
+    $html = trim($html);
+    if ($html === '') {
+        return '';
+    }
+    if (!class_exists('DOMDocument')) {
+        // Ohne DOM-Erweiterung lieber gar kein HTML zulassen als ungeprüftes.
+        return htmlspecialchars(strip_tags($html), ENT_QUOTES, 'UTF-8');
+    }
+
+    $document = new DOMDocument('1.0', 'UTF-8');
+    $previous = libxml_use_internal_errors(true);
+    $document->loadHTML(
+        '<?xml encoding="UTF-8"><div id="blog-root">' . $html . '</div>',
+        LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD | LIBXML_NONET
+    );
+    libxml_clear_errors();
+    libxml_use_internal_errors($previous);
+
+    $root = $document->getElementById('blog-root');
+    if ($root === null) {
+        return '';
+    }
+
+    sanitizeBlogNode($root);
+
+    $result = '';
+    foreach ($root->childNodes as $child) {
+        $result .= $document->saveHTML($child);
+    }
+    return trim($result);
+}
+
+function sanitizeBlogNode(DOMNode $node): void
+{
+    // Rückwärts laufen, da Elemente während der Prüfung entfernt werden können.
+    for ($index = $node->childNodes->length - 1; $index >= 0; $index--) {
+        $child = $node->childNodes->item($index);
+        if ($child === null) {
+            continue;
+        }
+
+        if ($child->nodeType === XML_TEXT_NODE) {
+            continue;
+        }
+        if ($child->nodeType !== XML_ELEMENT_NODE) {
+            $node->removeChild($child);
+            continue;
+        }
+
+        /** @var DOMElement $child */
+        $tag = strtolower($child->nodeName);
+        if (!array_key_exists($tag, BLOG_ALLOWED_HTML)) {
+            // Unerlaubtes Element: Inhalt behalten, Hülle entfernen.
+            while ($child->firstChild !== null) {
+                $node->insertBefore($child->firstChild, $child);
+            }
+            $node->removeChild($child);
+            continue;
+        }
+
+        $allowedAttributes = BLOG_ALLOWED_HTML[$tag];
+        for ($attrIndex = $child->attributes->length - 1; $attrIndex >= 0; $attrIndex--) {
+            $attribute = $child->attributes->item($attrIndex);
+            if ($attribute === null) {
+                continue;
+            }
+            $name = strtolower($attribute->nodeName);
+            if (!in_array($name, $allowedAttributes, true)) {
+                $child->removeAttribute($attribute->nodeName);
+                continue;
+            }
+            $value = trim($attribute->nodeValue ?? '');
+
+            if ($name === 'href') {
+                if (!preg_match('#^(https?://|mailto:)#i', $value)) {
+                    $child->removeAttribute('href');
+                    continue;
+                }
+                $child->setAttribute('target', '_blank');
+                $child->setAttribute('rel', 'noopener noreferrer');
+            } elseif ($name === 'src') {
+                // Nur eigene Uploads und YouTube-Vorschaubilder zulassen.
+                $isLocalUpload = preg_match('#^assets/blog/[A-Za-z0-9._-]+$#', $value) === 1;
+                $isYoutubeThumb = preg_match('#^https://i\.ytimg\.com/vi/[A-Za-z0-9_-]{6,20}/[a-z0-9]+\.jpg$#', $value) === 1;
+                if (!$isLocalUpload && !$isYoutubeThumb) {
+                    $child->removeAttribute('src');
+                }
+            } elseif ($name === 'class') {
+                $keep = array_values(array_filter(
+                    preg_split('/\s+/', $value) ?: [],
+                    static fn(string $class): bool => in_array($class, BLOG_ALLOWED_CLASSES, true)
+                ));
+                if ($keep === []) {
+                    $child->removeAttribute('class');
+                } else {
+                    $child->setAttribute('class', implode(' ', $keep));
+                }
+            } elseif ($name === 'width') {
+                $width = (int) $value;
+                if ($width < 40 || $width > BLOG_IMAGE_MAX_WIDTH) {
+                    $child->removeAttribute('width');
+                } else {
+                    $child->setAttribute('width', (string) $width);
+                }
+            }
+        }
+
+        if ($tag === 'img' && !$child->hasAttribute('src')) {
+            $node->removeChild($child);
+            continue;
+        }
+
+        sanitizeBlogNode($child);
+    }
+}
+
+function blogExcerpt(string $html, int $length = 200): string
+{
+    $text = trim(preg_replace('/\s+/u', ' ', strip_tags($html)) ?? '');
+    if (textLength($text) <= $length) {
+        return $text;
+    }
+    return rtrim(mb_substr($text, 0, $length, 'UTF-8')) . '…';
+}
+
+function blogSlug(string $title, int $id): string
+{
+    $slug = strtolower(trim($title));
+    $map = ['ä' => 'ae', 'ö' => 'oe', 'ü' => 'ue', 'ß' => 'ss'];
+    $slug = strtr($slug, $map);
+    $slug = preg_replace('/[^a-z0-9]+/u', '-', $slug) ?? '';
+    $slug = trim($slug, '-');
+    return $slug === '' ? (string) $id : $id . '-' . mb_substr($slug, 0, 60, 'UTF-8');
+}
+
+function normalizeBlogTags($value): array
+{
+    if (!is_array($value)) {
+        return [];
+    }
+    $tags = [];
+    foreach ($value as $tag) {
+        $clean = trim(preg_replace('/\s+/u', ' ', (string) $tag) ?? '');
+        if ($clean === '') {
+            continue;
+        }
+        $clean = mb_substr($clean, 0, BLOG_TAG_MAX, 'UTF-8');
+        $tags[textLower($clean)] = $clean;
+        if (count($tags) >= BLOG_TAGS_MAX) {
+            break;
+        }
+    }
+    return array_values($tags);
+}
+
+function normalizeBlogPosts($posts): array
+{
+    if (!is_array($posts)) {
+        return [];
+    }
+    $result = [];
+    foreach ($posts as $post) {
+        if (!is_array($post) || (int) ($post['id'] ?? 0) <= 0) {
+            continue;
+        }
+        $id = (int) $post['id'];
+        $title = mb_substr(trim((string) ($post['title'] ?? '')), 0, BLOG_TITLE_MAX, 'UTF-8');
+        $result[] = [
+            'id' => $id,
+            'title' => $title,
+            'slug' => (string) ($post['slug'] ?? blogSlug($title, $id)),
+            'content_html' => (string) ($post['content_html'] ?? ''),
+            'excerpt' => (string) ($post['excerpt'] ?? ''),
+            'tags' => normalizeBlogTags($post['tags'] ?? []),
+            'author_user_id' => (int) ($post['author_user_id'] ?? 0),
+            'author_name' => (string) ($post['author_name'] ?? ''),
+            'status' => ($post['status'] ?? 'published') === 'draft' ? 'draft' : 'published',
+            'created_at' => (string) ($post['created_at'] ?? gmdate('c')),
+            'updated_at' => (string) ($post['updated_at'] ?? gmdate('c')),
+        ];
+    }
+    usort($result, static fn(array $a, array $b): int => strcmp($b['created_at'], $a['created_at']));
+    return $result;
+}
+
+/**
+ * Verkleinert zu breite Bilder serverseitig auf BLOG_IMAGE_MAX_WIDTH.
+ * Ohne GD-Erweiterung wird das Original unverändert zurückgegeben.
+ */
+function downscaleBlogImage(string $binary, array $imageInfo): string
+{
+    [$width, $height, $type] = $imageInfo;
+    if ($width <= BLOG_IMAGE_MAX_WIDTH || !function_exists('imagecreatefromstring')) {
+        return $binary;
+    }
+    // Animierte GIFs würden beim Neuzeichnen ihre Animation verlieren.
+    if ($type === IMAGETYPE_GIF) {
+        return $binary;
+    }
+
+    $source = @imagecreatefromstring($binary);
+    if ($source === false) {
+        return $binary;
+    }
+    $targetWidth = BLOG_IMAGE_MAX_WIDTH;
+    $targetHeight = (int) round($height * ($targetWidth / $width));
+    $target = imagecreatetruecolor($targetWidth, $targetHeight);
+    if ($type === IMAGETYPE_PNG || $type === IMAGETYPE_WEBP) {
+        imagealphablending($target, false);
+        imagesavealpha($target, true);
+    }
+    imagecopyresampled($target, $source, 0, 0, 0, 0, $targetWidth, $targetHeight, $width, $height);
+
+    ob_start();
+    if ($type === IMAGETYPE_PNG) {
+        imagepng($target, null, 6);
+    } elseif ($type === IMAGETYPE_WEBP && function_exists('imagewebp')) {
+        imagewebp($target, null, 82);
+    } else {
+        imagejpeg($target, null, 82);
+    }
+    $resized = (string) ob_get_clean();
+
+    imagedestroy($source);
+    imagedestroy($target);
+
+    return $resized !== '' ? $resized : $binary;
+}
+
+function pruneRememberTokens($tokens): array
+{
+    if (!is_array($tokens)) {
+        return [];
+    }
+    $now = time();
+    $result = [];
+    foreach ($tokens as $token) {
+        if (!is_array($token)) {
+            continue;
+        }
+        if (!isset($token['selector'], $token['validator_hash'], $token['user_id'], $token['expires_at'])) {
+            continue;
+        }
+        $expiresAt = strtotime((string) $token['expires_at']);
+        if ($expiresAt === false || $expiresAt < $now) {
+            continue;
+        }
+        $result[] = [
+            'selector' => (string) $token['selector'],
+            'validator_hash' => (string) $token['validator_hash'],
+            'user_id' => (int) $token['user_id'],
+            'expires_at' => (string) $token['expires_at'],
+        ];
+    }
+    return $result;
+}
+
+function rememberCookieOptions(int $expiresInSeconds): array
+{
+    return [
+        'expires' => $expiresInSeconds > 0 ? time() + $expiresInSeconds : time() - 3600,
         'path' => '/',
         'secure' => isHttpsRequest(),
         'httponly' => true,
         'samesite' => 'Lax',
-    ]);
+    ];
+}
+
+function clearRememberCookie(): void
+{
+    setcookie('kellerkinder_remember', '', rememberCookieOptions(0));
+}
+
+// Legt ein neues, dauerhaftes "Angemeldet bleiben"-Token an. Bewusst
+// unabhängig von PHPs eigener Sitzungs-Datei: Auf vielen Servern (u. a.
+// Debian/Ubuntu) räumt ein Cron-/Systemd-Job Sitzungsdateien anhand der in
+// der echten php.ini hinterlegten Lebensdauer auf — ein `ini_set()` zur
+// Laufzeit hat darauf keinen Einfluss. Das Token hier wird stattdessen
+// gegen die eigene, dauerhafte Datenspeicherung geprüft und übersteht so
+// auch lange Pausen.
+function issueRememberToken(array &$store, int $userId): void
+{
+    $selector = bin2hex(random_bytes(9));
+    $validator = bin2hex(random_bytes(33));
+    if (!is_array($store['remember_tokens'] ?? null)) {
+        $store['remember_tokens'] = [];
+    }
+    $store['remember_tokens'][] = [
+        'selector' => $selector,
+        'validator_hash' => hash('sha256', $validator),
+        'user_id' => $userId,
+        'expires_at' => gmdate('c', time() + REMEMBER_ME_SECONDS),
+    ];
+    setcookie('kellerkinder_remember', $selector . ':' . $validator, rememberCookieOptions(REMEMBER_ME_SECONDS));
+}
+
+function revokeRememberToken(array &$store, string $selector): void
+{
+    $store['remember_tokens'] = array_values(array_filter(
+        is_array($store['remember_tokens'] ?? null) ? $store['remember_tokens'] : [],
+        static fn(array $token): bool => (string) ($token['selector'] ?? '') !== $selector
+    ));
+}
+
+function revokeAllRememberTokensForUser(array &$store, int $userId): void
+{
+    $store['remember_tokens'] = array_values(array_filter(
+        is_array($store['remember_tokens'] ?? null) ? $store['remember_tokens'] : [],
+        static fn(array $token): bool => (int) ($token['user_id'] ?? 0) !== $userId
+    ));
 }
 
 function respond(array $payload, int $status = 200): void
@@ -336,6 +692,9 @@ function defaultStore(): array
         'players' => [],
         'availability' => [],
         'custom_dates' => [],
+        'remember_tokens' => [],
+        'blog_posts' => [],
+        'next_post_id' => 1,
         'settings' => [
             'admin_player_names' => [],
             'theme' => 'default',
@@ -416,6 +775,9 @@ function normalizeStore(array $store): array
     $store['players'] = is_array($store['players'] ?? null) ? array_values($store['players']) : [];
     $store['availability'] = is_array($store['availability'] ?? null) ? $store['availability'] : [];
     $store['custom_dates'] = is_array($store['custom_dates'] ?? null) ? $store['custom_dates'] : [];
+    $store['remember_tokens'] = pruneRememberTokens($store['remember_tokens'] ?? []);
+    $store['blog_posts'] = normalizeBlogPosts($store['blog_posts'] ?? []);
+    $store['next_post_id'] = max(1, (int) ($store['next_post_id'] ?? 1));
     $store['settings'] = is_array($store['settings'] ?? null) ? $store['settings'] : $defaults['settings'];
     $store['settings']['admin_player_names'] = is_array($store['settings']['admin_player_names'] ?? null)
         ? array_values($store['settings']['admin_player_names'])
@@ -1094,6 +1456,23 @@ function requireUser(array $store, bool $allowForcedPasswordChange = false): arr
     return [$index, $user];
 }
 
+function isAuthorUser(array $store, array $user): bool
+{
+    if (isAdminUser($store, $user)) {
+        return true;
+    }
+    return !empty($user['is_author']);
+}
+
+function requireAuthor(array $store): array
+{
+    [$index, $user] = requireUser($store);
+    if (!isAuthorUser($store, $user)) {
+        respond(['ok' => false, 'error' => 'Für diese Funktion wird das Autorenrecht benötigt.'], 403);
+    }
+    return [$index, $user];
+}
+
 function requireAdmin(array $store): array
 {
     [$index, $user] = requireUser($store);
@@ -1103,36 +1482,65 @@ function requireAdmin(array $store): array
     return [$index, $user];
 }
 
-function isAutomaticWeekday(string $date): bool
-{
-    $parsed = new DateTimeImmutable($date, new DateTimeZone('Europe/Berlin'));
-    return in_array((int) $parsed->format('N'), [3, 7], true);
-}
-
-function buildEventDates(array $customDates): array
+function buildEventDates(array $store): array
 {
     $tz = new DateTimeZone('Europe/Berlin');
     $now = new DateTimeImmutable('now', $tz);
     $today = $now->setTime(0, 0, 0);
     $todayIso = $today->format('Y-m-d');
+
+    // Spieltage entstehen ausschließlich aus:
+    //   1. den festen Wochentagen, die Spieler in ihrem Account hinterlegt haben,
+    //   2. Terminen, an denen ein Spieler ausdrücklich einen Status gesetzt hat,
+    //   3. zusätzlich von Hand angelegten Spieltagen.
+    // Feste Vorgabetage wie Mittwoch/Sonntag gibt es bewusst nicht mehr.
     $automaticDates = [];
 
-    $lastAutomatic = $today->modify('-1 day');
-    while (!in_array((int) $lastAutomatic->format('N'), [3, 7], true)) {
-        $lastAutomatic = $lastAutomatic->modify('-1 day');
-    }
-    $automaticDates[$lastAutomatic->format('Y-m-d')] = true;
+    // 1. Feste Wochentage aus den Accounts in konkrete Datumsangaben übersetzen.
+    foreach ($store['users'] as $user) {
+        if ((int) ($user['player_id'] ?? 0) <= 0) {
+            continue;
+        }
+        $weekdays = normalizeWeekdays($user['default_weekdays'] ?? []);
+        if ($weekdays === []) {
+            continue;
+        }
+        $effectiveFrom = validIsoDate((string) ($user['defaults_effective_from'] ?? ''))
+            ? (string) $user['defaults_effective_from']
+            : $todayIso;
 
-    foreach ([3, 7] as $targetWeekday) {
-        $daysUntil = ($targetWeekday - (int) $today->format('N') + 7) % 7;
-        $first = $today->modify('+' . $daysUntil . ' days');
-        for ($index = 0; $index < 3; $index++) {
-            $automaticDates[$first->modify('+' . ($index * 7) . ' days')->format('Y-m-d')] = true;
+        foreach ($weekdays as $targetWeekday) {
+            // Rückblick auf den zuletzt vergangenen passenden Wochentag …
+            $daysSince = ((int) $today->format('N') - $targetWeekday + 7) % 7;
+            $previous = $today->modify('-' . ($daysSince === 0 ? 7 : $daysSince) . ' days');
+            $automaticDates[$previous->format('Y-m-d')] = true;
+
+            // … und Vorschau so weit, dass die Anzeigegrenze sicher gefüllt ist.
+            $daysUntil = ($targetWeekday - (int) $today->format('N') + 7) % 7;
+            $first = $today->modify('+' . $daysUntil . ' days');
+            for ($index = 0; $index < CALENDAR_UPCOMING_DAYS_LIMIT; $index++) {
+                $candidate = $first->modify('+' . ($index * 7) . ' days')->format('Y-m-d');
+                if ($candidate >= $effectiveFrom) {
+                    $automaticDates[$candidate] = true;
+                }
+            }
         }
     }
 
+    // 2. Termine, an denen ausdrücklich ein Status gesetzt wurde.
+    foreach ($store['availability'] as $key => $entry) {
+        if ((string) ($entry['status'] ?? '') === '') {
+            continue;
+        }
+        $eventDate = (string) ($entry['event_date'] ?? (explode(':', (string) $key, 2)[1] ?? ''));
+        if (validIsoDate($eventDate)) {
+            $automaticDates[$eventDate] = true;
+        }
+    }
+
+    // 3. Von Hand angelegte Spieltage.
     $customMap = [];
-    foreach ($customDates as $customDate) {
+    foreach ($store['custom_dates'] as $customDate) {
         $customMap[(string) $customDate] = true;
     }
 
@@ -1161,9 +1569,8 @@ function buildEventDates(array $customDates): array
         }
     }
 
-    // Kommende Spieltage aus automatischen und zusätzlichen Terminen
-    // zusammenführen, dann unabhängig von der Quelle auf die nächsten
-    // CALENDAR_UPCOMING_DAYS_LIMIT Tage begrenzen.
+    // Kommende Spieltage aus allen Quellen zusammenführen, dann unabhängig von
+    // der Quelle auf die nächsten CALENDAR_UPCOMING_DAYS_LIMIT Tage begrenzen.
     $upcoming = [];
     foreach (array_keys($automaticDates) as $date) {
         if ($date >= $todayIso) {
@@ -1198,7 +1605,7 @@ function buildEventDates(array $customDates): array
 function visibleDateMap(array $store): array
 {
     $map = [];
-    foreach (buildEventDates($store['custom_dates']) as $event) {
+    foreach (buildEventDates($store) as $event) {
         $map[$event['date']] = true;
     }
     return $map;
@@ -1403,7 +1810,7 @@ function renameOrAssignUserPlayer(array &$store, int $userIndex, string $newName
 
 function bootstrapResponse(array $store): array
 {
-    $eventDates = buildEventDates($store['custom_dates']);
+    $eventDates = buildEventDates($store);
     $availability = effectiveAvailability($store, $eventDates);
     $currentIndex = currentUserIndex($store);
     $currentUser = $currentIndex !== null ? $store['users'][$currentIndex] : null;
@@ -1436,6 +1843,7 @@ function bootstrapResponse(array $store): array
         'logged_in' => $currentUser !== null,
         'setup_required' => count($store['users']) === 0,
         'is_admin' => $isAdmin,
+        'is_author' => $currentUser !== null && isAuthorUser($store, $currentUser),
         'must_change_password' => $mustChange,
         'can_write' => $currentUser !== null && !$mustChange,
         'user' => $currentUser === null ? null : [
@@ -1472,6 +1880,7 @@ function bootstrapResponse(array $store): array
                 'player_name' => $player === null ? '' : (string) $player['name'],
                 'must_change_password' => !empty($user['must_change_password']),
                 'is_admin' => isAdminUser($store, $user),
+                'is_author' => !empty($user['is_author']),
             ];
         }
         usort($adminUsers, static fn(array $a, array $b): int => strcasecmp($a['username'], $b['username']));
@@ -1483,6 +1892,11 @@ function bootstrapResponse(array $store): array
     }
 
     return $response;
+}
+
+if (defined('BLOG_FEED_ONLY')) {
+    // Nur Funktionen bereitstellen, keine Anfrage verarbeiten.
+    return;
 }
 
 $payload = $_SERVER['REQUEST_METHOD'] === 'POST' ? requestPayload() : $_GET;
@@ -1515,6 +1929,33 @@ if ($action === 'achievements') {
     ]);
 }
 
+if ($action === 'blog_posts') {
+    session_write_close();
+    $blogStore = readStore();
+    $requestedTag = textLower(trim((string) ($payload['tag'] ?? '')));
+
+    $tagCounts = [];
+    $posts = [];
+    foreach ($blogStore['blog_posts'] as $post) {
+        if ($post['status'] !== 'published') {
+            continue;
+        }
+        foreach ($post['tags'] as $tag) {
+            $key = textLower($tag);
+            $tagCounts[$key] = ['label' => $tag, 'count' => ($tagCounts[$key]['count'] ?? 0) + 1];
+        }
+        if ($requestedTag !== '' && !in_array($requestedTag, array_map('textLower', $post['tags']), true)) {
+            continue;
+        }
+        $posts[] = $post;
+    }
+
+    $tags = array_values($tagCounts);
+    usort($tags, static fn(array $a, array $b): int => $b['count'] <=> $a['count'] ?: strcasecmp($a['label'], $b['label']));
+
+    respond(['ok' => true, 'posts' => $posts, 'tags' => $tags]);
+}
+
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     respond(['ok' => false, 'error' => 'Diese Aktion ist nur per POST verfügbar.'], 405);
 }
@@ -1522,14 +1963,23 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 validateCsrf($payload);
 
 if ($action === 'logout') {
-    $_SESSION = [];
-    if (ini_get('session.use_cookies')) {
-        $params = session_get_cookie_params();
-        setcookie(session_name(), '', time() - 42000, $params['path'], $params['domain'] ?? '', (bool) $params['secure'], (bool) $params['httponly']);
-    }
-    session_destroy();
-    session_start();
-    respond(['ok' => true, 'csrf_token' => csrfToken()]);
+    withWritableStore(function (array &$store): array {
+        if (isset($_COOKIE['kellerkinder_remember'])) {
+            $logoutParts = explode(':', (string) $_COOKIE['kellerkinder_remember'], 2);
+            if (count($logoutParts) === 2 && $logoutParts[0] !== '') {
+                revokeRememberToken($store, $logoutParts[0]);
+            }
+            clearRememberCookie();
+        }
+        $_SESSION = [];
+        if (ini_get('session.use_cookies')) {
+            $params = session_get_cookie_params();
+            setcookie(session_name(), '', time() - 42000, $params['path'], $params['domain'] ?? '', (bool) $params['secure'], (bool) $params['httponly']);
+        }
+        session_destroy();
+        session_start();
+        return [['ok' => true, 'csrf_token' => csrfToken()], 200, true];
+    });
 }
 
 withWritableStore(function (array &$store) use ($action, $payload): array {
@@ -1583,7 +2033,9 @@ withWritableStore(function (array &$store) use ($action, $payload): array {
             session_regenerate_id(true);
             $_SESSION['user_id'] = $userId;
             $_SESSION['auth_version'] = 1;
-            applyRememberMeCookie(!empty($payload['remember']));
+            if (!empty($payload['remember'])) {
+                issueRememberToken($store, $userId);
+            }
             return [bootstrapResponse($store), 201, true];
 
         case 'login':
@@ -1604,7 +2056,9 @@ withWritableStore(function (array &$store) use ($action, $payload): array {
             session_regenerate_id(true);
             $_SESSION['user_id'] = (int) $store['users'][$index]['id'];
             $_SESSION['auth_version'] = max(1, (int) ($store['users'][$index]['session_version'] ?? 1));
-            applyRememberMeCookie(!empty($payload['remember']));
+            if (!empty($payload['remember'])) {
+                issueRememberToken($store, (int) $store['users'][$index]['id']);
+            }
             return [bootstrapResponse($store), 200, true];
 
         case 'change_password':
@@ -1625,6 +2079,11 @@ withWritableStore(function (array &$store) use ($action, $payload): array {
             $store['users'][$userIndex]['session_version'] = max(1, (int) ($store['users'][$userIndex]['session_version'] ?? 1)) + 1;
             $_SESSION['auth_version'] = $store['users'][$userIndex]['session_version'];
             $store['users'][$userIndex]['updated_at'] = gmdate('c');
+            $changedUserId = (int) $store['users'][$userIndex]['id'];
+            revokeAllRememberTokensForUser($store, $changedUserId);
+            if (isset($_COOKIE['kellerkinder_remember'])) {
+                issueRememberToken($store, $changedUserId);
+            }
             return [bootstrapResponse($store), 200, true];
 
         case 'update_profile':
@@ -1642,12 +2101,6 @@ withWritableStore(function (array &$store) use ($action, $payload): array {
         case 'create_event_date':
             requireUser($store);
             $eventDate = validateDate($payload['event_date'] ?? '');
-            if (isAutomaticWeekday($eventDate)) {
-                return [[
-                    'ok' => false,
-                    'error' => 'Mittwoche und Sonntage werden automatisch angezeigt. Bitte wähle einen zusätzlichen Spieltag.',
-                ], 422, false];
-            }
             if (in_array($eventDate, $store['custom_dates'], true)) {
                 return [['ok' => false, 'error' => 'Dieser Spieltag ist bereits vorhanden.'], 409, false];
             }
@@ -1758,6 +2211,53 @@ withWritableStore(function (array &$store) use ($action, $payload): array {
             ];
             return [bootstrapResponse($store), 200, true];
 
+        case 'set_vacation_range':
+            [, $vacationUser] = requireUser($store);
+            $vacationFrom = validateDate($payload['from'] ?? '');
+            $vacationTo = validateDate($payload['to'] ?? '');
+            if ($vacationTo < $vacationFrom) {
+                return [['ok' => false, 'error' => 'Das Enddatum liegt vor dem Startdatum.'], 422, false];
+            }
+            $vacationPlayer = playerForUser($store, $vacationUser);
+            if ($vacationPlayer === null) {
+                return [['ok' => false, 'error' => 'Deinem Account ist kein Spieler zugeordnet.'], 422, false];
+            }
+            $vacationPlayerId = (int) $vacationPlayer['id'];
+            // Absichtlich nur die aktuell sichtbaren Spieltage: Urlaub wird
+            // nicht auf Termine gelegt, die es im Kalender (noch) nicht gibt.
+            $vacationRemove = !empty($payload['remove']);
+            $vacationTouched = 0;
+            foreach (array_keys(visibleDateMap($store)) as $visibleDate) {
+                if ($visibleDate < $vacationFrom || $visibleDate > $vacationTo) {
+                    continue;
+                }
+                $vacationKey = $vacationPlayerId . ':' . $visibleDate;
+                if ($vacationRemove) {
+                    // Nur eigene Urlaubseinträge zurücknehmen, andere Status
+                    // (z. B. „Online“) bleiben unangetastet.
+                    if (($store['availability'][$vacationKey]['status'] ?? '') !== 'vacation') {
+                        continue;
+                    }
+                    unset($store['availability'][$vacationKey]);
+                    $vacationTouched++;
+                    continue;
+                }
+                $existingEntry = $store['availability'][$vacationKey] ?? null;
+                $store['availability'][$vacationKey] = [
+                    'player_id' => $vacationPlayerId,
+                    'event_date' => $visibleDate,
+                    'status' => 'vacation',
+                    'note' => (string) ($existingEntry['note'] ?? ''),
+                    'game' => (string) ($existingEntry['game'] ?? ''),
+                    'updated_at' => gmdate('c'),
+                    'updated_by_user_id' => (int) $vacationUser['id'],
+                ];
+                $vacationTouched++;
+            }
+            $vacationResponse = bootstrapResponse($store);
+            $vacationResponse['vacation_days'] = $vacationTouched;
+            return [$vacationResponse, 200, true];
+
         case 'admin_create_user':
             requireAdmin($store);
             $username = validateUsername($payload['username'] ?? '');
@@ -1781,6 +2281,7 @@ withWritableStore(function (array &$store) use ($action, $payload): array {
                 'password_hash' => $hash,
                 'player_id' => null,
                 'must_change_password' => true,
+                'is_author' => !empty($payload['is_author']),
                 'session_version' => 1,
                 'default_weekdays' => [],
                 'avatar' => '',
@@ -1805,6 +2306,7 @@ withWritableStore(function (array &$store) use ($action, $payload): array {
             ensureUniqueUsername($store['users'], $username, $targetId);
             $store['users'][$targetIndex]['username'] = $username;
             renameOrAssignUserPlayer($store, $targetIndex, $playerName, true);
+            $store['users'][$targetIndex]['is_author'] = !empty($payload['is_author']);
 
             $newPassword = (string) ($payload['password'] ?? '');
             if ($newPassword !== '') {
@@ -1816,6 +2318,7 @@ withWritableStore(function (array &$store) use ($action, $payload): array {
                 $store['users'][$targetIndex]['password_hash'] = $hash;
                 $store['users'][$targetIndex]['must_change_password'] = true;
                 $store['users'][$targetIndex]['session_version'] = max(1, (int) ($store['users'][$targetIndex]['session_version'] ?? 1)) + 1;
+                revokeAllRememberTokensForUser($store, $targetId);
             }
             $store['users'][$targetIndex]['updated_at'] = gmdate('c');
             return [bootstrapResponse($store), 200, true];
@@ -1843,13 +2346,137 @@ withWritableStore(function (array &$store) use ($action, $payload): array {
                 }
             }
             array_splice($store['users'], $targetIndex, 1);
+            revokeAllRememberTokensForUser($store, $targetId);
             $deletingSelf = (int) $actingUser['id'] === $targetId;
             if ($deletingSelf) {
                 unset($_SESSION['user_id']);
+                clearRememberCookie();
             }
             $response = bootstrapResponse($store);
             $response['deleted_self'] = $deletingSelf;
             return [$response, 200, true];
+
+        case 'blog_save_post':
+            [, $author] = requireAuthor($store);
+            $postTitle = trim((string) ($payload['title'] ?? ''));
+            if ($postTitle === '') {
+                return [['ok' => false, 'error' => 'Bitte gib dem Beitrag einen Titel.'], 422, false];
+            }
+            if (textLength($postTitle) > BLOG_TITLE_MAX) {
+                return [['ok' => false, 'error' => 'Der Titel ist zu lang.'], 422, false];
+            }
+            $rawContent = (string) ($payload['content_html'] ?? '');
+            if (strlen($rawContent) > BLOG_CONTENT_MAX) {
+                return [['ok' => false, 'error' => 'Der Beitrag ist zu lang.'], 422, false];
+            }
+            $safeContent = sanitizeBlogHtml($rawContent);
+            if (trim(strip_tags($safeContent)) === '' && !str_contains($safeContent, '<img')) {
+                return [['ok' => false, 'error' => 'Der Beitrag hat noch keinen Inhalt.'], 422, false];
+            }
+            $postTags = normalizeBlogTags($payload['tags'] ?? []);
+            $postStatus = ($payload['status'] ?? 'published') === 'draft' ? 'draft' : 'published';
+            $postId = (int) ($payload['id'] ?? 0);
+            $nowIso = gmdate('c');
+            $authorIsAdmin = isAdminUser($store, $author);
+
+            if ($postId > 0) {
+                $foundIndex = null;
+                foreach ($store['blog_posts'] as $existingIndex => $existingPost) {
+                    if ((int) $existingPost['id'] === $postId) {
+                        $foundIndex = $existingIndex;
+                        break;
+                    }
+                }
+                if ($foundIndex === null) {
+                    return [['ok' => false, 'error' => 'Der Beitrag wurde nicht gefunden.'], 404, false];
+                }
+                $isOwnPost = (int) $store['blog_posts'][$foundIndex]['author_user_id'] === (int) $author['id'];
+                if (!$isOwnPost && !$authorIsAdmin) {
+                    return [['ok' => false, 'error' => 'Du kannst nur eigene Beiträge bearbeiten.'], 403, false];
+                }
+                $store['blog_posts'][$foundIndex]['title'] = $postTitle;
+                $store['blog_posts'][$foundIndex]['slug'] = blogSlug($postTitle, $postId);
+                $store['blog_posts'][$foundIndex]['content_html'] = $safeContent;
+                $store['blog_posts'][$foundIndex]['excerpt'] = blogExcerpt($safeContent);
+                $store['blog_posts'][$foundIndex]['tags'] = $postTags;
+                $store['blog_posts'][$foundIndex]['status'] = $postStatus;
+                $store['blog_posts'][$foundIndex]['updated_at'] = $nowIso;
+                $savedId = $postId;
+            } else {
+                $savedId = (int) $store['next_post_id'];
+                $store['next_post_id'] = $savedId + 1;
+                $authorPlayer = playerForUser($store, $author);
+                $store['blog_posts'][] = [
+                    'id' => $savedId,
+                    'title' => $postTitle,
+                    'slug' => blogSlug($postTitle, $savedId),
+                    'content_html' => $safeContent,
+                    'excerpt' => blogExcerpt($safeContent),
+                    'tags' => $postTags,
+                    'author_user_id' => (int) $author['id'],
+                    'author_name' => $authorPlayer === null ? (string) $author['username'] : (string) $authorPlayer['name'],
+                    'status' => $postStatus,
+                    'created_at' => $nowIso,
+                    'updated_at' => $nowIso,
+                ];
+            }
+            return [['ok' => true, 'id' => $savedId], 200, true];
+
+        case 'blog_delete_post':
+            [, $deletingUser] = requireAuthor($store);
+            $deleteId = validateId($payload['id'] ?? null, 'Beitrags-ID');
+            $deleteIndex = null;
+            foreach ($store['blog_posts'] as $existingIndex => $existingPost) {
+                if ((int) $existingPost['id'] === $deleteId) {
+                    $deleteIndex = $existingIndex;
+                    break;
+                }
+            }
+            if ($deleteIndex === null) {
+                return [['ok' => false, 'error' => 'Der Beitrag wurde nicht gefunden.'], 404, false];
+            }
+            $ownsPost = (int) $store['blog_posts'][$deleteIndex]['author_user_id'] === (int) $deletingUser['id'];
+            if (!$ownsPost && !isAdminUser($store, $deletingUser)) {
+                return [['ok' => false, 'error' => 'Du kannst nur eigene Beiträge löschen.'], 403, false];
+            }
+            array_splice($store['blog_posts'], $deleteIndex, 1);
+            return [['ok' => true], 200, true];
+
+        case 'blog_upload_image':
+            requireAuthor($store);
+            $imageData = (string) ($payload['image'] ?? '');
+            if (!preg_match('#^data:image/(png|jpeg|gif|webp);base64,([A-Za-z0-9+/=]+)$#', $imageData, $imageMatches)) {
+                return [['ok' => false, 'error' => 'Es werden nur PNG-, JPEG-, GIF- und WEBP-Bilder unterstützt.'], 422, false];
+            }
+            $binary = base64_decode($imageMatches[2], true);
+            if ($binary === false || $binary === '' || strlen($binary) > BLOG_IMAGE_MAX_BYTES) {
+                return [['ok' => false, 'error' => 'Das Bild ist ungültig oder zu groß (max. 6 MB).'], 422, false];
+            }
+            // Tatsächlichen Bildinhalt prüfen — die angegebene Endung allein
+            // ist keine verlässliche Aussage über den echten Dateityp.
+            $imageInfo = @getimagesizefromstring($binary);
+            if ($imageInfo === false) {
+                return [['ok' => false, 'error' => 'Die Datei ist kein gültiges Bild.'], 422, false];
+            }
+            $extensionByType = [
+                IMAGETYPE_PNG => 'png',
+                IMAGETYPE_JPEG => 'jpg',
+                IMAGETYPE_GIF => 'gif',
+                IMAGETYPE_WEBP => 'webp',
+            ];
+            if (!isset($extensionByType[$imageInfo[2]])) {
+                return [['ok' => false, 'error' => 'Dieses Bildformat wird nicht unterstützt.'], 422, false];
+            }
+            $uploadDirectory = __DIR__ . '/assets/blog';
+            if (!is_dir($uploadDirectory) && !@mkdir($uploadDirectory, 0750, true) && !is_dir($uploadDirectory)) {
+                return [['ok' => false, 'error' => 'Der Bilderordner konnte nicht angelegt werden.'], 500, false];
+            }
+            $binary = downscaleBlogImage($binary, $imageInfo);
+            $fileName = date('Ymd') . '-' . bin2hex(random_bytes(8)) . '.' . $extensionByType[$imageInfo[2]];
+            if (@file_put_contents($uploadDirectory . '/' . $fileName, $binary) === false) {
+                return [['ok' => false, 'error' => 'Das Bild konnte nicht gespeichert werden.'], 500, false];
+            }
+            return [['ok' => true, 'url' => 'assets/blog/' . $fileName], 200, false];
 
         case 'admin_save_achievement':
             requireAdmin($store);
