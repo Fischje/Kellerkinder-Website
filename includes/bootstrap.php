@@ -2,7 +2,7 @@
 // Gemeinsamer Vorspann für alle Seiten: Version, Hintergrundbilder,
 // Sicherheits-Header und CSP-Nonce. Eingebunden von index.php und blog.php.
 date_default_timezone_set('Europe/Berlin');
-$appVersion = trim((string) @file_get_contents(__DIR__ . DIRECTORY_SEPARATOR . 'VERSION'));
+$appVersion = trim((string) @file_get_contents(dirname(__DIR__) . DIRECTORY_SEPARATOR . 'VERSION'));
 if ($appVersion === '') {
     $appVersion = '2.10.0';
 }
@@ -15,7 +15,7 @@ if ($appVersion === '') {
  */
 function pickBackgroundImage(string $folder, bool $random): ?string
 {
-    $directory = __DIR__ . '/assets/backgrounds/' . $folder;
+    $directory = dirname(__DIR__) . '/assets/backgrounds/' . $folder;
     if (!is_dir($directory)) {
         return null;
     }
