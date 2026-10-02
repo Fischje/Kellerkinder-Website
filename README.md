@@ -245,10 +245,21 @@ und müssen direkt auf den Server hochgeladen werden (z. B. per FTP/SCP oder
 ## Spiele
 
 Unter `games.php` führen die Kellerkinder eine Bibliothek der aktuell gespielten
-Spiele. Angemeldete Benutzer suchen ein Spiel über das Suchfeld; die Treffer
-stammen aus dem Steam-Store und zeigen das Steam-Icon. Der Server braucht dafür
-ausgehenden Zugriff auf `store.steampowered.com`. Ist Steam nicht erreichbar,
-lassen sich Spiele trotzdem ohne Icon eintragen.
+Spiele. Angemeldete Benutzer suchen ein Spiel über das Suchfeld und übernehmen
+den Treffer samt Bild. Spiele ohne Treffer lassen sich auch ohne Bild eintragen.
+
+**Spieldatenbank:** Für Spiele außerhalb von Steam (z. B. Blizzard) wird
+[RAWG](https://rawg.io/apidocs) verwendet. Dafür einen kostenlosen API-Key
+holen und in `config.php` im Hauptordner eintragen (die Datei ist in
+`.gitignore` und wird nicht hochgeladen):
+
+```php
+<?php
+const RAWG_API_KEY = 'dein-key';
+```
+
+Ohne Key sucht die Seite im Steam-Store. Der Server braucht ausgehenden Zugriff
+auf `api.rawg.io` bzw. `store.steampowered.com`.
 
 ## Blog
 

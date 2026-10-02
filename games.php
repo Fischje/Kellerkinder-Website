@@ -61,12 +61,12 @@ require __DIR__ . '/includes/bootstrap.php';
     <section class="games-panel">
         <div class="games-head">
             <h1>Das spielen wir gerade</h1>
-            <p>Unsere kleine Bibliothek der aktuell gespielten Spiele. Das Icon kommt automatisch von Steam.</p>
+            <p>Unsere kleine Bibliothek der aktuell gespielten Spiele. Das Bild kommt automatisch aus einer Spiele-Datenbank.</p>
         </div>
 
         <div class="game-search" id="gameSearchBox" hidden>
             <label for="gameSearch">Spiel hinzufügen</label>
-            <input type="text" id="gameSearch" maxlength="100" autocomplete="off" placeholder="Spielname eingeben, z. B. Helldivers 2">
+            <input type="text" id="gameSearch" maxlength="100" autocomplete="off" placeholder="Spielname eingeben, z. B. Diablo IV">
             <ul class="game-results" id="gameResults" hidden></ul>
         </div>
         <p class="post-meta" id="loginHint" hidden>Zum Eintragen von Spielen bitte zuerst <a href="index.php">im Kalender anmelden</a>.</p>
@@ -84,7 +84,6 @@ require __DIR__ . '/includes/bootstrap.php';
 <script nonce="<?= htmlspecialchars($cspNonce, ENT_QUOTES, 'UTF-8') ?>">
     const byId = id => document.getElementById(id);
     const state = { csrf: '', auth: { logged_in: false, is_admin: false, user: null }, games: [] };
-    const STEAM_IMG = appid => `https://cdn.akamai.steamstatic.com/steam/apps/${appid}/header.jpg`;
 
     let toastTimer = null;
     function showToast(message) {
@@ -120,16 +119,16 @@ require __DIR__ . '/includes/bootstrap.php';
         return data;
     }
 
-    function thumb(appid, className) {
+    function thumb(src, className) {
         const placeholder = () => {
             const empty = document.createElement('div');
             empty.className = 'game-thumb-empty' + (className ? ' ' + className : '');
             empty.textContent = '🎮';
             return empty;
         };
-        if (!appid) return placeholder();
+        if (!src) return placeholder();
         const img = document.createElement('img');
-        img.src = STEAM_IMG(appid);
+        img.src = src;
         img.alt = '';
         img.loading = 'lazy';
         img.addEventListener('error', () => img.replaceWith(placeholder()));
@@ -154,7 +153,7 @@ require __DIR__ . '/includes/bootstrap.php';
         for (const game of state.games) {
             const card = document.createElement('article');
             card.className = 'game-card';
-            card.appendChild(thumb(game.steam_appid));
+            card.appendChild(thumb(game.image));
 
             const body = document.createElement('div');
             body.className = 'game-card-body';
@@ -192,11 +191,11 @@ require __DIR__ . '/includes/bootstrap.php';
         }
     }
 
-    async function addGame(name, appid) {
+    async function addGame(name, image, appid) {
         hideResults();
         byId('gameSearch').value = '';
         try {
-            await api('game_add', { name, steam_appid: appid || 0 });
+            await api('game_add', { name, image: image || '', steam_appid: appid || 0 });
             showToast(`„${name}“ wurde hinzugefügt.`);
             await loadGames();
         } catch (error) {
@@ -242,8 +241,8 @@ require __DIR__ . '/includes/bootstrap.php';
         const button = document.createElement('button');
         button.type = 'button';
         button.className = 'game-result';
-        button.append(thumb(0), document.createTextNode(`„${name}“ ohne Steam-Icon hinzufügen`));
-        button.addEventListener('click', () => addGame(name, 0));
+        button.append(thumb(''), document.createTextNode(`„${name}“ ohne Bild hinzufügen`));
+        button.addEventListener('click', () => addGame(name, '', 0));
         return button;
     }
 
@@ -253,9 +252,9 @@ require __DIR__ . '/includes/bootstrap.php';
         if (term.length < 2) { hideResults(); return; }
         resultsBox.hidden = false;
         resultsBox.replaceChildren();
-        resultRow(hint('Suche bei Steam …'));
+        resultRow(hint('Suche …'));
         try {
-            const data = await api('steam_search', null, { term });
+            const data = await api('game_search', null, { term });
             if (seq !== searchSeq) return;
             resultsBox.replaceChildren();
             for (const entry of data.results) {
@@ -264,11 +263,11 @@ require __DIR__ . '/includes/bootstrap.php';
                 button.className = 'game-result';
                 const label = document.createElement('span');
                 label.textContent = entry.name;
-                button.append(thumb(entry.appid), label);
-                button.addEventListener('click', () => addGame(entry.name, entry.appid));
+                button.append(thumb(entry.image), label);
+                button.addEventListener('click', () => addGame(entry.name, entry.image, entry.steam_appid));
                 resultRow(button);
             }
-            if (data.results.length === 0) resultRow(hint('Kein Treffer bei Steam.'));
+            if (data.results.length === 0) resultRow(hint('Kein Treffer.'));
             resultRow(manualRow(term));
         } catch (error) {
             if (seq !== searchSeq) return;

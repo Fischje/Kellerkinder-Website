@@ -1,5 +1,16 @@
 # Änderungsprotokoll
 
+## 2.11.1 — Spielsuche über RAWG (auch Blizzard-Spiele)
+
+- Die Spielsuche nutzt jetzt bevorzugt die Datenbank RAWG, die auch
+  Blizzard-, Epic- und Konsolenspiele kennt (Steam kennt diese nicht)
+- Aktivierung: kostenlosen Key auf rawg.io/apidocs holen und in der (nicht im
+  Repository liegenden) Datei `config.php` eintragen:
+  `<?php const RAWG_API_KEY = 'dein-key';`
+- Ohne Key bleibt die Steam-Suche als Rückfall aktiv
+- Gespeichert wird nur noch die Bild-Adresse; erlaubt sind ausschließlich
+  Bilder von RAWG und Steam
+
 ## 2.11.0 — Neue Seite „Spiele": Bibliothek der aktuell gespielten Spiele
 
 - Neue Seite `games.php` (Menüpunkt „Spiele") mit einer Bibliothek der Spiele,

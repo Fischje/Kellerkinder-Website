@@ -11,6 +11,12 @@ if (!defined('BLOG_FEED_ONLY')) {
 
 date_default_timezone_set('Europe/Berlin');
 
+// Optionale lokale Konfiguration (nicht im Repository, siehe .gitignore),
+// z. B.: <?php const RAWG_API_KEY = 'dein-key';
+if (is_file(__DIR__ . '/config.php')) {
+    require_once __DIR__ . '/config.php';
+}
+
 const PLAYER_NAME_MAX = 40;
 const USERNAME_MAX = 50;
 const NOTE_MAX = 60;
@@ -340,10 +346,12 @@ function normalizeCurrentGames($games): array
             continue;
         }
         $steamAppId = (int) ($game['steam_appid'] ?? 0);
+        $image = validGameImage($game['image'] ?? null) ?? ($steamAppId > 0 ? steamImageUrl($steamAppId) : null);
         $result[] = [
             'id' => (int) $game['id'],
             'name' => $name,
             'steam_appid' => $steamAppId > 0 ? $steamAppId : null,
+            'image' => $image,
             'added_by_user_id' => (int) ($game['added_by_user_id'] ?? 0),
             'added_by_name' => (string) ($game['added_by_name'] ?? ''),
             'added_at' => (string) ($game['added_at'] ?? gmdate('c')),
@@ -352,35 +360,82 @@ function normalizeCurrentGames($games): array
     return array_slice($result, 0, CURRENT_GAMES_MAX);
 }
 
-/**
- * Sucht im Steam-Store (serverseitig, damit weder CORS noch die CSP des
- * Browsers im Weg stehen). Gibt höchstens STEAM_SEARCH_RESULTS_MAX Treffer
- * als [appid, name] zurück, oder null, falls Steam nicht erreichbar ist.
- */
-function steamStoreSearch(string $term): ?array
+function steamImageUrl(int $appId): string
 {
-    $url = 'https://store.steampowered.com/api/storesearch/?term=' . rawurlencode($term) . '&l=german&cc=DE';
+    return 'https://cdn.akamai.steamstatic.com/steam/apps/' . $appId . '/header.jpg';
+}
+
+/** Nur Bilder von bekannten Spiele-Diensten zulassen (passt zur CSP). */
+function validGameImage($value): ?string
+{
+    $url = is_string($value) ? trim($value) : '';
+    if ($url !== '' && strlen($url) <= 300
+        && preg_match('#^https://(media\.rawg\.io/media/[A-Za-z0-9_/.-]+|cdn\.akamai\.steamstatic\.com/steam/apps/\d+/[A-Za-z0-9_.-]+)$#', $url)) {
+        return $url;
+    }
+    return null;
+}
+
+function gameHttpGet(string $url): ?array
+{
     $context = stream_context_create(['http' => [
         'timeout' => 6,
         'ignore_errors' => true,
         'header' => "User-Agent: Kellerkinder-Kalender/1.0 (+https://github.com/Fischje)\r\n",
     ]]);
     $raw = @file_get_contents($url, false, $context);
-    if ($raw === false) {
-        return null;
-    }
-    $data = json_decode($raw, true);
-    if (!is_array($data) || !is_array($data['items'] ?? null)) {
-        return null;
-    }
+    $data = $raw === false ? null : json_decode($raw, true);
+    return is_array($data) ? $data : null;
+}
+
+/**
+ * Spielsuche. Mit RAWG_API_KEY (config.php) über RAWG, das auch
+ * Blizzard-, Epic- und Konsolenspiele kennt; sonst über den Steam-Store.
+ * Läuft serverseitig, weil der Browser beides wegen CORS/CSP nicht direkt
+ * abfragen darf. Gibt Treffer als [name, image, steam_appid] zurück,
+ * oder null, falls der Dienst nicht erreichbar ist.
+ */
+function searchGames(string $term): ?array
+{
     $results = [];
+    if (defined('RAWG_API_KEY') && RAWG_API_KEY !== '') {
+        $data = gameHttpGet('https://api.rawg.io/api/games?key=' . rawurlencode(RAWG_API_KEY)
+            . '&search=' . rawurlencode($term) . '&search_precise=true&page_size=' . STEAM_SEARCH_RESULTS_MAX);
+        if ($data === null || !is_array($data['results'] ?? null)) {
+            return null;
+        }
+        foreach ($data['results'] as $item) {
+            $name = trim((string) ($item['name'] ?? ''));
+            if ($name === '') {
+                continue;
+            }
+            $image = (string) ($item['background_image'] ?? '');
+            // Verkleinerte Variante verwenden (RAWG-Bild-Crop).
+            $image = str_replace('/media/games/', '/media/crop/600/400/games/', $image);
+            $results[] = [
+                'name' => mb_substr($name, 0, CURRENT_GAME_NAME_MAX, 'UTF-8'),
+                'image' => validGameImage($image),
+                'steam_appid' => null,
+            ];
+        }
+        return $results;
+    }
+
+    $data = gameHttpGet('https://store.steampowered.com/api/storesearch/?term=' . rawurlencode($term) . '&l=german&cc=DE');
+    if ($data === null || !is_array($data['items'] ?? null)) {
+        return null;
+    }
     foreach ($data['items'] as $item) {
         $appId = (int) ($item['id'] ?? 0);
         $name = trim((string) ($item['name'] ?? ''));
         if ($appId <= 0 || $name === '' || ($item['type'] ?? 'app') !== 'app') {
             continue;
         }
-        $results[] = ['appid' => $appId, 'name' => mb_substr($name, 0, CURRENT_GAME_NAME_MAX, 'UTF-8')];
+        $results[] = [
+            'name' => mb_substr($name, 0, CURRENT_GAME_NAME_MAX, 'UTF-8'),
+            'image' => steamImageUrl($appId),
+            'steam_appid' => $appId,
+        ];
         if (count($results) >= STEAM_SEARCH_RESULTS_MAX) {
             break;
         }
@@ -2039,7 +2094,7 @@ if ($action === 'games') {
     respond(['ok' => true, 'games' => $games]);
 }
 
-if ($action === 'steam_search') {
+if ($action === 'game_search') {
     [, $searchUser] = requireUser(readStore());
     session_write_close();
     $term = trim((string) ($payload['term'] ?? ''));
@@ -2047,9 +2102,9 @@ if ($action === 'steam_search') {
         respond(['ok' => true, 'results' => []]);
     }
     $term = mb_substr($term, 0, CURRENT_GAME_NAME_MAX, 'UTF-8');
-    $results = steamStoreSearch($term);
+    $results = searchGames($term);
     if ($results === null) {
-        respond(['ok' => false, 'error' => 'Steam ist gerade nicht erreichbar. Du kannst das Spiel auch ohne Icon eintragen.'], 502);
+        respond(['ok' => false, 'error' => 'Die Spielsuche ist gerade nicht erreichbar. Du kannst das Spiel auch ohne Icon eintragen.'], 502);
     }
     respond(['ok' => true, 'results' => $results]);
 }
@@ -2550,6 +2605,7 @@ withWritableStore(function (array &$store) use ($action, $payload): array {
             if ($gameAppId < 0 || $gameAppId > 100000000) {
                 return [['ok' => false, 'error' => 'Die Steam-ID ist ungültig.'], 422, false];
             }
+            $gameImage = validGameImage($payload['image'] ?? null) ?? ($gameAppId > 0 ? steamImageUrl($gameAppId) : null);
             if (count($store['current_games']) >= CURRENT_GAMES_MAX) {
                 return [['ok' => false, 'error' => 'Die Bibliothek ist voll.'], 422, false];
             }
@@ -2566,6 +2622,7 @@ withWritableStore(function (array &$store) use ($action, $payload): array {
                 'id' => $newGameId,
                 'name' => $gameName,
                 'steam_appid' => $gameAppId > 0 ? $gameAppId : null,
+                'image' => $gameImage,
                 'added_by_user_id' => (int) $gameUser['id'],
                 'added_by_name' => $gamePlayer === null ? (string) $gameUser['username'] : (string) $gamePlayer['name'],
                 'added_at' => gmdate('c'),
