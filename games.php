@@ -53,6 +53,7 @@ require __DIR__ . '/includes/bootstrap.php';
                 <a href="index.php" class="nav-link">Kalender</a>
                 <a href="blog.php" class="nav-link">Blog</a>
                 <a href="games.php" class="nav-link active">Spiele</a>
+                <a href="statistik.php" class="nav-link">Statistik</a>
                 <span class="nav-link disabled">Netzje <small>(folgt)</small></span>
             </nav>
         </div>

@@ -261,6 +261,27 @@ const RAWG_API_KEY = 'dein-key';
 Ohne Key sucht die Seite im Steam-Store. Der Server braucht ausgehenden Zugriff
 auf `api.rawg.io` bzw. `store.steampowered.com`.
 
+## Statistik
+
+Unter `statistik.php` zeigt die Seite, welche Spiele auf dem Kellerkinder-Discord
+wie lange gespielt wurden (Zeiträume 7, 30, 90 Tage und gesamt). Die Zahlen
+liefert der Discord-Bot (Repository `kk-discord-bot`, ab Version 1.5.0); gezählt
+werden nur volle 15-Minuten-Blöcke.
+
+Der Server ruft die Daten selbst beim Bot ab, der Browser spricht nie direkt mit
+dem Bot. Die Adresse kommt in `config.php` (neben dem RAWG-Key):
+
+```php
+<?php
+const BOT_STATS_URL = 'http://127.0.0.1:3100/api/stats';
+```
+
+Die Antwort wird 5 Minuten zwischengespeichert. Ist der Bot kurz nicht
+erreichbar, zeigt die Seite den letzten bekannten Stand mit Hinweis. Ohne
+`BOT_STATS_URL` meldet die Seite, dass die Statistik noch nicht eingerichtet ist.
+
+Spielernamen erscheinen nur, wenn im Bot `STATS_PUBLIC_PLAYERS=true` gesetzt ist.
+
 ## Blog
 
 Unter `blog.php` steht ein Blog für Spielerlebnisse und News bereit.

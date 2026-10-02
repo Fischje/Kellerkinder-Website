@@ -43,6 +43,11 @@ const WOW_ACHIEVEMENT_CHARACTERS = [
 ];
 
 const ACHIEVEMENTS_CACHE_TTL_SECONDS = 1800;
+
+// Spielzeit-Statistik vom Discord-Bot. Die Adresse steht (nicht im Repository)
+// in config.php, z. B.: const BOT_STATS_URL = 'http://127.0.0.1:3100/api/stats';
+const BOT_STATS_TTL_SECONDS = 300;
+const BOT_STATS_ALLOWED_DAYS = [7, 30, 90, 0]; // 0 = gesamte Zeit
 const ACHIEVEMENT_MANUAL_GAMES = ['hots', 'diablo4', 'rocket_league']; // Spiele mit manuell gepflegter Statistik
 const ACHIEVEMENT_GAMES = ['wow', 'hots', 'diablo4', 'rocket_league']; // Alle Spiele (inkl. WoW, das Titel/Links aber nicht Stats manuell hat)
 const ACHIEVEMENT_LABEL_MAX = 40;
@@ -653,6 +658,48 @@ function achievementsCacheWrite(string $file, array $data): void
         $directory . DIRECTORY_SEPARATOR . $file,
         json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
     );
+}
+
+/**
+ * Spielzeit-Statistik des Discord-Bots (serverseitig abgerufen, 5 Minuten
+ * zwischengespeichert). Ist der Bot nicht erreichbar, werden die letzten
+ * bekannten Daten mit 'stale' => true geliefert; ohne Daten gibt es null.
+ */
+function botStatsData(int $days): ?array
+{
+    $file = 'playtime-' . $days . '.json';
+    $directory = achievementsCacheDirectory();
+    $path = $directory . DIRECTORY_SEPARATOR . $file;
+    $hasCache = is_file($path);
+
+    if ($hasCache && (time() - filemtime($path)) < BOT_STATS_TTL_SECONDS) {
+        $cached = json_decode((string) file_get_contents($path), true);
+        if (is_array($cached)) {
+            return $cached;
+        }
+    }
+
+    $context = stream_context_create(['http' => [
+        'timeout' => 4,
+        'ignore_errors' => true,
+        'header' => "User-Agent: Kellerkinder-Website/1.0\r\nAccept: application/json\r\n",
+    ]]);
+    $raw = @file_get_contents(BOT_STATS_URL . '?days=' . $days, false, $context);
+    $data = $raw === false ? null : json_decode($raw, true);
+
+    if (is_array($data) && ($data['ok'] ?? false) === true && is_array($data['games'] ?? null)) {
+        achievementsCacheWrite($file, $data);
+        return $data;
+    }
+
+    if ($hasCache) {
+        $stale = json_decode((string) file_get_contents($path), true);
+        if (is_array($stale)) {
+            $stale['stale'] = true;
+            return $stale;
+        }
+    }
+    return null;
 }
 
 function raiderIoCharacterSlug(string $name, string $realm, string $region): string
@@ -2092,6 +2139,50 @@ if ($action === 'games') {
     $games = $gamesStore['current_games'];
     usort($games, static fn(array $a, array $b): int => strcmp($b['added_at'], $a['added_at']));
     respond(['ok' => true, 'games' => $games]);
+}
+
+if ($action === 'playtime_stats') {
+    session_write_close();
+    if (!defined('BOT_STATS_URL') || BOT_STATS_URL === '') {
+        respond(['ok' => true, 'configured' => false]);
+    }
+    $statsDays = (int) ($payload['days'] ?? 30);
+    if (!in_array($statsDays, BOT_STATS_ALLOWED_DAYS, true)) {
+        respond(['ok' => false, 'error' => 'Ungültiger Zeitraum.'], 422);
+    }
+    $stats = botStatsData($statsDays);
+    if ($stats === null) {
+        respond(['ok' => false, 'error' => 'Die Statistik ist gerade nicht erreichbar.'], 502);
+    }
+    $out = [
+        'ok' => true,
+        'configured' => true,
+        'stale' => (bool) ($stats['stale'] ?? false),
+        'days' => $statsDays,
+        'block_minutes' => (int) ($stats['blockMinutes'] ?? 15),
+        'total_minutes' => (int) ($stats['totalMinutes'] ?? 0),
+        'generated_at' => (string) ($stats['generatedAt'] ?? ''),
+        'games' => [],
+    ];
+    foreach (array_slice($stats['games'], 0, 100) as $game) {
+        $out['games'][] = [
+            'name' => mb_substr((string) ($game['name'] ?? ''), 0, 100, 'UTF-8'),
+            'minutes' => (int) ($game['minutes'] ?? 0),
+            'players' => (int) ($game['players'] ?? 0),
+            'last_played' => (string) ($game['lastPlayed'] ?? ''),
+        ];
+    }
+    if (is_array($stats['players'] ?? null)) {
+        $out['players'] = [];
+        foreach (array_slice($stats['players'], 0, 50) as $player) {
+            $out['players'][] = [
+                'name' => mb_substr((string) ($player['name'] ?? ''), 0, 60, 'UTF-8'),
+                'minutes' => (int) ($player['minutes'] ?? 0),
+                'top_game' => isset($player['topGame']) ? mb_substr((string) $player['topGame'], 0, 100, 'UTF-8') : null,
+            ];
+        }
+    }
+    respond($out);
 }
 
 if ($action === 'game_search') {
