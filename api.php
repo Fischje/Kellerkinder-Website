@@ -55,6 +55,10 @@ const BLOG_CONTENT_MAX = 120000;
 const BLOG_IMAGE_MAX_WIDTH = 1600;
 const BLOG_IMAGE_MAX_BYTES = 6000000;
 
+const CURRENT_GAMES_MAX = 100;
+const CURRENT_GAME_NAME_MAX = 100;
+const STEAM_SEARCH_RESULTS_MAX = 8;
+
 /**
  * Erlaubte Tags und Attribute für Blog-Inhalte. Alles andere wird entfernt.
  * Das ist die zentrale Absicherung gegen eingeschleusten Schadcode: Autoren
@@ -319,6 +323,69 @@ function normalizeBlogPosts($posts): array
     }
     usort($result, static fn(array $a, array $b): int => strcmp($b['created_at'], $a['created_at']));
     return $result;
+}
+
+function normalizeCurrentGames($games): array
+{
+    if (!is_array($games)) {
+        return [];
+    }
+    $result = [];
+    foreach ($games as $game) {
+        if (!is_array($game) || (int) ($game['id'] ?? 0) <= 0) {
+            continue;
+        }
+        $name = mb_substr(trim((string) ($game['name'] ?? '')), 0, CURRENT_GAME_NAME_MAX, 'UTF-8');
+        if ($name === '') {
+            continue;
+        }
+        $steamAppId = (int) ($game['steam_appid'] ?? 0);
+        $result[] = [
+            'id' => (int) $game['id'],
+            'name' => $name,
+            'steam_appid' => $steamAppId > 0 ? $steamAppId : null,
+            'added_by_user_id' => (int) ($game['added_by_user_id'] ?? 0),
+            'added_by_name' => (string) ($game['added_by_name'] ?? ''),
+            'added_at' => (string) ($game['added_at'] ?? gmdate('c')),
+        ];
+    }
+    return array_slice($result, 0, CURRENT_GAMES_MAX);
+}
+
+/**
+ * Sucht im Steam-Store (serverseitig, damit weder CORS noch die CSP des
+ * Browsers im Weg stehen). Gibt höchstens STEAM_SEARCH_RESULTS_MAX Treffer
+ * als [appid, name] zurück, oder null, falls Steam nicht erreichbar ist.
+ */
+function steamStoreSearch(string $term): ?array
+{
+    $url = 'https://store.steampowered.com/api/storesearch/?term=' . rawurlencode($term) . '&l=german&cc=DE';
+    $context = stream_context_create(['http' => [
+        'timeout' => 6,
+        'ignore_errors' => true,
+        'header' => "User-Agent: Kellerkinder-Kalender/1.0 (+https://github.com/Fischje)\r\n",
+    ]]);
+    $raw = @file_get_contents($url, false, $context);
+    if ($raw === false) {
+        return null;
+    }
+    $data = json_decode($raw, true);
+    if (!is_array($data) || !is_array($data['items'] ?? null)) {
+        return null;
+    }
+    $results = [];
+    foreach ($data['items'] as $item) {
+        $appId = (int) ($item['id'] ?? 0);
+        $name = trim((string) ($item['name'] ?? ''));
+        if ($appId <= 0 || $name === '' || ($item['type'] ?? 'app') !== 'app') {
+            continue;
+        }
+        $results[] = ['appid' => $appId, 'name' => mb_substr($name, 0, CURRENT_GAME_NAME_MAX, 'UTF-8')];
+        if (count($results) >= STEAM_SEARCH_RESULTS_MAX) {
+            break;
+        }
+    }
+    return $results;
 }
 
 /**
@@ -695,6 +762,8 @@ function defaultStore(): array
         'remember_tokens' => [],
         'blog_posts' => [],
         'next_post_id' => 1,
+        'current_games' => [],
+        'next_game_id' => 1,
         'settings' => [
             'admin_player_names' => [],
             'theme' => 'default',
@@ -778,6 +847,12 @@ function normalizeStore(array $store): array
     $store['remember_tokens'] = pruneRememberTokens($store['remember_tokens'] ?? []);
     $store['blog_posts'] = normalizeBlogPosts($store['blog_posts'] ?? []);
     $store['next_post_id'] = max(1, (int) ($store['next_post_id'] ?? 1));
+    $store['current_games'] = normalizeCurrentGames($store['current_games'] ?? []);
+    $maxGameId = 0;
+    foreach ($store['current_games'] as $currentGame) {
+        $maxGameId = max($maxGameId, $currentGame['id']);
+    }
+    $store['next_game_id'] = max($maxGameId + 1, (int) ($store['next_game_id'] ?? 1), 1);
     $store['settings'] = is_array($store['settings'] ?? null) ? $store['settings'] : $defaults['settings'];
     $store['settings']['admin_player_names'] = is_array($store['settings']['admin_player_names'] ?? null)
         ? array_values($store['settings']['admin_player_names'])
@@ -1956,6 +2031,29 @@ if ($action === 'blog_posts') {
     respond(['ok' => true, 'posts' => $posts, 'tags' => $tags]);
 }
 
+if ($action === 'games') {
+    session_write_close();
+    $gamesStore = readStore();
+    $games = $gamesStore['current_games'];
+    usort($games, static fn(array $a, array $b): int => strcmp($b['added_at'], $a['added_at']));
+    respond(['ok' => true, 'games' => $games]);
+}
+
+if ($action === 'steam_search') {
+    [, $searchUser] = requireUser(readStore());
+    session_write_close();
+    $term = trim((string) ($payload['term'] ?? ''));
+    if (textLength($term) < 2) {
+        respond(['ok' => true, 'results' => []]);
+    }
+    $term = mb_substr($term, 0, CURRENT_GAME_NAME_MAX, 'UTF-8');
+    $results = steamStoreSearch($term);
+    if ($results === null) {
+        respond(['ok' => false, 'error' => 'Steam ist gerade nicht erreichbar. Du kannst das Spiel auch ohne Icon eintragen.'], 502);
+    }
+    respond(['ok' => true, 'results' => $results]);
+}
+
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     respond(['ok' => false, 'error' => 'Diese Aktion ist nur per POST verfügbar.'], 405);
 }
@@ -2440,6 +2538,58 @@ withWritableStore(function (array &$store) use ($action, $payload): array {
                 return [['ok' => false, 'error' => 'Du kannst nur eigene Beiträge löschen.'], 403, false];
             }
             array_splice($store['blog_posts'], $deleteIndex, 1);
+            return [['ok' => true], 200, true];
+
+        case 'game_add':
+            [, $gameUser] = requireUser($store);
+            $gameName = trim((string) ($payload['name'] ?? ''));
+            if ($gameName === '' || textLength($gameName) > CURRENT_GAME_NAME_MAX) {
+                return [['ok' => false, 'error' => 'Bitte gib einen Spielnamen an (max. ' . CURRENT_GAME_NAME_MAX . ' Zeichen).'], 422, false];
+            }
+            $gameAppId = (int) ($payload['steam_appid'] ?? 0);
+            if ($gameAppId < 0 || $gameAppId > 100000000) {
+                return [['ok' => false, 'error' => 'Die Steam-ID ist ungültig.'], 422, false];
+            }
+            if (count($store['current_games']) >= CURRENT_GAMES_MAX) {
+                return [['ok' => false, 'error' => 'Die Bibliothek ist voll.'], 422, false];
+            }
+            foreach ($store['current_games'] as $existingGame) {
+                $sameApp = $gameAppId > 0 && $existingGame['steam_appid'] === $gameAppId;
+                if ($sameApp || textLower($existingGame['name']) === textLower($gameName)) {
+                    return [['ok' => false, 'error' => '„' . $existingGame['name'] . '“ ist bereits in der Bibliothek.'], 409, false];
+                }
+            }
+            $gamePlayer = playerForUser($store, $gameUser);
+            $newGameId = (int) $store['next_game_id'];
+            $store['next_game_id'] = $newGameId + 1;
+            $store['current_games'][] = [
+                'id' => $newGameId,
+                'name' => $gameName,
+                'steam_appid' => $gameAppId > 0 ? $gameAppId : null,
+                'added_by_user_id' => (int) $gameUser['id'],
+                'added_by_name' => $gamePlayer === null ? (string) $gameUser['username'] : (string) $gamePlayer['name'],
+                'added_at' => gmdate('c'),
+            ];
+            return [['ok' => true, 'id' => $newGameId], 200, true];
+
+        case 'game_remove':
+            [, $removingUser] = requireUser($store);
+            $removeGameId = validateId($payload['id'] ?? null, 'Spiel-ID');
+            $removeIndex = null;
+            foreach ($store['current_games'] as $existingIndex => $existingGame) {
+                if ((int) $existingGame['id'] === $removeGameId) {
+                    $removeIndex = $existingIndex;
+                    break;
+                }
+            }
+            if ($removeIndex === null) {
+                return [['ok' => false, 'error' => 'Das Spiel wurde nicht gefunden.'], 404, false];
+            }
+            $ownsGame = (int) $store['current_games'][$removeIndex]['added_by_user_id'] === (int) $removingUser['id'];
+            if (!$ownsGame && !isAdminUser($store, $removingUser)) {
+                return [['ok' => false, 'error' => 'Du kannst nur selbst eingetragene Spiele entfernen.'], 403, false];
+            }
+            array_splice($store['current_games'], $removeIndex, 1);
             return [['ok' => true], 200, true];
 
         case 'blog_upload_image':

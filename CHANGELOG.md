@@ -1,5 +1,18 @@
 # Änderungsprotokoll
 
+## 2.11.0 — Neue Seite „Spiele": Bibliothek der aktuell gespielten Spiele
+
+- Neue Seite `games.php` (Menüpunkt „Spiele") mit einer Bibliothek der Spiele,
+  die die Kellerkinder gerade spielen; für alle sichtbar
+- Angemeldete Benutzer tragen Spiele über ein Suchfeld ein: Beim Tippen werden
+  Treffer aus dem Steam-Store samt Icon vorgeschlagen, nach der Auswahl erscheint
+  das Steam-Bild in der Bibliothek
+- Spiele ohne Steam-Eintrag lassen sich auch ohne Icon hinzufügen
+- Doppelte Einträge werden abgelehnt; entfernen darf, wer das Spiel eingetragen
+  hat, sowie Administratoren
+- Die Steam-Suche läuft über den Server (`api.php`); die Sicherheits-Header
+  erlauben dafür zusätzlich Bilder von den Steam-CDN-Servern
+
 ## 2.10.0 — Urlaub für einen Zeitraum eintragen
 
 - Im Bereich „Mein Account" lässt sich jetzt ein Zeitraum (Von–Bis) wählen und

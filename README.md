@@ -202,10 +202,12 @@ Die Laufzeitdateien unter `data/store.php*` werden von Git ignoriert und dadurch
 ├── includes/
 │   ├── bootstrap.php   (Version, Hintergrundbilder, Sicherheits-Header)
 │   ├── styles.php      (gemeinsames Stylesheet für alle Seiten)
-│   └── blog-styles.php
+│   ├── blog-styles.php
+│   └── games-styles.php
 ├── .gitignore
 ├── api.php
 ├── blog.php
+├── games.php
 ├── feed.php
 ├── check.php
 ├── index.php
@@ -239,6 +241,14 @@ Tannenbaum-/Schnee-Muster sichtbar, beim Standard-Theme nur das Raster.
 Die Bilder selbst sind nicht Teil des Git-Repositories (siehe `.gitignore`)
 und müssen direkt auf den Server hochgeladen werden (z. B. per FTP/SCP oder
 über den Datei-Manager des Hosters).
+
+## Spiele
+
+Unter `games.php` führen die Kellerkinder eine Bibliothek der aktuell gespielten
+Spiele. Angemeldete Benutzer suchen ein Spiel über das Suchfeld; die Treffer
+stammen aus dem Steam-Store und zeigen das Steam-Icon. Der Server braucht dafür
+ausgehenden Zugriff auf `store.steampowered.com`. Ist Steam nicht erreichbar,
+lassen sich Spiele trotzdem ohne Icon eintragen.
 
 ## Blog
 

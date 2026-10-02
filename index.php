@@ -68,6 +68,7 @@ require __DIR__ . '/includes/bootstrap.php';
             <nav class="main-nav" aria-label="Hauptnavigation">
                 <a href="#" class="nav-link active">Kalender</a>
                 <a href="blog.php" class="nav-link">Blog</a>
+                <a href="games.php" class="nav-link">Spiele</a>
                 <span class="nav-link disabled">Netzje <small>(folgt)</small></span>
             </nav>
             <button class="install-app-button" id="installAppButton" type="button" title="Als App zum Home-Bildschirm hinzufügen" aria-label="Kellerkinder-Kalender als App zum Home-Bildschirm hinzufügen">

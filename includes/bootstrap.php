@@ -4,7 +4,7 @@
 date_default_timezone_set('Europe/Berlin');
 $appVersion = trim((string) @file_get_contents(dirname(__DIR__) . DIRECTORY_SEPARATOR . 'VERSION'));
 if ($appVersion === '') {
-    $appVersion = '2.10.0';
+    $appVersion = '2.11.0';
 }
 
 /**
@@ -59,7 +59,7 @@ header(
     "Content-Security-Policy: default-src 'self'; "
     . "script-src 'self' 'nonce-{$cspNonce}' https://cdn.tailwindcss.com; "
     . "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
-    . "img-src 'self' data: https://i.ytimg.com; "
+    . "img-src 'self' data: https://i.ytimg.com https://cdn.akamai.steamstatic.com https://shared.akamai.steamstatic.com; "
     . "font-src 'self' https://fonts.gstatic.com; "
     . "connect-src 'self'; "
     . "worker-src 'self'; "
