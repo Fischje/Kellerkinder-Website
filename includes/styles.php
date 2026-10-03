@@ -134,7 +134,7 @@ if (!isset($backgroundImages) || !is_array($backgroundImages)) { $backgroundImag
 
         <?php
         $themeBgColors = [
-            'default' => ['6, 6, 6', '.28'],
+            'default' => ['20, 11, 27', '.62'],
             'summer' => ['5, 12, 24', '.25'],
             'winter' => ['23, 24, 26', '.25'],
         ];

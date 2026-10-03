@@ -7,7 +7,7 @@ require __DIR__ . '/includes/bootstrap.php';
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <meta name="theme-color" id="themeColorMeta" content="#070914">
+    <meta name="theme-color" id="themeColorMeta" content="#140b1b">
     <meta name="application-name" content="Kellerkinder">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -19,24 +19,25 @@ require __DIR__ . '/includes/bootstrap.php';
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800;900&family=Open+Sans:wght@400;600;700&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com" nonce="<?= htmlspecialchars($cspNonce, ENT_QUOTES, 'UTF-8') ?>"></script>
     <script nonce="<?= htmlspecialchars($cspNonce, ENT_QUOTES, 'UTF-8') ?>">
         tailwind.config = {
             theme: {
                 extend: {
                     colors: {
-                        bg: '#0a0b0e', panel: '#14151b', panel2: '#1a1c24',
-                        line: '#262935', muted: '#8d92a3',
-                        primary: '#7c5cff', primaryhi: '#9478ff', gold: '#f2b544',
+                        bg: '#140b1b', panel: '#22152c', panel2: '#2a1a36',
+                        line: '#3c2c4f', muted: '#a59cb3',
+                        primary: '#6b54b6', primaryhi: '#7f68cc', accent: '#e21b40', gold: '#f2b544',
                         positive: '#45d483', negative: '#ef5b6a',
                     },
-                    borderRadius: { card: '16px', control: '10px' },
+                    borderRadius: { card: '4px', control: '2px' },
                 }
             }
         };
     </script>
     <?php require __DIR__ . '/includes/styles.php'; ?>
+    <?php require __DIR__ . '/includes/arena-styles.php'; ?>
 </head>
 <body data-theme="default">
 <div id="pullRefresh" class="pull-refresh" aria-hidden="true">
@@ -52,30 +53,16 @@ require __DIR__ . '/includes/bootstrap.php';
     <div class="winter-ember-glow"></div>
     <div class="winter-snowbank"></div>
 </div>
+<?php
+$activeNav = 'calendar';
+$pageKicker = 'Online-Kalender';
+$pageTitle = 'Wer zockt wann?';
+$pageLead = 'Trag ein, wann du online bist – und was du spielen willst.';
+$showInstall = true;
+require __DIR__ . '/includes/site-header.php';
+?>
+
 <main class="page-shell">
-    <header class="masthead">
-        <div class="masthead-row">
-            <span class="brand">
-                <img src="assets/kellerkinder-logo.svg" alt="" class="brand-logo">
-                <span class="brand-text">
-                    <span class="brand-name-row">
-                        <span class="brand-name">Kellerkinder</span>
-                        <span class="brand-sun" aria-hidden="true">☀️💦</span>
-                    </span>
-                    <span class="subtitle">Online-Gaming mit Freunden seit <em class="shine">ewig</em></span>
-                </span>
-            </span>
-            <nav class="main-nav" aria-label="Hauptnavigation">
-                <a href="#" class="nav-link active">Kalender</a>
-                <a href="blog.php" class="nav-link">Blog</a>
-                <a href="games.php" class="nav-link">Spiele</a>
-                <span class="nav-link disabled">Netzje <small>(folgt)</small></span>
-            </nav>
-            <button class="install-app-button" id="installAppButton" type="button" title="Als App zum Home-Bildschirm hinzufügen" aria-label="Kellerkinder-Kalender als App zum Home-Bildschirm hinzufügen">
-                <img src="assets/smartphone-install.svg" alt="">
-            </button>
-        </div>
-    </header>
 
     <section class="account-strip" aria-label="Benutzerkonto">
         <div class="account-summary" id="accountSummary">
@@ -113,7 +100,7 @@ require __DIR__ . '/includes/bootstrap.php';
 
     <section class="board" aria-label="Verfügbarkeitsplan">
         <div class="board-toolbar">
-            <h2 class="board-heading">Online-Kalender</h2>
+            <h2 class="board-heading section-title"><span class="accent">Nächste</span> Spieltage</h2>
             <div class="toolbar" aria-label="Steuerung und Legende">
                 <div class="legend" aria-label="Status-Legende">
                     <span class="legend-item"><span class="legend-icon online"></span> Online</span>
@@ -147,6 +134,7 @@ require __DIR__ . '/includes/bootstrap.php';
 
     <section class="achievements" aria-label="Erfolge der Kellerkinder">
         <div class="achievements-head">
+            <h2 class="section-title"><span class="accent">Unsere</span> Erfolge</h2>
             <div class="achievements-nav" id="achievementsNav" aria-label="Spielpaar wechseln">
                 <button class="nav-arrow" id="achievementsPrev" type="button" aria-label="Vorheriges Spielpaar" disabled>‹</button>
                 <span class="achievements-nav-label" id="achievementsNavLabel">World of Warcraft · Diablo IV</span>
@@ -422,7 +410,7 @@ require __DIR__ . '/includes/bootstrap.php';
             <div>
                 <label for="adminTheme">Style auswählen</label>
                 <select id="adminTheme">
-                    <option value="default">Standard: RGB-Gaming</option>
+                    <option value="default">Standard: Arena (Violett/Rot)</option>
                     <option value="summer">Sommer: Sonne, Strand und Wasser</option>
                     <option value="winter">Winter: Schnee und Weihnachten</option>
                 </select>
@@ -557,7 +545,7 @@ require __DIR__ . '/includes/bootstrap.php';
     };
 
     const THEME_COLORS = {
-        default: '#070914',
+        default: '#140b1b',
         summer: '#06383d',
         winter: '#07182b'
     };

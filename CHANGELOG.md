@@ -1,5 +1,28 @@
 # Änderungsprotokoll
 
+## 2.12.0 — Neues Design „Arena"
+
+Neues Standard-Design als Mischung der Gaming-Vorlagen Overworld und Squadforce:
+
+- Farben: dunkles Violett als Grundton, Violett (`#6b54b6`) als Hauptfarbe,
+  kräftiges Rot (`#e21b40`) als Akzent
+- Schriften: Rajdhani für Überschriften, Navigation und Buttons, Montserrat für
+  Logo und Abschnittstitel, Open Sans für Fließtext
+- Neuer gemeinsamer Seitenkopf für Kalender, Blog und Spiele
+  (`includes/site-header.php`): schmale Infoleiste, durchgehendes und beim
+  Scrollen mitlaufendes Kopfband, Navigation in Großbuchstaben mit Balken unter
+  dem aktiven Punkt
+- Großer Seitentitel mit Brotkrumen und farbigem Akzentbalken
+- Abschnittstitel mit Linien und rot hervorgehobenem erstem Wort
+  („Nächste Spieltage", „Unsere Erfolge", „Neueste Beiträge")
+- Buttons, Karten, Dialoge und Bereiche mit abgeschnittenen Ecken statt
+  Rundungen; Kartentitel mit Akzentbalken
+- Blog-Hinweis über dem Kalender als hervorgehobener roter Eintrag
+- Neue zweistufige Fußzeile über die volle Breite
+- Sommer- und Winter-Theme behalten ihre Farben, übernehmen aber die neuen
+  Formen und Schriften
+- Das Design liegt als eigene Stilschicht in `includes/arena-styles.php`
+
 ## 2.11.1 — Spielsuche über RAWG (auch Blizzard-Spiele)
 
 - Die Spielsuche nutzt jetzt bevorzugt die Datenbank RAWG, die auch

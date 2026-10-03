@@ -7,7 +7,7 @@ require __DIR__ . '/includes/bootstrap.php';
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <meta name="theme-color" id="themeColorMeta" content="#060606">
+    <meta name="theme-color" id="themeColorMeta" content="#140b1b">
     <meta name="application-name" content="Kellerkinder">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -20,9 +20,10 @@ require __DIR__ . '/includes/bootstrap.php';
     <link rel="alternate" type="application/rss+xml" title="Kellerkinder Blog" href="feed.php">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800;900&family=Open+Sans:wght@400;600;700&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
     <?php require __DIR__ . '/includes/styles.php'; ?>
     <?php require __DIR__ . '/includes/blog-styles.php'; ?>
+    <?php require __DIR__ . '/includes/arena-styles.php'; ?>
 </head>
 <body data-theme="default">
 <div class="season-scene" aria-hidden="true">
@@ -36,34 +37,23 @@ require __DIR__ . '/includes/bootstrap.php';
     <div class="winter-snowbank"></div>
 </div>
 
+<?php
+$activeNav = 'blog';
+$pageKicker = 'Blog';
+$pageTitle = 'Aus dem Keller';
+$pageLead = 'Spielerlebnisse, Erfolge und News der Kellerkinder.';
+$showInstall = false;
+require __DIR__ . '/includes/site-header.php';
+?>
+
 <main class="page-shell">
-    <header class="masthead">
-        <div class="masthead-row">
-            <span class="brand">
-                <img src="assets/kellerkinder-logo.svg" alt="" class="brand-logo">
-                <span class="brand-text">
-                    <span class="brand-name-row">
-                        <span class="brand-name">Kellerkinder</span>
-                        <span class="brand-sun" aria-hidden="true">☀️💦</span>
-                    </span>
-                    <span class="subtitle">Online-Gaming mit Freunden seit <em class="shine">ewig</em></span>
-                </span>
-            </span>
-            <nav class="main-nav" aria-label="Hauptnavigation">
-                <a href="index.php" class="nav-link">Kalender</a>
-                <a href="blog.php" class="nav-link active">Blog</a>
-                <a href="games.php" class="nav-link">Spiele</a>
-                <span class="nav-link disabled">Netzje <small>(folgt)</small></span>
-            </nav>
-        </div>
-    </header>
 
     <div id="storageWarning" class="storage-warning" hidden></div>
 
     <div class="blog-layout">
         <section class="blog-panel">
             <div class="blog-head">
-                <h1>Blog</h1>
+                <h2 class="section-title"><span class="accent">Neueste</span> Beiträge</h2>
                 <div class="blog-head-actions">
                     <a class="secondary-button" href="feed.php" title="Blog als RSS abonnieren">RSS abonnieren</a>
                     <button class="primary-button" id="newPostButton" type="button" hidden>＋ Neuer Beitrag</button>
@@ -78,7 +68,7 @@ require __DIR__ . '/includes/bootstrap.php';
 
         <aside class="blog-sidebar">
             <div class="sidebar-box">
-                <h2>Themen</h2>
+                <h2 class="card-title">Themen</h2>
                 <div class="post-tags" id="tagFilter">
                     <span class="widget-loading">Wird geladen …</span>
                 </div>

@@ -24,7 +24,7 @@ Mobiloptimierter PHP-Kalender zur Planung gemeinsamer Spielabende mit Benutzerko
 - Passwortänderung ohne E-Mail-Funktion
 - Setzt ein Admin ein neues Passwort, wird die bestehende Sitzung ungültig und der Benutzer muss das vorläufige Passwort nach der nächsten Anmeldung erneut ändern
 - Discord-Abfrage über `/kalender`
-- Drei globale Styles: RGB-Gaming als Standard, Sommer mit Sonne/Wasser/Strand und Winter mit Schnee/Weihnachtsmotiven
+- Drei globale Styles: „Arena“ (Violett/Rot im Esports-Look) als Standard, Sommer mit Sonne/Wasser/Strand und Winter mit Schnee/Weihnachtsmotiven
 - Keine externe Datenbank und keine externen Bibliotheken erforderlich
 
 ## Passwortregeln
@@ -202,6 +202,8 @@ Die Laufzeitdateien unter `data/store.php*` werden von Git ignoriert und dadurch
 ├── includes/
 │   ├── bootstrap.php   (Version, Hintergrundbilder, Sicherheits-Header)
 │   ├── styles.php      (gemeinsames Stylesheet für alle Seiten)
+│   ├── site-header.php (gemeinsamer Seitenkopf)
+│   ├── arena-styles.php (Design „Arena“, über styles.php gelegt)
 │   ├── blog-styles.php
 │   └── games-styles.php
 ├── .gitignore
