@@ -1,5 +1,19 @@
 # Änderungsprotokoll
 
+## 2.14.1 — Steam-Erfolge: mehr Spieler gefunden, Gründe sichtbar
+
+- **Fehler behoben:** Gesucht wurde nur in Spielen der letzten zwei Wochen. Wer
+  länger nichts gespielt hatte, tauchte nie auf. Jetzt werden die fünf zuletzt
+  gespielten Spiele der ganzen Bibliothek durchsucht
+- Fehlt jemand mit Steam-Namen, zeigt das Widget den Grund: Profil nicht gefunden,
+  Profil nicht öffentlich, Spieldetails nicht öffentlich, keine Erfolge oder Steam
+  hat nicht geantwortet (vorher wurde man still übersprungen)
+- Eine kurze Steam-Störung wird nur noch 2 Minuten zwischengespeichert statt
+  30 Minuten; sonst gilt ein Cache von 15 Minuten
+- Steam-Profil wird in „Mein Account“ und im Benutzer-Dialog als Link angezeigt
+  statt als SteamID-Zahl. Gespeichert wird weiterhin nur Profilname bzw. SteamID
+- Die Erfolge-Widgets wechseln jetzt alle 15 Sekunden (vorher 7)
+
 ## 2.14.0 — Steam-Erfolge, Spieler in der Statistik ausblenden
 
 **Steam-Erfolge**

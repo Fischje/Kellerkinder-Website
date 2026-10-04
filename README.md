@@ -277,8 +277,10 @@ holen und in `config.php` eintragen (die Datei liegt nicht im Repository):
 const STEAM_API_KEY = 'dein-schluessel';
 ```
 
-Der Server braucht ausgehenden Zugriff auf `api.steampowered.com`. Die Daten werden
-30 Minuten zwischengespeichert. Die Widgets wechseln alle 7 Sekunden.
+Der Server braucht ausgehenden Zugriff auf `api.steampowered.com`. Durchsucht werden
+die fünf zuletzt gespielten Spiele jedes Spielers. Die Daten werden 15 Minuten
+zwischengespeichert. Fehlt jemand, nennt das Widget den Grund (z. B. Spieldetails
+nicht öffentlich). Die Widgets wechseln alle 15 Sekunden.
 
 ## Statistik
 

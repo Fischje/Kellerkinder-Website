@@ -309,7 +309,7 @@ require __DIR__ . '/includes/site-header.php';
         <div>
             <label for="profileSteamName">Steam-Name (optional)</label>
             <input type="text" id="profileSteamName" maxlength="120" autocomplete="off" placeholder="z. B. fischje oder steamcommunity.com/id/fischje">
-            <p class="field-help">Profilname, SteamID oder Link zum Steam-Profil. Für die Steam-Erfolge müssen Profil und Spieldetails auf Steam öffentlich sein.</p>
+            <p class="field-help">Profilname, SteamID oder Link zum Steam-Profil. Für die Steam-Erfolge müssen Profil und Spieldetails auf Steam öffentlich sein (Steam → Profil bearbeiten → Privatsphäre).</p>
         </div>
         <div>
             <label for="profileAvatarInput">Profilbild / Avatar</label>
@@ -841,7 +841,7 @@ require __DIR__ . '/includes/site-header.php';
     // die Statistik live von Raider.IO, bei den anderen drei ist sie manuell
     // gepflegt. Titel und Links sind bei allen vier Admin-editierbar.
     // Die Seiten wechseln alle ACHIEVEMENT_ROTATE_MS automatisch.
-    const ACHIEVEMENT_ROTATE_MS = 7000;
+    const ACHIEVEMENT_ROTATE_MS = 15000;
     const achievementGames = [
         { id: 'steam', label: 'Steam-Erfolge', icon: '🏆', type: 'steam', source: 'Die jüngsten Erfolge der Kellerkinder auf Steam' },
         { id: 'wow', label: 'World of Warcraft', icon: '⚔', type: 'wow', source: 'Beste Mythisch-Plus-Läufe, live via Raider.IO' },
@@ -1063,8 +1063,7 @@ require __DIR__ . '/includes/site-header.php';
             return { body: list, updated: '' };
         }
         if (!data.entries || data.entries.length === 0) {
-            empty('Keine aktuellen Erfolge gefunden. Profil und Spieldetails müssen auf Steam öffentlich sein.');
-            return { body: list, updated: formatUpdatedAt(data.updated_at) };
+            empty('Keine aktuellen Erfolge gefunden.');
         }
 
         for (const entry of data.entries) {
@@ -1117,6 +1116,28 @@ require __DIR__ . '/includes/site-header.php';
 
             item.append(text, time);
             list.appendChild(item);
+        }
+
+        // Wer einen Steam-Namen hat, aber hier fehlt, bekommt den Grund angezeigt.
+        const reasons = {
+            not_found: 'Steam-Profil nicht gefunden – Namen bzw. Link prüfen',
+            profile_private: 'Steam-Profil ist nicht öffentlich',
+            games_private: 'Spieldetails sind auf Steam nicht öffentlich',
+            no_achievements: 'keine Erfolge in den zuletzt gespielten Spielen',
+            error: 'Steam hat gerade nicht geantwortet',
+        };
+        if (Array.isArray(data.missing) && data.missing.length > 0) {
+            const note = document.createElement('li');
+            note.className = 'steam-missing';
+            const heading = document.createElement('strong');
+            heading.textContent = 'Ohne Erfolge:';
+            note.appendChild(heading);
+            for (const member of data.missing) {
+                const line = document.createElement('span');
+                line.textContent = `${member.player_name} – ${reasons[member.reason] || 'keine Daten'}`;
+                note.appendChild(line);
+            }
+            list.appendChild(note);
         }
         return { body: list, updated: formatUpdatedAt(data.updated_at) };
     }
@@ -1717,7 +1738,7 @@ require __DIR__ . '/includes/site-header.php';
         const user = state.auth.user || {};
         byId('profileUsername').value = user.username || '';
         byId('profilePlayerName').value = user.player_name || '';
-        byId('profileSteamName').value = user.steam_name || '';
+        byId('profileSteamName').value = user.steam_profile || '';
         byId('profileAvatarInput').value = '';
         profileAvatarData = user.avatar || '';
         setAvatarPreview(profileAvatarData, user.player_name || user.username || '');
@@ -1797,7 +1818,7 @@ require __DIR__ . '/includes/site-header.php';
         byId('adminUsername').value = user?.username || '';
         byId('adminUserPlayerName').value = user?.player_name || '';
         byId('adminUserIsAuthor').checked = Boolean(user?.is_author);
-        byId('adminUserSteamName').value = user?.steam_name || '';
+        byId('adminUserSteamName').value = user?.steam_profile || '';
         // Der Steam-Name wird beim Bearbeiten gespeichert; beim Anlegen trägt ihn der Spieler selbst ein.
         byId('adminUserSteamRow').hidden = !editMode;
         byId('adminUserDialogTitle').textContent = editMode ? 'Benutzer bearbeiten' : 'Benutzer anlegen';

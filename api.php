@@ -54,8 +54,9 @@ const STATS_EXCLUDED_MAX = 200;
 // const STEAM_API_KEY = '...'; — kostenlos unter steamcommunity.com/dev/apikey
 const STEAM_NAME_MAX = 64;
 const STEAM_ACHIEVEMENTS_PLAYERS_MAX = 7;
-const STEAM_RECENT_GAMES_MAX = 4;
-const STEAM_CACHE_TTL_SECONDS = 1800;
+const STEAM_RECENT_GAMES_MAX = 5;      // so viele zuletzt gespielte Spiele je Spieler durchsuchen
+const STEAM_CACHE_TTL_SECONDS = 900;   // 15 Minuten
+const STEAM_RETRY_TTL_SECONDS = 120;   // nach einer Steam-Störung schon nach 2 Minuten neu versuchen
 const STEAM_SCHEMA_TTL_SECONDS = 86400;
 const ACHIEVEMENT_MANUAL_GAMES = ['hots', 'diablo4', 'rocket_league']; // Spiele mit manuell gepflegter Statistik
 const ACHIEVEMENT_GAMES = ['wow', 'hots', 'diablo4', 'rocket_league']; // Alle Spiele (inkl. WoW, das Titel/Links aber nicht Stats manuell hat)
@@ -435,6 +436,17 @@ function steamApiGet(string $path, array $params): ?array
     return gameHttpGet($base . '/' . $path . '/?' . http_build_query($params));
 }
 
+/** Link zum Steam-Profil für die Anzeige (gespeichert wird nur Profilname oder SteamID). */
+function steamProfileUrl(string $steamName): string
+{
+    if ($steamName === '') {
+        return '';
+    }
+    return preg_match('/^\d{17}$/', $steamName)
+        ? 'https://steamcommunity.com/profiles/' . $steamName
+        : 'https://steamcommunity.com/id/' . $steamName;
+}
+
 /** Liefert die SteamID64 zu einem Profilnamen (dauerhaft zwischengespeichert). */
 function steamResolveId(string $steamName): ?string
 {
@@ -492,21 +504,49 @@ function steamSafeImage(string $url): string
 }
 
 /**
- * Jüngster Steam-Erfolg eines Spielers aus seinen zuletzt gespielten Spielen.
- * Voraussetzung: Profil und Spieldetails sind öffentlich.
+ * Jüngster Steam-Erfolg eines Spielers aus seinen zuletzt gespielten Spielen
+ * (ganze Bibliothek, sortiert nach „zuletzt gespielt“ – nicht nur die letzten
+ * zwei Wochen). Gibt ['entry' => …] oder ['reason' => …] zurück:
+ *   games_private    Spieldetails sind nicht öffentlich (Bibliothek leer/gesperrt)
+ *   no_achievements  in den zuletzt gespielten Spielen kein Erfolg freigeschaltet
+ *   error            Steam hat nicht geantwortet
  */
-function steamLatestAchievement(string $steamId): ?array
+function steamLatestAchievement(string $steamId): array
 {
-    $recent = steamApiGet('IPlayerService/GetRecentlyPlayedGames/v1', ['steamid' => $steamId, 'count' => STEAM_RECENT_GAMES_MAX]);
+    $owned = steamApiGet('IPlayerService/GetOwnedGames/v1', [
+        'steamid' => $steamId,
+        'include_appinfo' => 1,
+        'include_played_free_games' => 1,
+    ]);
+    if ($owned === null) {
+        return ['reason' => 'error'];
+    }
+    $games = $owned['response']['games'] ?? null;
+    if (!is_array($games) || $games === []) {
+        return ['reason' => 'games_private'];
+    }
+    $games = array_filter($games, static fn($game): bool => is_array($game) && (int) ($game['rtime_last_played'] ?? 0) > 0);
+    usort($games, static fn(array $x, array $y): int => (int) $y['rtime_last_played'] <=> (int) $x['rtime_last_played']);
+
     $latest = null;
-    foreach ($recent['response']['games'] ?? [] as $game) {
+    $checked = 0;
+    $failed = 0;
+    foreach ($games as $game) {
+        if ($checked >= STEAM_RECENT_GAMES_MAX) {
+            break;
+        }
         $appId = (int) ($game['appid'] ?? 0);
         if ($appId <= 0) {
             continue;
         }
+        $checked++;
         $stats = steamApiGet('ISteamUserStats/GetPlayerAchievements/v1', ['steamid' => $steamId, 'appid' => $appId]);
-        if (empty($stats['playerstats']['success'])) {
+        if ($stats === null) {
+            $failed++;
             continue;
+        }
+        if (empty($stats['playerstats']['success'])) {
+            continue; // Spiel ohne Erfolge
         }
         foreach ($stats['playerstats']['achievements'] ?? [] as $entry) {
             $unlocked = (int) ($entry['unlocktime'] ?? 0);
@@ -524,17 +564,34 @@ function steamLatestAchievement(string $steamId): ?array
         }
     }
     if ($latest === null) {
-        return null;
+        return ['reason' => ($failed > 0 && $failed === $checked) ? 'error' : 'no_achievements'];
     }
     $schemaEntry = steamAchievementSchema($latest['appid'])[$latest['apiname']] ?? null;
-    return [
+    return ['entry' => [
         'game' => $latest['game'],
         'appid' => $latest['appid'],
         'achievement' => $schemaEntry['name'] ?? $latest['apiname'],
         'description' => $schemaEntry['description'] ?? '',
         'icon' => steamSafeImage((string) ($schemaEntry['icon'] ?? '')),
         'unlocked_at' => gmdate('c', $latest['unlocktime']),
-    ];
+    ]];
+}
+
+/** Sichtbarkeit der Profile (ein Abruf für bis zu 100 Spieler): steamid => true, wenn öffentlich. */
+function steamProfileVisibility(array $steamIds): ?array
+{
+    if ($steamIds === []) {
+        return [];
+    }
+    $data = steamApiGet('ISteamUser/GetPlayerSummaries/v2', ['steamids' => implode(',', array_slice($steamIds, 0, 100))]);
+    if ($data === null) {
+        return null;
+    }
+    $visible = [];
+    foreach ($data['response']['players'] ?? [] as $player) {
+        $visible[(string) ($player['steamid'] ?? '')] = (int) ($player['communityvisibilitystate'] ?? 0) === 3;
+    }
+    return $visible;
 }
 
 /**
@@ -565,31 +622,55 @@ function steamAchievementsData(array $store): array
     $cacheFile = 'steam-achievements.json';
     $path = achievementsCacheDirectory() . DIRECTORY_SEPARATOR . $cacheFile;
     $cached = achievementsCacheRead($cacheFile);
+    $cachedTtl = (int) ($cached['ttl'] ?? STEAM_CACHE_TTL_SECONDS);
     if (is_array($cached) && ($cached['key'] ?? '') === $cacheKey
-        && is_file($path) && (time() - filemtime($path)) < STEAM_CACHE_TTL_SECONDS) {
+        && is_file($path) && (time() - filemtime($path)) < $cachedTtl) {
         return $cached['data'];
     }
 
-    $entries = [];
+    // Erst alle Profile auflösen, dann die Sichtbarkeit in einem Abruf prüfen.
+    $resolved = [];
     foreach ($members as $member) {
-        $steamId = steamResolveId($member['steam_name']);
-        $latest = $steamId === null ? null : steamLatestAchievement($steamId);
-        if ($latest === null) {
+        $resolved[] = $member + ['steam_id' => steamResolveId($member['steam_name'])];
+    }
+    $visibility = steamProfileVisibility(array_values(array_filter(array_column($resolved, 'steam_id'))));
+
+    $entries = [];
+    $missing = [];
+    foreach ($resolved as $member) {
+        $steamId = $member['steam_id'];
+        if ($steamId === null) {
+            $result = ['reason' => 'not_found'];
+        } elseif ($visibility !== null && ($visibility[$steamId] ?? false) === false) {
+            $result = ['reason' => 'profile_private'];
+        } else {
+            $result = steamLatestAchievement($steamId);
+        }
+        if (!isset($result['entry'])) {
+            $missing[] = ['player_name' => $member['player_name'], 'reason' => $result['reason']];
             continue;
         }
-        $latest['player_name'] = $member['player_name'];
-        $latest['profile_url'] = 'https://steamcommunity.com/profiles/' . $steamId;
-        $entries[] = $latest;
+        $entry = $result['entry'];
+        $entry['player_name'] = $member['player_name'];
+        $entry['profile_url'] = 'https://steamcommunity.com/profiles/' . $steamId;
+        $entries[] = $entry;
     }
     usort($entries, static fn(array $a, array $b): int => strcmp($b['unlocked_at'], $a['unlocked_at']));
 
     $data = [
         'configured' => true,
         'entries' => array_slice($entries, 0, STEAM_ACHIEVEMENTS_PLAYERS_MAX),
+        'missing' => $missing,
         'linked_players' => count($members),
         'updated_at' => gmdate('c'),
     ];
-    achievementsCacheWrite($cacheFile, ['key' => $cacheKey, 'data' => $data]);
+    // Nach einer Steam-Störung nicht 15 Minuten lang „keine Daten“ zeigen.
+    $hadError = $visibility === null || in_array('error', array_column($missing, 'reason'), true);
+    achievementsCacheWrite($cacheFile, [
+        'key' => $cacheKey,
+        'ttl' => $hadError ? STEAM_RETRY_TTL_SECONDS : STEAM_CACHE_TTL_SECONDS,
+        'data' => $data,
+    ]);
     return $data;
 }
 
@@ -2270,6 +2351,7 @@ function bootstrapResponse(array $store): array
             'player_name' => $currentPlayer === null ? '' : (string) $currentPlayer['name'],
             'avatar' => (string) ($currentUser['avatar'] ?? ''),
             'steam_name' => (string) ($currentUser['steam_name'] ?? ''),
+            'steam_profile' => steamProfileUrl((string) ($currentUser['steam_name'] ?? '')),
             'default_weekdays' => normalizeWeekdays($currentUser['default_weekdays'] ?? []),
         ],
     ];
@@ -2300,6 +2382,7 @@ function bootstrapResponse(array $store): array
                 'is_admin' => isAdminUser($store, $user),
                 'is_author' => !empty($user['is_author']),
                 'steam_name' => (string) ($user['steam_name'] ?? ''),
+                'steam_profile' => steamProfileUrl((string) ($user['steam_name'] ?? '')),
             ];
         }
         usort($adminUsers, static fn(array $a, array $b): int => strcasecmp($a['username'], $b['username']));

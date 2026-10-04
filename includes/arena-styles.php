@@ -675,6 +675,19 @@
             white-space: nowrap;
         }
 
+        .steam-missing {
+            grid-column: 1 / -1;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px 14px;
+            padding: 8px 12px;
+            color: var(--muted);
+            font-size: .82rem;
+            background: rgba(var(--panel-deep-rgb), .5);
+        }
+
+        .steam-missing strong { color: #fff; font-family: var(--font-heading); letter-spacing: .06em; text-transform: uppercase; }
+
         /* ===== Dialoge & Formulare ===== */
         dialog {
             border: 0;
