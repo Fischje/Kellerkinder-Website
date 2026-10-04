@@ -56,7 +56,8 @@ const STEAM_NAME_MAX = 64;
 const STEAM_ACHIEVEMENTS_PLAYERS_MAX = 7;
 const STEAM_RECENT_GAMES_MAX = 8;      // so viele Spiele je Spieler auf Erfolge prüfen
 const STEAM_CACHE_TTL_SECONDS = 900;   // 15 Minuten
-const STEAM_RETRY_TTL_SECONDS = 120;   // nach einer Steam-Störung schon nach 2 Minuten neu versuchen
+const STEAM_RETRY_TTL_SECONDS = 120;
+const STEAM_ACHIEVEMENTS_CACHE_FILE = 'steam-achievements-v2.json';   // nach einer Steam-Störung schon nach 2 Minuten neu versuchen
 const STEAM_SCHEMA_TTL_SECONDS = 86400;
 const ACHIEVEMENT_MANUAL_GAMES = ['hots', 'diablo4', 'rocket_league']; // Spiele mit manuell gepflegter Statistik
 const ACHIEVEMENT_GAMES = ['wow', 'hots', 'diablo4', 'rocket_league']; // Alle Spiele (inkl. WoW, das Titel/Links aber nicht Stats manuell hat)
@@ -447,8 +448,60 @@ function steamProfileUrl(string $steamName): string
         : 'https://steamcommunity.com/id/' . $steamName;
 }
 
+/**
+ * Mehrere Steam-Abrufe gleichzeitig (curl_multi). Ohne curl-Erweiterung
+ * nacheinander. $calls: Schlüssel => [Pfad, Parameter]; Ergebnis mit denselben
+ * Schlüsseln, null bei Fehler.
+ */
+function steamApiGetMany(array $calls): array
+{
+    if ($calls === []) {
+        return [];
+    }
+    if (!function_exists('curl_multi_init')) {
+        $results = [];
+        foreach ($calls as $key => [$path, $params]) {
+            $results[$key] = steamApiGet($path, $params);
+        }
+        return $results;
+    }
+    $base = defined('STEAM_API_BASE') ? STEAM_API_BASE : 'https://api.steampowered.com';
+    $multi = curl_multi_init();
+    $handles = [];
+    foreach ($calls as $key => [$path, $params]) {
+        $params['key'] = STEAM_API_KEY;
+        $params['format'] = 'json';
+        $handle = curl_init($base . '/' . $path . '/?' . http_build_query($params));
+        curl_setopt_array($handle, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT => 8,
+            CURLOPT_CONNECTTIMEOUT => 4,
+            CURLOPT_USERAGENT => 'Kellerkinder-Kalender/1.0 (+https://github.com/Fischje)',
+        ]);
+        curl_multi_add_handle($multi, $handle);
+        $handles[$key] = $handle;
+    }
+    do {
+        $status = curl_multi_exec($multi, $running);
+        if ($running) {
+            curl_multi_select($multi, 1.0);
+        }
+    } while ($running && $status === CURLM_OK);
+
+    $results = [];
+    foreach ($handles as $key => $handle) {
+        $raw = curl_multi_getcontent($handle);
+        $data = is_string($raw) && $raw !== '' ? json_decode($raw, true) : null;
+        $results[$key] = is_array($data) ? $data : null;
+        curl_multi_remove_handle($multi, $handle);
+        curl_close($handle);
+    }
+    curl_multi_close($multi);
+    return $results;
+}
+
 /** Liefert die SteamID64 zu einem Profilnamen (dauerhaft zwischengespeichert). */
-function steamResolveId(string $steamName): ?string
+function steamResolveId(string $steamName, bool $askSteam = true): ?string
 {
     if (preg_match('/^\d{17}$/', $steamName)) {
         return $steamName;
@@ -457,6 +510,9 @@ function steamResolveId(string $steamName): ?string
     $cached = achievementsCacheRead($cacheFile);
     if (is_array($cached) && isset($cached['steamid'])) {
         return (string) $cached['steamid'];
+    }
+    if (!$askSteam) {
+        return null;
     }
     $data = steamApiGet('ISteamUser/ResolveVanityURL/v1', ['vanityurl' => $steamName]);
     $steamId = (string) ($data['response']['steamid'] ?? '');
@@ -478,7 +534,13 @@ function steamAchievementSchema(int $appId): array
             return $cached;
         }
     }
-    $data = steamApiGet('ISteamUserStats/GetSchemaForGame/v2', ['appid' => $appId, 'l' => 'german']);
+    $schema = steamSchemaFromResponse(steamApiGet('ISteamUserStats/GetSchemaForGame/v2', ['appid' => $appId, 'l' => 'german']));
+    achievementsCacheWrite($cacheFile, $schema);
+    return $schema;
+}
+
+function steamSchemaFromResponse(?array $data): array
+{
     $schema = [];
     foreach ($data['game']['availableGameStats']['achievements'] ?? [] as $entry) {
         $apiName = (string) ($entry['name'] ?? '');
@@ -491,8 +553,24 @@ function steamAchievementSchema(int $appId): array
             'icon' => (string) ($entry['icon'] ?? ''),
         ];
     }
-    achievementsCacheWrite($cacheFile, $schema);
     return $schema;
+}
+
+/** Lädt fehlende bzw. veraltete Erfolgs-Schemas mehrerer Spiele gleichzeitig in den Cache. */
+function steamPrefetchSchemas(array $appIds): void
+{
+    $calls = [];
+    foreach ($appIds as $appId) {
+        $path = achievementsCacheDirectory() . DIRECTORY_SEPARATOR . 'steam-schema-' . $appId . '.json';
+        if ($appId > 0 && (!is_file($path) || (time() - filemtime($path)) >= STEAM_SCHEMA_TTL_SECONDS)) {
+            $calls[$appId] = ['ISteamUserStats/GetSchemaForGame/v2', ['appid' => $appId, 'l' => 'german']];
+        }
+    }
+    foreach (steamApiGetMany($calls) as $appId => $data) {
+        if ($data !== null) {
+            achievementsCacheWrite('steam-schema-' . $appId . '.json', steamSchemaFromResponse($data));
+        }
+    }
 }
 
 /** Nur Bilder von Steams eigenen Servern weitergeben (passt zur CSP). */
@@ -503,26 +581,32 @@ function steamSafeImage(string $url): string
         : '';
 }
 
+/** Steam-Abrufe für die Spielauswahl eines Spielers (für steamApiGetMany). */
+function steamCandidateCalls(string $steamId): array
+{
+    return [
+        'recent' => ['IPlayerService/GetRecentlyPlayedGames/v1', ['steamid' => $steamId, 'count' => 10]],
+        'owned' => ['IPlayerService/GetOwnedGames/v1', [
+            'steamid' => $steamId,
+            'include_appinfo' => 1,
+            'include_played_free_games' => 1,
+        ]],
+    ];
+}
+
 /**
  * Spiele, die auf Erfolge geprüft werden, in dieser Reihenfolge:
  *   1. die in den letzten zwei Wochen gespielten (GetRecentlyPlayedGames),
  *   2. die Bibliothek nach „zuletzt gespielt“ (rtime_last_played),
  *   3. die Bibliothek nach Gesamtspielzeit.
  * Stufe 3 ist nötig, weil Steam „zuletzt gespielt“ bei fremden Profilen oft
- * nicht mitliefert (z. B. wenn die Spielzeit privat gehalten wird) – dann fiel
- * vorher jedes Spiel durchs Raster. Spiele ohne Community-Statistik (also ohne
- * Erfolge) werden übersprungen, wenn Steam das angibt.
+ * nicht mitliefert (z. B. wenn die Spielzeit privat gehalten wird). Spiele ohne
+ * Community-Statistik (also ohne Erfolge) werden übersprungen.
  * Gibt null zurück, wenn Steam nicht antwortet; sonst
  * ['games' => [[appid, name], …], 'owned' => Anzahl, 'recent' => Anzahl, 'with_last_played' => Anzahl].
  */
-function steamCandidateGames(string $steamId): ?array
+function steamPickCandidates(?array $recent, ?array $owned): ?array
 {
-    $recent = steamApiGet('IPlayerService/GetRecentlyPlayedGames/v1', ['steamid' => $steamId, 'count' => 10]);
-    $owned = steamApiGet('IPlayerService/GetOwnedGames/v1', [
-        'steamid' => $steamId,
-        'include_appinfo' => 1,
-        'include_played_free_games' => 1,
-    ]);
     if ($recent === null && $owned === null) {
         return null;
     }
@@ -559,17 +643,30 @@ function steamCandidateGames(string $steamId): ?array
     ];
 }
 
-/**
- * Jüngster Steam-Erfolg eines Spielers aus den Spielen von steamCandidateGames().
- * Gibt ['entry' => …] oder ['reason' => …] zurück:
- *   games_private    keine Spiele sichtbar (Spieldetails nicht öffentlich)
- *   no_achievements  in den geprüften Spielen kein Erfolg freigeschaltet
- *   error            Steam hat nicht geantwortet
- * Mit $trace erhält man für die Admin-Diagnose, was je Spiel herauskam.
- */
-function steamLatestAchievement(string $steamId, ?array &$trace = null): array
+/** Steam-Abrufe der Erfolge für die ausgewählten Spiele (Schlüssel = appid). */
+function steamAchievementCalls(string $steamId, array $candidates): array
 {
-    $candidates = steamCandidateGames($steamId);
+    $calls = [];
+    foreach ($candidates['games'] as $game) {
+        $calls[$game['appid']] = ['ISteamUserStats/GetPlayerAchievements/v1', ['steamid' => $steamId, 'appid' => $game['appid']]];
+    }
+    return $calls;
+}
+
+/**
+ * Wertet die Erfolge der ausgewählten Spiele aus und liefert den jüngsten.
+ * Gibt ['entry' => …] oder ['reason' => …] zurück:
+ *   games_private        keine Spiele sichtbar (Spieldetails nicht öffentlich)
+ *   achievements_private Spieleliste sichtbar, Erfolge aber gesperrt („Profile is not
+ *                        public“) – typisch für Spieldetails „Nur Freunde“: Die
+ *                        Bibliothek sieht der Schlüsselbesitzer als Freund, die
+ *                        Erfolge gibt Steam nur bei „Öffentlich“ heraus
+ *   no_achievements      in den geprüften Spielen kein Erfolg freigeschaltet
+ *   error                Steam hat nicht geantwortet
+ * $trace enthält für die Admin-Diagnose das Ergebnis je Spiel.
+ */
+function steamEvaluateAchievements(?array $candidates, array $allStats, ?array &$trace = null, bool $resolveNames = true): array
+{
     $trace = ['candidates' => $candidates === null ? null : array_diff_key($candidates, ['games' => true]), 'checked' => []];
     if ($candidates === null) {
         return ['reason' => 'error'];
@@ -580,18 +677,26 @@ function steamLatestAchievement(string $steamId, ?array &$trace = null): array
 
     $latest = null;
     $failed = 0;
+    $locked = 0;
+    $withStats = 0;
     foreach ($candidates['games'] as $game) {
         $appId = $game['appid'];
-        $stats = steamApiGet('ISteamUserStats/GetPlayerAchievements/v1', ['steamid' => $steamId, 'appid' => $appId]);
+        $stats = $allStats[$appId] ?? null;
         if ($stats === null) {
             $failed++;
             $trace['checked'][] = ['game' => $game['name'], 'appid' => $appId, 'result' => 'keine Antwort'];
             continue;
         }
         if (empty($stats['playerstats']['success'])) {
-            $trace['checked'][] = ['game' => $game['name'], 'appid' => $appId, 'result' => 'Steam: ' . mb_substr((string) ($stats['playerstats']['error'] ?? 'kein Erfolg abrufbar'), 0, 80, 'UTF-8')];
+            $steamError = (string) ($stats['playerstats']['error'] ?? 'kein Erfolg abrufbar');
+            if (stripos($steamError, 'not public') !== false) {
+                $locked++;
+                $withStats++;
+            }
+            $trace['checked'][] = ['game' => $game['name'], 'appid' => $appId, 'result' => 'Steam: ' . mb_substr($steamError, 0, 80, 'UTF-8')];
             continue;
         }
+        $withStats++;
         $unlockedCount = 0;
         foreach ($stats['playerstats']['achievements'] ?? [] as $entry) {
             $unlocked = (int) ($entry['unlocktime'] ?? 0);
@@ -611,7 +716,19 @@ function steamLatestAchievement(string $steamId, ?array &$trace = null): array
         $trace['checked'][] = ['game' => $game['name'], 'appid' => $appId, 'result' => $unlockedCount . ' Erfolge freigeschaltet'];
     }
     if ($latest === null) {
-        return ['reason' => $failed === count($candidates['games']) ? 'error' : 'no_achievements'];
+        if ($failed === count($candidates['games'])) {
+            return ['reason' => 'error'];
+        }
+        return ['reason' => ($locked > 0 && $locked === $withStats) ? 'achievements_private' : 'no_achievements'];
+    }
+    if (!$resolveNames) {
+        // Namen/Symbol ergänzt der Aufrufer per steamFillAchievementNames().
+        return ['entry' => [
+            'game' => $latest['game'],
+            'appid' => $latest['appid'],
+            'apiname' => $latest['apiname'],
+            'unlocked_at' => gmdate('c', $latest['unlocktime']),
+        ]];
     }
     $schemaEntry = steamAchievementSchema($latest['appid'])[$latest['apiname']] ?? null;
     return ['entry' => [
@@ -622,6 +739,15 @@ function steamLatestAchievement(string $steamId, ?array &$trace = null): array
         'icon' => steamSafeImage((string) ($schemaEntry['icon'] ?? '')),
         'unlocked_at' => gmdate('c', $latest['unlocktime']),
     ]];
+}
+
+/** Jüngster Erfolg eines einzelnen Spielers (für die Admin-Diagnose). */
+function steamLatestAchievement(string $steamId, ?array &$trace = null): array
+{
+    $lists = steamApiGetMany(steamCandidateCalls($steamId));
+    $candidates = steamPickCandidates($lists['recent'], $lists['owned']);
+    $stats = $candidates === null ? [] : steamApiGetMany(steamAchievementCalls($steamId, $candidates));
+    return steamEvaluateAchievements($candidates, $stats, $trace);
 }
 
 /** Sichtbarkeit der Profile (ein Abruf für bis zu 100 Spieler): steamid => true, wenn öffentlich. */
@@ -641,17 +767,9 @@ function steamProfileVisibility(array $steamIds): ?array
     return $visible;
 }
 
-/**
- * Widget „Steam-Erfolge“: je Spieler mit hinterlegtem Steam-Namen der jüngste
- * Erfolg, neueste zuerst, höchstens STEAM_ACHIEVEMENTS_PLAYERS_MAX Spieler.
- * Das Ergebnis wird 30 Minuten zwischengespeichert.
- */
-function steamAchievementsData(array $store): array
+/** Mitglieder mit Steam-Namen: [['steam_name' => …, 'player_name' => …], …] */
+function steamMembers(array $store): array
 {
-    if (!steamApiConfigured()) {
-        return ['configured' => false, 'entries' => [], 'linked_players' => 0];
-    }
-
     $members = [];
     foreach ($store['users'] as $user) {
         $steamName = (string) ($user['steam_name'] ?? '');
@@ -664,34 +782,101 @@ function steamAchievementsData(array $store): array
             'player_name' => $player === null ? (string) $user['username'] : (string) $player['name'],
         ];
     }
+    return $members;
+}
 
-    $cacheKey = md5(json_encode($members));
-    $cacheFile = 'steam-achievements-v2.json'; // v2: neue Spielauswahl, alter Cache gilt nicht mehr
-    $path = achievementsCacheDirectory() . DIRECTORY_SEPARATOR . $cacheFile;
-    $cached = achievementsCacheRead($cacheFile);
-    $cachedTtl = (int) ($cached['ttl'] ?? STEAM_CACHE_TTL_SECONDS);
-    if (is_array($cached) && ($cached['key'] ?? '') === $cacheKey
-        && is_file($path) && (time() - filemtime($path)) < $cachedTtl) {
-        return $cached['data'];
+/**
+ * Zwischengespeicherte Widget-Daten für genau diese Mitglieder:
+ * ['data' => …, 'fresh' => bool] oder null, wenn nichts Passendes da ist.
+ */
+function steamAchievementsCached(array $members): ?array
+{
+    $cached = achievementsCacheRead(STEAM_ACHIEVEMENTS_CACHE_FILE);
+    if (!is_array($cached) || ($cached['key'] ?? '') !== md5(json_encode($members)) || !is_array($cached['data'] ?? null)) {
+        return null;
     }
+    $path = achievementsCacheDirectory() . DIRECTORY_SEPARATOR . STEAM_ACHIEVEMENTS_CACHE_FILE;
+    $ttl = (int) ($cached['ttl'] ?? STEAM_CACHE_TTL_SECONDS);
+    return ['data' => $cached['data'], 'fresh' => is_file($path) && (time() - filemtime($path)) < $ttl];
+}
 
-    // Erst alle Profile auflösen, dann die Sichtbarkeit in einem Abruf prüfen.
+/**
+ * Widget „Steam-Erfolge“: je Spieler mit hinterlegtem Steam-Namen der jüngste
+ * Erfolg, neueste zuerst, höchstens STEAM_ACHIEVEMENTS_PLAYERS_MAX Spieler.
+ * Fragt Steam ab und legt das Ergebnis in den Zwischenspeicher.
+ */
+function steamAchievementsData(array $store): array
+{
+    if (!steamApiConfigured()) {
+        return ['configured' => false, 'entries' => [], 'linked_players' => 0];
+    }
+    $members = steamMembers($store);
+
+    // Erst alle Profile auflösen (unbekannte Profilnamen gleichzeitig), dann die
+    // Sichtbarkeit in einem Abruf prüfen.
+    $vanityCalls = [];
+    foreach ($members as $member) {
+        $name = $member['steam_name'];
+        if (!preg_match('/^\d{17}$/', $name) && achievementsCacheRead('steam-id-' . md5(strtolower($name)) . '.json') === null) {
+            $vanityCalls[strtolower($name)] = ['ISteamUser/ResolveVanityURL/v1', ['vanityurl' => $name]];
+        }
+    }
+    foreach (steamApiGetMany($vanityCalls) as $name => $data) {
+        $steamId = (string) ($data['response']['steamid'] ?? '');
+        if ((int) ($data['response']['success'] ?? 0) === 1 && preg_match('/^\d{17}$/', $steamId)) {
+            achievementsCacheWrite('steam-id-' . md5((string) $name) . '.json', ['steamid' => $steamId]);
+        }
+    }
     $resolved = [];
     foreach ($members as $member) {
-        $resolved[] = $member + ['steam_id' => steamResolveId($member['steam_name'])];
+        // Gerade erfolglos nachgeschlagene Namen nicht noch einmal einzeln abfragen.
+        $alreadyTried = isset($vanityCalls[strtolower($member['steam_name'])]);
+        $steamId = steamResolveId($member['steam_name'], !$alreadyTried);
+        $resolved[] = $member + ['steam_id' => $steamId];
     }
     $visibility = steamProfileVisibility(array_values(array_filter(array_column($resolved, 'steam_id'))));
 
+    // Alle Spieler gleichzeitig abfragen: erst die Spielelisten, dann die Erfolge.
+    $active = [];
+    foreach ($resolved as $index => $member) {
+        $steamId = $member['steam_id'];
+        if ($steamId !== null && ($visibility === null || ($visibility[$steamId] ?? false) === true)) {
+            $active[$index] = $steamId;
+        }
+    }
+    $listCalls = [];
+    foreach ($active as $index => $steamId) {
+        foreach (steamCandidateCalls($steamId) as $kind => $call) {
+            $listCalls[$index . ':' . $kind] = $call;
+        }
+    }
+    $lists = steamApiGetMany($listCalls);
+    $candidatesByIndex = [];
+    $statsCalls = [];
+    foreach ($active as $index => $steamId) {
+        $candidatesByIndex[$index] = steamPickCandidates($lists[$index . ':recent'] ?? null, $lists[$index . ':owned'] ?? null);
+        if ($candidatesByIndex[$index] !== null) {
+            foreach (steamAchievementCalls($steamId, $candidatesByIndex[$index]) as $appId => $call) {
+                $statsCalls[$index . ':' . $appId] = $call;
+            }
+        }
+    }
+    $allStats = steamApiGetMany($statsCalls);
+
     $entries = [];
     $missing = [];
-    foreach ($resolved as $member) {
+    foreach ($resolved as $index => $member) {
         $steamId = $member['steam_id'];
         if ($steamId === null) {
             $result = ['reason' => 'not_found'];
-        } elseif ($visibility !== null && ($visibility[$steamId] ?? false) === false) {
+        } elseif (!isset($active[$index])) {
             $result = ['reason' => 'profile_private'];
         } else {
-            $result = steamLatestAchievement($steamId);
+            $statsForPlayer = [];
+            foreach ($candidatesByIndex[$index]['games'] ?? [] as $game) {
+                $statsForPlayer[$game['appid']] = $allStats[$index . ':' . $game['appid']] ?? null;
+            }
+            $result = steamEvaluateAchievements($candidatesByIndex[$index], $statsForPlayer, $unusedTrace, false);
         }
         if (!isset($result['entry'])) {
             $missing[] = ['player_name' => $member['player_name'], 'reason' => $result['reason']];
@@ -703,18 +888,30 @@ function steamAchievementsData(array $store): array
         $entries[] = $entry;
     }
     usort($entries, static fn(array $a, array $b): int => strcmp($b['unlocked_at'], $a['unlocked_at']));
+    $entries = array_slice($entries, 0, STEAM_ACHIEVEMENTS_PLAYERS_MAX);
+
+    // Namen und Symbole nur für die angezeigten Erfolge holen, alle gleichzeitig.
+    steamPrefetchSchemas(array_unique(array_column($entries, 'appid')));
+    foreach ($entries as &$entry) {
+        $schemaEntry = steamAchievementSchema($entry['appid'])[$entry['apiname']] ?? null;
+        $entry['achievement'] = $schemaEntry['name'] ?? $entry['apiname'];
+        $entry['description'] = $schemaEntry['description'] ?? '';
+        $entry['icon'] = steamSafeImage((string) ($schemaEntry['icon'] ?? ''));
+        unset($entry['apiname']);
+    }
+    unset($entry);
 
     $data = [
         'configured' => true,
-        'entries' => array_slice($entries, 0, STEAM_ACHIEVEMENTS_PLAYERS_MAX),
+        'entries' => $entries,
         'missing' => $missing,
         'linked_players' => count($members),
         'updated_at' => gmdate('c'),
     ];
     // Nach einer Steam-Störung nicht 15 Minuten lang „keine Daten“ zeigen.
     $hadError = $visibility === null || in_array('error', array_column($missing, 'reason'), true);
-    achievementsCacheWrite($cacheFile, [
-        'key' => $cacheKey,
+    achievementsCacheWrite(STEAM_ACHIEVEMENTS_CACHE_FILE, [
+        'key' => md5(json_encode($members)),
         'ttl' => $hadError ? STEAM_RETRY_TTL_SECONDS : STEAM_CACHE_TTL_SECONDS,
         'data' => $data,
     ]);
@@ -2556,9 +2753,25 @@ if ($action === 'steam_diagnose') {
 }
 
 if ($action === 'steam_achievements') {
-    // Kann beim ersten Abruf einige Sekunden dauern (Steam-API); Sitzung sofort freigeben.
+    // Kann einige Sekunden dauern (Steam-API); Sitzung sofort freigeben.
     session_write_close();
-    respond(['ok' => true] + steamAchievementsData(readStore()));
+    $steamStore = readStore();
+    if (!steamApiConfigured()) {
+        respond(['ok' => true, 'configured' => false, 'entries' => [], 'linked_players' => 0]);
+    }
+    $steamCached = steamAchievementsCached(steamMembers($steamStore));
+    if ($steamCached !== null && $steamCached['fresh']) {
+        respond(['ok' => true] + $steamCached['data']);
+    }
+    if ($steamCached !== null && function_exists('fastcgi_finish_request')) {
+        // Veraltete Daten sofort ausliefern und erst danach bei Steam erneuern,
+        // damit niemand auf Steam warten muss (PHP-FPM).
+        echo json_encode(['ok' => true] + $steamCached['data'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        fastcgi_finish_request();
+        steamAchievementsData($steamStore);
+        exit;
+    }
+    respond(['ok' => true] + steamAchievementsData($steamStore));
 }
 
 if ($action === 'playtime_stats') {

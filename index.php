@@ -841,7 +841,7 @@ require __DIR__ . '/includes/site-header.php';
     // die Statistik live von Raider.IO, bei den anderen drei ist sie manuell
     // gepflegt. Titel und Links sind bei allen vier Admin-editierbar.
     // Die Seiten wechseln alle ACHIEVEMENT_ROTATE_MS automatisch.
-    const ACHIEVEMENT_ROTATE_MS = 15000;
+    const ACHIEVEMENT_ROTATE_MS = 30000;
     const achievementGames = [
         { id: 'steam', label: 'Steam-Erfolge', icon: '🏆', type: 'steam', source: 'Die jüngsten Erfolge der Kellerkinder auf Steam' },
         { id: 'wow', label: 'World of Warcraft', icon: '⚔', type: 'wow', source: 'Beste Mythisch-Plus-Läufe, live via Raider.IO' },
@@ -1123,6 +1123,7 @@ require __DIR__ . '/includes/site-header.php';
             not_found: 'Steam-Profil nicht gefunden – Namen bzw. Link prüfen',
             profile_private: 'Steam-Profil ist nicht öffentlich',
             games_private: 'Spieldetails sind auf Steam nicht öffentlich',
+            achievements_private: 'Spieldetails stehen auf „Nur Freunde“ – für Erfolge auf „Öffentlich“ stellen',
             no_achievements: 'keine Erfolge in den zuletzt gespielten Spielen',
             error: 'Steam hat gerade nicht geantwortet',
         };

@@ -1,5 +1,18 @@
 # Änderungsprotokoll
 
+## 2.14.3 — Steam-Erfolge schneller, klarer Hinweis bei „Nur Freunde“
+
+- Neuer Hinweis im Widget, wenn die Spieldetails auf „Nur Freunde“ stehen: Die
+  Spieleliste ist dann für den Besitzer des Steam-Schlüssels sichtbar, die Erfolge
+  gibt Steam aber nur bei „Öffentlich“ heraus („Profile is not public“). Vorher
+  stand dort irreführend „keine Erfolge in den zuletzt gespielten Spielen“
+- Deutlich schneller: Die Steam-Abfragen aller Spieler laufen gleichzeitig
+  (curl_multi) statt nacheinander; Namen und Symbole werden nur für die angezeigten
+  Erfolge geholt. Im Test mit künstlicher Verzögerung 2 statt 11,5 Sekunden
+- Mit PHP-FPM wird nach Ablauf des Zwischenspeichers sofort der letzte Stand
+  gezeigt und erst danach im Hintergrund bei Steam erneuert
+- Die Erfolge-Widgets wechseln jetzt alle 30 Sekunden
+
 ## 2.14.2 — Steam-Erfolge auch für Mitspieler
 
 - **Fehler behoben:** Bei allen außer dem Besitzer des Steam-Schlüssels stand

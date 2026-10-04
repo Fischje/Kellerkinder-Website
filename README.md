@@ -281,7 +281,9 @@ Der Server braucht ausgehenden Zugriff auf `api.steampowered.com`. Geprüft werd
 bis zu 8 Spiele je Spieler (zuletzt gespielte zuerst, sonst nach Spielzeit).
 Admins finden im Widget einen Link „Diagnose“ (`api.php?action=steam_diagnose`). Die Daten werden 15 Minuten
 zwischengespeichert. Fehlt jemand, nennt das Widget den Grund (z. B. Spieldetails
-nicht öffentlich). Die Widgets wechseln alle 15 Sekunden.
+nicht öffentlich). Die Widgets wechseln alle 30 Sekunden.
+Wichtig: Erfolge gibt Steam nur heraus, wenn die **Spieldetails auf „Öffentlich“** stehen –
+„Nur Freunde“ reicht nicht, auch wenn die Spieleliste sichtbar ist.
 
 ## Statistik
 
