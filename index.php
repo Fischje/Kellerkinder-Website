@@ -1137,6 +1137,14 @@ require __DIR__ . '/includes/site-header.php';
                 line.textContent = `${member.player_name} – ${reasons[member.reason] || 'keine Daten'}`;
                 note.appendChild(line);
             }
+            if (state.admin) {
+                const diagnose = document.createElement('a');
+                diagnose.href = 'api.php?action=steam_diagnose';
+                diagnose.target = '_blank';
+                diagnose.rel = 'noopener';
+                diagnose.textContent = 'Diagnose (nur Admin)';
+                note.appendChild(diagnose);
+            }
             list.appendChild(note);
         }
         return { body: list, updated: formatUpdatedAt(data.updated_at) };

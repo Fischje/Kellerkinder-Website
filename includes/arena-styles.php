@@ -686,6 +686,7 @@
             background: rgba(var(--panel-deep-rgb), .5);
         }
 
+        .steam-missing a { color: var(--accent-hover); font-weight: 700; }
         .steam-missing strong { color: #fff; font-family: var(--font-heading); letter-spacing: .06em; text-transform: uppercase; }
 
         /* ===== Dialoge & Formulare ===== */

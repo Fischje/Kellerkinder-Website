@@ -277,8 +277,9 @@ holen und in `config.php` eintragen (die Datei liegt nicht im Repository):
 const STEAM_API_KEY = 'dein-schluessel';
 ```
 
-Der Server braucht ausgehenden Zugriff auf `api.steampowered.com`. Durchsucht werden
-die fünf zuletzt gespielten Spiele jedes Spielers. Die Daten werden 15 Minuten
+Der Server braucht ausgehenden Zugriff auf `api.steampowered.com`. Geprüft werden
+bis zu 8 Spiele je Spieler (zuletzt gespielte zuerst, sonst nach Spielzeit).
+Admins finden im Widget einen Link „Diagnose“ (`api.php?action=steam_diagnose`). Die Daten werden 15 Minuten
 zwischengespeichert. Fehlt jemand, nennt das Widget den Grund (z. B. Spieldetails
 nicht öffentlich). Die Widgets wechseln alle 15 Sekunden.
 

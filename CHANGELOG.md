@@ -1,5 +1,20 @@
 # Änderungsprotokoll
 
+## 2.14.2 — Steam-Erfolge auch für Mitspieler
+
+- **Fehler behoben:** Bei allen außer dem Besitzer des Steam-Schlüssels stand
+  „keine Erfolge in den zuletzt gespielten Spielen“, obwohl das Profil Erfolge
+  zeigte. Ursache: Steam liefert „zuletzt gespielt“ bei fremden Profilen oft nicht
+  mit (z. B. wenn die Spielzeit privat gehalten wird); diese Spiele wurden alle
+  aussortiert
+- Geprüft werden jetzt bis zu 8 Spiele in dieser Reihenfolge: in den letzten zwei
+  Wochen gespielt, nach „zuletzt gespielt“, nach Gesamtspielzeit. Spiele ohne
+  Erfolge werden übersprungen
+- Neu für Admins: Link „Diagnose“ im Steam-Widget
+  (`api.php?action=steam_diagnose`) zeigt je Spieler, was Steam liefert und welche
+  Spiele geprüft wurden
+- Der Zwischenspeicher der alten Version wird verworfen, die Änderung greift sofort
+
 ## 2.14.1 — Steam-Erfolge: mehr Spieler gefunden, Gründe sichtbar
 
 - **Fehler behoben:** Gesucht wurde nur in Spielen der letzten zwei Wochen. Wer
