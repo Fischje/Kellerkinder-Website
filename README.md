@@ -263,6 +263,23 @@ const RAWG_API_KEY = 'dein-key';
 Ohne Key sucht die Seite im Steam-Store. Der Server braucht ausgehenden Zugriff
 auf `api.rawg.io` bzw. `store.steampowered.com`.
 
+## Steam-Erfolge
+
+Das erste Widget bei „Unsere Erfolge“ zeigt für bis zu 7 Spieler den jüngsten
+Steam-Erfolg, neueste zuerst. Den Steam-Namen trägt jeder unter „Mein Account“
+ein, ein Admin kann ihn im Benutzer-Dialog setzen (Profilname, SteamID oder
+Link zum Steam-Profil). Das Steam-Profil und die Spieldetails müssen öffentlich sein.
+
+Einrichtung: kostenlosen Schlüssel unter https://steamcommunity.com/dev/apikey
+holen und in `config.php` eintragen (die Datei liegt nicht im Repository):
+
+```php
+const STEAM_API_KEY = 'dein-schluessel';
+```
+
+Der Server braucht ausgehenden Zugriff auf `api.steampowered.com`. Die Daten werden
+30 Minuten zwischengespeichert. Die Widgets wechseln alle 7 Sekunden.
+
 ## Statistik
 
 Unter `statistik.php` zeigt die Seite, welche Spiele auf dem Kellerkinder-Discord
@@ -281,6 +298,12 @@ const BOT_STATS_URL = 'http://127.0.0.1:3100/api/stats';
 Die Antwort wird 5 Minuten zwischengespeichert. Ist der Bot kurz nicht
 erreichbar, zeigt die Seite den letzten bekannten Stand mit Hinweis. Ohne
 `BOT_STATS_URL` meldet die Seite, dass die Statistik noch nicht eingerichtet ist.
+
+**Spieler ausblenden:** Admins sehen auf der Statistik-Seite unten eine Liste
+aller Discord-Mitglieder mit Spielzeit und können einzelne ausblenden. Diese
+zählen dann weder auf der Website noch bei `/statistik` im Discord (der Bot holt
+die Liste über `api.php?action=stats_exclusions`, höchstens 5 Minuten verzögert).
+Dafür ist Bot-Version 1.6.0 nötig.
 
 Spielernamen erscheinen nur, wenn im Bot `STATS_PUBLIC_PLAYERS=true` gesetzt ist.
 

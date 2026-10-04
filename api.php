@@ -48,6 +48,15 @@ const ACHIEVEMENTS_CACHE_TTL_SECONDS = 1800;
 // in config.php, z. B.: const BOT_STATS_URL = 'http://127.0.0.1:3100/api/stats';
 const BOT_STATS_TTL_SECONDS = 300;
 const BOT_STATS_ALLOWED_DAYS = [7, 30, 90, 0]; // 0 = gesamte Zeit
+const STATS_EXCLUDED_MAX = 200;
+
+// Steam-Erfolge: Schlüssel (nicht im Repository) in config.php, z. B.
+// const STEAM_API_KEY = '...'; — kostenlos unter steamcommunity.com/dev/apikey
+const STEAM_NAME_MAX = 64;
+const STEAM_ACHIEVEMENTS_PLAYERS_MAX = 7;
+const STEAM_RECENT_GAMES_MAX = 4;
+const STEAM_CACHE_TTL_SECONDS = 1800;
+const STEAM_SCHEMA_TTL_SECONDS = 86400;
 const ACHIEVEMENT_MANUAL_GAMES = ['hots', 'diablo4', 'rocket_league']; // Spiele mit manuell gepflegter Statistik
 const ACHIEVEMENT_GAMES = ['wow', 'hots', 'diablo4', 'rocket_league']; // Alle Spiele (inkl. WoW, das Titel/Links aber nicht Stats manuell hat)
 const ACHIEVEMENT_LABEL_MAX = 40;
@@ -394,6 +403,197 @@ function gameHttpGet(string $url): ?array
 }
 
 /**
+ * Steam-Name aus Eingabe: Profil-URL (…/id/NAME oder …/profiles/ID),
+ * SteamID64 (17 Ziffern) oder eigener Profilname. Leer = kein Steam-Konto.
+ */
+function validateSteamName($value): string
+{
+    $raw = trim((string) $value);
+    if ($raw === '') {
+        return '';
+    }
+    if (preg_match('#steamcommunity\.com/(?:id|profiles)/([^/?\#\s]+)#i', $raw, $match)) {
+        $raw = $match[1];
+    }
+    if (!preg_match('/^(?:\d{17}|[A-Za-z0-9_-]{2,' . STEAM_NAME_MAX . '})$/', $raw)) {
+        respond(['ok' => false, 'error' => 'Bitte den Steam-Profilnamen, die SteamID oder den Link zum Steam-Profil angeben.'], 422);
+    }
+    return $raw;
+}
+
+function steamApiConfigured(): bool
+{
+    return defined('STEAM_API_KEY') && STEAM_API_KEY !== '';
+}
+
+function steamApiGet(string $path, array $params): ?array
+{
+    $params['key'] = STEAM_API_KEY;
+    $params['format'] = 'json';
+    // STEAM_API_BASE nur für lokale Tests mit einer Attrappe setzen.
+    $base = defined('STEAM_API_BASE') ? STEAM_API_BASE : 'https://api.steampowered.com';
+    return gameHttpGet($base . '/' . $path . '/?' . http_build_query($params));
+}
+
+/** Liefert die SteamID64 zu einem Profilnamen (dauerhaft zwischengespeichert). */
+function steamResolveId(string $steamName): ?string
+{
+    if (preg_match('/^\d{17}$/', $steamName)) {
+        return $steamName;
+    }
+    $cacheFile = 'steam-id-' . md5(strtolower($steamName)) . '.json';
+    $cached = achievementsCacheRead($cacheFile);
+    if (is_array($cached) && isset($cached['steamid'])) {
+        return (string) $cached['steamid'];
+    }
+    $data = steamApiGet('ISteamUser/ResolveVanityURL/v1', ['vanityurl' => $steamName]);
+    $steamId = (string) ($data['response']['steamid'] ?? '');
+    if ((int) ($data['response']['success'] ?? 0) !== 1 || !preg_match('/^\d{17}$/', $steamId)) {
+        return null;
+    }
+    achievementsCacheWrite($cacheFile, ['steamid' => $steamId]);
+    return $steamId;
+}
+
+/** Namen und Symbole aller Erfolge eines Spiels (einen Tag zwischengespeichert). */
+function steamAchievementSchema(int $appId): array
+{
+    $cacheFile = 'steam-schema-' . $appId . '.json';
+    $path = achievementsCacheDirectory() . DIRECTORY_SEPARATOR . $cacheFile;
+    if (is_file($path) && (time() - filemtime($path)) < STEAM_SCHEMA_TTL_SECONDS) {
+        $cached = achievementsCacheRead($cacheFile);
+        if (is_array($cached)) {
+            return $cached;
+        }
+    }
+    $data = steamApiGet('ISteamUserStats/GetSchemaForGame/v2', ['appid' => $appId, 'l' => 'german']);
+    $schema = [];
+    foreach ($data['game']['availableGameStats']['achievements'] ?? [] as $entry) {
+        $apiName = (string) ($entry['name'] ?? '');
+        if ($apiName === '') {
+            continue;
+        }
+        $schema[$apiName] = [
+            'name' => mb_substr((string) ($entry['displayName'] ?? $apiName), 0, 120, 'UTF-8'),
+            'description' => mb_substr((string) ($entry['description'] ?? ''), 0, 200, 'UTF-8'),
+            'icon' => (string) ($entry['icon'] ?? ''),
+        ];
+    }
+    achievementsCacheWrite($cacheFile, $schema);
+    return $schema;
+}
+
+/** Nur Bilder von Steams eigenen Servern weitergeben (passt zur CSP). */
+function steamSafeImage(string $url): string
+{
+    return preg_match('#^https://(?:steamcdn-a\.akamaihd\.net|cdn\.akamai\.steamstatic\.com|cdn\.cloudflare\.steamstatic\.com|shared\.akamai\.steamstatic\.com|shared\.fastly\.steamstatic\.com)/[A-Za-z0-9_/.%-]+$#', $url)
+        ? $url
+        : '';
+}
+
+/**
+ * Jüngster Steam-Erfolg eines Spielers aus seinen zuletzt gespielten Spielen.
+ * Voraussetzung: Profil und Spieldetails sind öffentlich.
+ */
+function steamLatestAchievement(string $steamId): ?array
+{
+    $recent = steamApiGet('IPlayerService/GetRecentlyPlayedGames/v1', ['steamid' => $steamId, 'count' => STEAM_RECENT_GAMES_MAX]);
+    $latest = null;
+    foreach ($recent['response']['games'] ?? [] as $game) {
+        $appId = (int) ($game['appid'] ?? 0);
+        if ($appId <= 0) {
+            continue;
+        }
+        $stats = steamApiGet('ISteamUserStats/GetPlayerAchievements/v1', ['steamid' => $steamId, 'appid' => $appId]);
+        if (empty($stats['playerstats']['success'])) {
+            continue;
+        }
+        foreach ($stats['playerstats']['achievements'] ?? [] as $entry) {
+            $unlocked = (int) ($entry['unlocktime'] ?? 0);
+            if ((int) ($entry['achieved'] ?? 0) !== 1 || $unlocked <= 0) {
+                continue;
+            }
+            if ($latest === null || $unlocked > $latest['unlocktime']) {
+                $latest = [
+                    'unlocktime' => $unlocked,
+                    'apiname' => (string) ($entry['apiname'] ?? ''),
+                    'appid' => $appId,
+                    'game' => mb_substr((string) ($game['name'] ?? ($stats['playerstats']['gameName'] ?? '')), 0, 100, 'UTF-8'),
+                ];
+            }
+        }
+    }
+    if ($latest === null) {
+        return null;
+    }
+    $schemaEntry = steamAchievementSchema($latest['appid'])[$latest['apiname']] ?? null;
+    return [
+        'game' => $latest['game'],
+        'appid' => $latest['appid'],
+        'achievement' => $schemaEntry['name'] ?? $latest['apiname'],
+        'description' => $schemaEntry['description'] ?? '',
+        'icon' => steamSafeImage((string) ($schemaEntry['icon'] ?? '')),
+        'unlocked_at' => gmdate('c', $latest['unlocktime']),
+    ];
+}
+
+/**
+ * Widget „Steam-Erfolge“: je Spieler mit hinterlegtem Steam-Namen der jüngste
+ * Erfolg, neueste zuerst, höchstens STEAM_ACHIEVEMENTS_PLAYERS_MAX Spieler.
+ * Das Ergebnis wird 30 Minuten zwischengespeichert.
+ */
+function steamAchievementsData(array $store): array
+{
+    if (!steamApiConfigured()) {
+        return ['configured' => false, 'entries' => [], 'linked_players' => 0];
+    }
+
+    $members = [];
+    foreach ($store['users'] as $user) {
+        $steamName = (string) ($user['steam_name'] ?? '');
+        if ($steamName === '') {
+            continue;
+        }
+        $player = playerForUser($store, $user);
+        $members[] = [
+            'steam_name' => $steamName,
+            'player_name' => $player === null ? (string) $user['username'] : (string) $player['name'],
+        ];
+    }
+
+    $cacheKey = md5(json_encode($members));
+    $cacheFile = 'steam-achievements.json';
+    $path = achievementsCacheDirectory() . DIRECTORY_SEPARATOR . $cacheFile;
+    $cached = achievementsCacheRead($cacheFile);
+    if (is_array($cached) && ($cached['key'] ?? '') === $cacheKey
+        && is_file($path) && (time() - filemtime($path)) < STEAM_CACHE_TTL_SECONDS) {
+        return $cached['data'];
+    }
+
+    $entries = [];
+    foreach ($members as $member) {
+        $steamId = steamResolveId($member['steam_name']);
+        $latest = $steamId === null ? null : steamLatestAchievement($steamId);
+        if ($latest === null) {
+            continue;
+        }
+        $latest['player_name'] = $member['player_name'];
+        $latest['profile_url'] = 'https://steamcommunity.com/profiles/' . $steamId;
+        $entries[] = $latest;
+    }
+    usort($entries, static fn(array $a, array $b): int => strcmp($b['unlocked_at'], $a['unlocked_at']));
+
+    $data = [
+        'configured' => true,
+        'entries' => array_slice($entries, 0, STEAM_ACHIEVEMENTS_PLAYERS_MAX),
+        'linked_players' => count($members),
+        'updated_at' => gmdate('c'),
+    ];
+    achievementsCacheWrite($cacheFile, ['key' => $cacheKey, 'data' => $data]);
+    return $data;
+}
+
+/**
  * Spielsuche. Mit RAWG_API_KEY (config.php) über RAWG, das auch
  * Blizzard-, Epic- und Konsolenspiele kennt; sonst über den Steam-Store.
  * Läuft serverseitig, weil der Browser beides wegen CORS/CSP nicht direkt
@@ -661,13 +861,45 @@ function achievementsCacheWrite(string $file, array $data): void
 }
 
 /**
+ * Liste der Discord-Spieler, die ein Admin aus der Statistik ausgeblendet hat:
+ * [['id' => Discord-ID, 'name' => Anzeigename], ...]
+ */
+function normalizeStatsExcluded($value): array
+{
+    if (!is_array($value)) {
+        return [];
+    }
+    $result = [];
+    foreach ($value as $entry) {
+        $id = is_array($entry) ? (string) ($entry['id'] ?? '') : (string) $entry;
+        if (!preg_match('/^\d{5,25}$/', $id) || isset($result[$id])) {
+            continue;
+        }
+        $name = is_array($entry) ? trim((string) ($entry['name'] ?? '')) : '';
+        $result[$id] = ['id' => $id, 'name' => mb_substr($name, 0, 60, 'UTF-8')];
+        if (count($result) >= STATS_EXCLUDED_MAX) {
+            break;
+        }
+    }
+    return array_values($result);
+}
+
+function statsExcludedIds(array $store): array
+{
+    return array_map(static fn(array $entry): string => $entry['id'], $store['settings']['stats_excluded'] ?? []);
+}
+
+/**
  * Spielzeit-Statistik des Discord-Bots (serverseitig abgerufen, 5 Minuten
  * zwischengespeichert). Ist der Bot nicht erreichbar, werden die letzten
  * bekannten Daten mit 'stale' => true geliefert; ohne Daten gibt es null.
  */
-function botStatsData(int $days): ?array
+function botStatsData(int $days, array $excludedIds = []): ?array
 {
-    $file = 'playtime-' . $days . '.json';
+    sort($excludedIds, SORT_STRING);
+    // Die Ausschlussliste ist Teil des Cache-Schlüssels: Ändert ein Admin sie,
+    // wird sofort frisch beim Bot abgefragt.
+    $file = 'playtime-' . $days . '-' . substr(md5(implode(',', $excludedIds)), 0, 10) . '.json';
     $directory = achievementsCacheDirectory();
     $path = $directory . DIRECTORY_SEPARATOR . $file;
     $hasCache = is_file($path);
@@ -684,7 +916,10 @@ function botStatsData(int $days): ?array
         'ignore_errors' => true,
         'header' => "User-Agent: Kellerkinder-Website/1.0\r\nAccept: application/json\r\n",
     ]]);
-    $raw = @file_get_contents(BOT_STATS_URL . '?days=' . $days, false, $context);
+    // exclude immer mitschicken (auch leer), damit der Bot nicht auf seine
+    // eigene, bis zu 5 Minuten alte Kopie der Liste zurückgreift.
+    $query = 'days=' . $days . '&roster=1&exclude=' . implode(',', $excludedIds);
+    $raw = @file_get_contents(BOT_STATS_URL . '?' . $query, false, $context);
     $data = $raw === false ? null : json_decode($raw, true);
 
     if (is_array($data) && ($data['ok'] ?? false) === true && is_array($data['games'] ?? null)) {
@@ -869,6 +1104,7 @@ function defaultStore(): array
         'settings' => [
             'admin_player_names' => [],
             'theme' => 'default',
+            'stats_excluded' => [],
         ],
         'achievements_manual' => [
             'wow' => [
@@ -960,6 +1196,7 @@ function normalizeStore(array $store): array
         ? array_values($store['settings']['admin_player_names'])
         : [];
     $store['settings']['theme'] = validateThemeValue($store['settings']['theme'] ?? 'default', 'default');
+    $store['settings']['stats_excluded'] = normalizeStatsExcluded($store['settings']['stats_excluded'] ?? []);
 
     $defaultAchievements = $defaults['achievements_manual'];
     $rawAchievements = is_array($store['achievements_manual'] ?? null) ? $store['achievements_manual'] : [];
@@ -996,6 +1233,9 @@ function normalizeStore(array $store): array
         $user['session_version'] = max(1, (int) ($user['session_version'] ?? 1));
         $user['default_weekdays'] = normalizeWeekdays($user['default_weekdays'] ?? []);
         $user['avatar'] = validateAvatarData($user['avatar'] ?? '', true);
+        $user['steam_name'] = preg_match('/^(?:\d{17}|[A-Za-z0-9_-]{2,' . STEAM_NAME_MAX . '})$/', (string) ($user['steam_name'] ?? ''))
+            ? (string) $user['steam_name']
+            : '';
         $user['defaults_effective_from'] = validIsoDate((string) ($user['defaults_effective_from'] ?? ''))
             ? (string) $user['defaults_effective_from']
             : (new DateTimeImmutable('today', new DateTimeZone('Europe/Berlin')))->format('Y-m-d');
@@ -2029,6 +2269,7 @@ function bootstrapResponse(array $store): array
             'player_id' => $currentPlayer === null ? null : (int) $currentPlayer['id'],
             'player_name' => $currentPlayer === null ? '' : (string) $currentPlayer['name'],
             'avatar' => (string) ($currentUser['avatar'] ?? ''),
+            'steam_name' => (string) ($currentUser['steam_name'] ?? ''),
             'default_weekdays' => normalizeWeekdays($currentUser['default_weekdays'] ?? []),
         ],
     ];
@@ -2058,6 +2299,7 @@ function bootstrapResponse(array $store): array
                 'must_change_password' => !empty($user['must_change_password']),
                 'is_admin' => isAdminUser($store, $user),
                 'is_author' => !empty($user['is_author']),
+                'steam_name' => (string) ($user['steam_name'] ?? ''),
             ];
         }
         usort($adminUsers, static fn(array $a, array $b): int => strcasecmp($a['username'], $b['username']));
@@ -2141,7 +2383,23 @@ if ($action === 'games') {
     respond(['ok' => true, 'games' => $games]);
 }
 
+if ($action === 'stats_exclusions') {
+    // Wird vom Discord-Bot abgefragt, damit /statistik dieselben Spieler ausblendet.
+    session_write_close();
+    respond(['ok' => true, 'ids' => statsExcludedIds(readStore())]);
+}
+
+if ($action === 'steam_achievements') {
+    // Kann beim ersten Abruf einige Sekunden dauern (Steam-API); Sitzung sofort freigeben.
+    session_write_close();
+    respond(['ok' => true] + steamAchievementsData(readStore()));
+}
+
 if ($action === 'playtime_stats') {
+    $statsStore = readStore();
+    $statsUserIndex = currentUserIndex($statsStore);
+    $statsIsAdmin = $statsUserIndex !== null && isAdminUser($statsStore, $statsStore['users'][$statsUserIndex]);
+    $statsExcluded = $statsStore['settings']['stats_excluded'];
     session_write_close();
     if (!defined('BOT_STATS_URL') || BOT_STATS_URL === '') {
         respond(['ok' => true, 'configured' => false]);
@@ -2150,7 +2408,7 @@ if ($action === 'playtime_stats') {
     if (!in_array($statsDays, BOT_STATS_ALLOWED_DAYS, true)) {
         respond(['ok' => false, 'error' => 'Ungültiger Zeitraum.'], 422);
     }
-    $stats = botStatsData($statsDays);
+    $stats = botStatsData($statsDays, statsExcludedIds($statsStore));
     if ($stats === null) {
         respond(['ok' => false, 'error' => 'Die Statistik ist gerade nicht erreichbar.'], 502);
     }
@@ -2181,6 +2439,34 @@ if ($action === 'playtime_stats') {
                 'top_game' => isset($player['topGame']) ? mb_substr((string) $player['topGame'], 0, 100, 'UTF-8') : null,
             ];
         }
+    }
+    if ($statsIsAdmin) {
+        // Nur für Admins: alle Discord-Spieler samt Ausblende-Status zum Bearbeiten.
+        $excludedMap = [];
+        foreach ($statsExcluded as $entry) {
+            $excludedMap[$entry['id']] = $entry['name'];
+        }
+        $roster = [];
+        foreach (is_array($stats['roster'] ?? null) ? $stats['roster'] : [] as $member) {
+            $memberId = (string) ($member['id'] ?? '');
+            if (!preg_match('/^\d{5,25}$/', $memberId)) {
+                continue;
+            }
+            $roster[$memberId] = [
+                'id' => $memberId,
+                'name' => mb_substr((string) ($member['name'] ?? ''), 0, 60, 'UTF-8'),
+                'minutes' => (int) ($member['minutes'] ?? 0),
+                'excluded' => isset($excludedMap[$memberId]),
+            ];
+        }
+        // Ausgeblendete ohne Spielzeit im Zeitraum trotzdem anzeigen, damit man sie wieder einblenden kann.
+        foreach ($excludedMap as $memberId => $memberName) {
+            $roster[$memberId] ??= ['id' => $memberId, 'name' => $memberName, 'minutes' => 0, 'excluded' => true];
+        }
+        $roster = array_values($roster);
+        usort($roster, static fn(array $a, array $b): int => $b['minutes'] <=> $a['minutes'] ?: strcasecmp($a['name'], $b['name']));
+        $out['roster'] = $roster;
+        $out['roster_supported'] = is_array($stats['roster'] ?? null);
     }
     respond($out);
 }
@@ -2335,6 +2621,9 @@ withWritableStore(function (array &$store) use ($action, $payload): array {
             $playerName = validateName($payload['player_name'] ?? '');
             $weekdays = normalizeWeekdays($payload['default_weekdays'] ?? []);
             $avatar = validateAvatarData($payload['avatar'] ?? '');
+            if (array_key_exists('steam_name', $payload)) {
+                $store['users'][$userIndex]['steam_name'] = validateSteamName($payload['steam_name']);
+            }
             renameOrAssignUserPlayer($store, $userIndex, $playerName, false);
             $store['users'][$userIndex]['default_weekdays'] = $weekdays;
             $store['users'][$userIndex]['avatar'] = $avatar;
@@ -2551,6 +2840,9 @@ withWritableStore(function (array &$store) use ($action, $payload): array {
             $store['users'][$targetIndex]['username'] = $username;
             renameOrAssignUserPlayer($store, $targetIndex, $playerName, true);
             $store['users'][$targetIndex]['is_author'] = !empty($payload['is_author']);
+            if (array_key_exists('steam_name', $payload)) {
+                $store['users'][$targetIndex]['steam_name'] = validateSteamName($payload['steam_name']);
+            }
 
             $newPassword = (string) ($payload['password'] ?? '');
             if ($newPassword !== '') {
@@ -2804,6 +3096,14 @@ withWritableStore(function (array &$store) use ($action, $payload): array {
                 'part' => $part,
                 'entry' => $existingEntry,
             ], 200, true];
+
+        case 'admin_set_stats_exclusions':
+            requireAdmin($store);
+            if (!is_array($payload['players'] ?? null)) {
+                return [['ok' => false, 'error' => 'Die Liste ist ungültig.'], 422, false];
+            }
+            $store['settings']['stats_excluded'] = normalizeStatsExcluded($payload['players']);
+            return [['ok' => true, 'excluded' => $store['settings']['stats_excluded']], 200, true];
 
         case 'admin_save_settings':
             requireAdmin($store);

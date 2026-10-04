@@ -64,6 +64,18 @@ require __DIR__ . '/includes/site-header.php';
         <div id="statsBody"><p class="widget-loading">Wird geladen …</p></div>
     </section>
 
+    <section class="games-panel stats-admin" id="statsAdmin" hidden>
+        <h2 class="section-title"><span class="accent">Spieler</span> ausblenden</h2>
+        <p class="stats-note">Nur für Admins sichtbar. Angehakte Discord-Mitglieder zählen nicht zur Statistik –
+            weder hier noch beim Discord-Befehl <code>/statistik</code>. Ihre Spielzeit wird weiter erfasst, sodass du sie
+            jederzeit wieder einblenden kannst.</p>
+        <div id="statsAdminList" class="stats-admin-list"></div>
+        <div class="stats-admin-actions">
+            <button class="primary-button" id="statsAdminSave" type="button">Speichern</button>
+            <span class="stats-note" id="statsAdminStatus" role="status" aria-live="polite"></span>
+        </div>
+    </section>
+
     <footer class="site-footer">Created by Fischje with <span class="heart" aria-label="Love">♥</span> · Made with AI · Version <?= htmlspecialchars($appVersion, ENT_QUOTES, 'UTF-8') ?></footer>
 </main>
 
@@ -136,7 +148,78 @@ require __DIR__ . '/includes/site-header.php';
         return wrap;
     }
 
+    // ===== Admin: Spieler aus der Statistik ausblenden =====
+    let csrfToken = '';
+    let currentDays = 30;
+
+    function renderAdmin(data) {
+        const panel = document.getElementById('statsAdmin');
+        if (!Array.isArray(data.roster)) { panel.hidden = true; return; }
+        panel.hidden = false;
+        const container = document.getElementById('statsAdminList');
+        container.replaceChildren();
+        if (data.roster_supported === false) {
+            const note = document.createElement('p');
+            note.className = 'widget-empty';
+            note.textContent = 'Der Discord-Bot liefert noch keine Spielerliste. Dafür ist Bot-Version 1.6.0 nötig.';
+            container.appendChild(note);
+        }
+        if (data.roster.length === 0 && data.roster_supported !== false) {
+            const note = document.createElement('p');
+            note.className = 'widget-empty';
+            note.textContent = 'Im gewählten Zeitraum hat noch niemand gespielt.';
+            container.appendChild(note);
+        }
+        for (const member of data.roster) {
+            const label = document.createElement('label');
+            label.className = 'stats-admin-item';
+            const box = document.createElement('input');
+            box.type = 'checkbox';
+            box.checked = member.excluded;
+            box.dataset.id = member.id;
+            box.dataset.name = member.name;
+            const name = document.createElement('span');
+            name.textContent = member.name;
+            const time = document.createElement('small');
+            time.textContent = member.minutes > 0 ? formatMinutes(member.minutes) : '–';
+            label.append(box, name, time);
+            container.appendChild(label);
+        }
+    }
+
+    document.getElementById('statsAdminSave').addEventListener('click', async () => {
+        const button = document.getElementById('statsAdminSave');
+        const status = document.getElementById('statsAdminStatus');
+        const players = [...document.querySelectorAll('#statsAdminList input:checked')]
+            .map(box => ({ id: box.dataset.id, name: box.dataset.name }));
+        button.disabled = true;
+        status.textContent = 'Wird gespeichert …';
+        try {
+            if (!csrfToken) {
+                const boot = await (await fetch('api.php?action=bootstrap', { headers: { Accept: 'application/json' }, credentials: 'same-origin' })).json();
+                csrfToken = boot.csrf_token || '';
+            }
+            const response = await fetch('api.php', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+                body: JSON.stringify({ action: 'admin_set_stats_exclusions', players }),
+            });
+            const data = await response.json();
+            if (!response.ok || data.ok === false) throw new Error(data.error || 'Speichern fehlgeschlagen.');
+            status.textContent = players.length === 0
+                ? 'Gespeichert. Alle Spieler zählen zur Statistik.'
+                : `Gespeichert. ${players.length} Spieler ausgeblendet.`;
+            load(currentDays);
+        } catch (error) {
+            status.textContent = error.message;
+        } finally {
+            button.disabled = false;
+        }
+    });
+
     function render(data) {
+        renderAdmin(data);
         if (!data.configured) { message('Die Statistik ist noch nicht eingerichtet.'); return; }
         if (data.games.length === 0) { message('Für diesen Zeitraum liegen noch keine Spielzeiten vor.'); return; }
 
@@ -171,6 +254,7 @@ require __DIR__ . '/includes/site-header.php';
     }
 
     async function load(days) {
+        currentDays = days;
         const seq = ++requestSeq;
         try {
             const response = await fetch(`api.php?action=playtime_stats&days=${days}`, { headers: { Accept: 'application/json' }, credentials: 'same-origin' });

@@ -135,10 +135,10 @@ require __DIR__ . '/includes/site-header.php';
     <section class="achievements" aria-label="Erfolge der Kellerkinder">
         <div class="achievements-head">
             <h2 class="section-title"><span class="accent">Unsere</span> Erfolge</h2>
-            <div class="achievements-nav" id="achievementsNav" aria-label="Spielpaar wechseln">
-                <button class="nav-arrow" id="achievementsPrev" type="button" aria-label="Vorheriges Spielpaar" disabled>‹</button>
-                <span class="achievements-nav-label" id="achievementsNavLabel">World of Warcraft · Diablo IV</span>
-                <button class="nav-arrow" id="achievementsNext" type="button" aria-label="Nächstes Spielpaar" disabled>›</button>
+            <div class="achievements-nav" id="achievementsNav" aria-label="Widget wechseln">
+                <button class="nav-arrow" id="achievementsPrev" type="button" aria-label="Vorheriges Widget" disabled>‹</button>
+                <span class="achievements-nav-label" id="achievementsNavLabel">Steam-Erfolge</span>
+                <button class="nav-arrow" id="achievementsNext" type="button" aria-label="Nächstes Widget" disabled>›</button>
             </div>
         </div>
 
@@ -307,6 +307,11 @@ require __DIR__ . '/includes/site-header.php';
             <input type="text" id="profilePlayerName" maxlength="40" autocomplete="nickname" required>
         </div>
         <div>
+            <label for="profileSteamName">Steam-Name (optional)</label>
+            <input type="text" id="profileSteamName" maxlength="120" autocomplete="off" placeholder="z. B. fischje oder steamcommunity.com/id/fischje">
+            <p class="field-help">Profilname, SteamID oder Link zum Steam-Profil. Für die Steam-Erfolge müssen Profil und Spieldetails auf Steam öffentlich sein.</p>
+        </div>
+        <div>
             <label for="profileAvatarInput">Profilbild / Avatar</label>
             <div class="avatar-upload-row">
                 <span class="avatar-placeholder avatar-preview" id="profileAvatarPreview" aria-hidden="true">?</span>
@@ -448,6 +453,10 @@ require __DIR__ . '/includes/site-header.php';
         <div>
             <label for="adminUserPlayerName">Spielername</label>
             <input type="text" id="adminUserPlayerName" maxlength="40" autocomplete="off" required>
+        </div>
+        <div id="adminUserSteamRow">
+            <label for="adminUserSteamName">Steam-Name (optional)</label>
+            <input type="text" id="adminUserSteamName" maxlength="120" autocomplete="off" placeholder="Profilname, SteamID oder Profil-Link">
         </div>
         <div class="form-row">
             <div>
@@ -826,11 +835,15 @@ require __DIR__ . '/includes/site-header.php';
         }
     }
 
-    // Erfolgs-Widgets: jedes Spiel hat GENAU EINE Seite mit zwei Karten —
-    // links Statistik, rechts die dazugehörigen Links. Bei WoW kommt die
-    // Statistik live von Raider.IO, bei den anderen drei ist sie manuell
+    // Erfolgs-Widgets: die erste Seite zeigt die jüngsten Steam-Erfolge
+    // (eine breite Karte). Danach hat jedes Spiel GENAU EINE Seite mit zwei
+    // Karten — links Statistik, rechts die dazugehörigen Links. Bei WoW kommt
+    // die Statistik live von Raider.IO, bei den anderen drei ist sie manuell
     // gepflegt. Titel und Links sind bei allen vier Admin-editierbar.
+    // Die Seiten wechseln alle ACHIEVEMENT_ROTATE_MS automatisch.
+    const ACHIEVEMENT_ROTATE_MS = 7000;
     const achievementGames = [
+        { id: 'steam', label: 'Steam-Erfolge', icon: '🏆', type: 'steam', source: 'Die jüngsten Erfolge der Kellerkinder auf Steam' },
         { id: 'wow', label: 'World of Warcraft', icon: '⚔', type: 'wow', source: 'Beste Mythisch-Plus-Läufe, live via Raider.IO' },
         { id: 'hots', label: 'Heroes of the Storm', icon: '🌀', type: 'manual', source: 'Manuell gepflegt' },
         { id: 'diablo4', label: 'Diablo IV', icon: '🔥', type: 'manual', source: 'Manuell gepflegt' },
@@ -839,6 +852,7 @@ require __DIR__ . '/includes/site-header.php';
     const achievementGamesById = Object.fromEntries(achievementGames.map(game => [game.id, game]));
     let achievementPairIndex = 0;
     let achievementsData = null;
+    let steamData = null;
 
     function statsCardTitle(game) {
         if (game.type === 'wow') return 'M+ Wertungen';
@@ -1013,6 +1027,112 @@ require __DIR__ . '/includes/site-header.php';
         return card;
     }
 
+    function formatSteamTime(isoString) {
+        const date = new Date(isoString);
+        if (Number.isNaN(date.getTime())) return '';
+        const minutes = Math.round((Date.now() - date.getTime()) / 60000);
+        if (minutes < 60) return `vor ${Math.max(1, minutes)} Min.`;
+        const hours = Math.round(minutes / 60);
+        if (hours < 24) return `vor ${hours} Std.`;
+        const days = Math.round(hours / 24);
+        if (days < 7) return days === 1 ? 'gestern' : `vor ${days} Tagen`;
+        return date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    }
+
+    function buildSteamBody(data) {
+        const list = document.createElement('ul');
+        list.className = 'steam-achievements';
+
+        const empty = text => {
+            const item = document.createElement('li');
+            item.className = 'widget-empty';
+            item.textContent = text;
+            list.appendChild(item);
+        };
+
+        if (!data) {
+            empty('Wird geladen …');
+            return { body: list, updated: '' };
+        }
+        if (!data.configured) {
+            empty('Die Steam-Erfolge sind noch nicht eingerichtet: Es fehlt der Steam-API-Schlüssel auf dem Server.');
+            return { body: list, updated: '' };
+        }
+        if (!data.linked_players) {
+            empty('Noch niemand hat einen Steam-Namen hinterlegt. Trag deinen unter „Mein Account“ ein.');
+            return { body: list, updated: '' };
+        }
+        if (!data.entries || data.entries.length === 0) {
+            empty('Keine aktuellen Erfolge gefunden. Profil und Spieldetails müssen auf Steam öffentlich sein.');
+            return { body: list, updated: formatUpdatedAt(data.updated_at) };
+        }
+
+        for (const entry of data.entries) {
+            const item = document.createElement('li');
+            item.className = 'steam-achievement';
+
+            const placeholder = () => {
+                const icon = document.createElement('span');
+                icon.className = 'steam-achievement-icon placeholder';
+                icon.textContent = '🏆';
+                return icon;
+            };
+            if (entry.icon && /^https:\/\//i.test(entry.icon)) {
+                const icon = document.createElement('img');
+                icon.className = 'steam-achievement-icon';
+                icon.src = entry.icon;
+                icon.alt = '';
+                icon.loading = 'lazy';
+                icon.addEventListener('error', () => icon.replaceWith(placeholder()));
+                item.appendChild(icon);
+            } else {
+                item.appendChild(placeholder());
+            }
+
+            const text = document.createElement('div');
+            text.className = 'steam-achievement-text';
+            const title = document.createElement('strong');
+            title.textContent = entry.achievement || '';
+            const meta = document.createElement('span');
+            meta.className = 'steam-achievement-meta';
+            const player = document.createElement(entry.profile_url ? 'a' : 'span');
+            if (entry.profile_url && /^https:\/\/steamcommunity\.com\//i.test(entry.profile_url)) {
+                player.href = entry.profile_url;
+                player.target = '_blank';
+                player.rel = 'noopener';
+            }
+            player.textContent = entry.player_name || '';
+            meta.append(player, document.createTextNode(` · ${entry.game || ''}`));
+            text.append(title, meta);
+            if (entry.description) {
+                const description = document.createElement('small');
+                description.textContent = entry.description;
+                text.appendChild(description);
+            }
+
+            const time = document.createElement('time');
+            time.className = 'steam-achievement-time';
+            time.dateTime = entry.unlocked_at || '';
+            time.textContent = formatSteamTime(entry.unlocked_at);
+
+            item.append(text, time);
+            list.appendChild(item);
+        }
+        return { body: list, updated: formatUpdatedAt(data.updated_at) };
+    }
+
+    function buildSteamCard(game) {
+        const card = buildAchievementCardShell(game, 'stats');
+        card.classList.add('wide');
+        const built = buildSteamBody(steamData);
+        card.appendChild(built.body);
+        const updated = document.createElement('p');
+        updated.className = 'achievement-updated';
+        updated.textContent = built.updated;
+        card.appendChild(updated);
+        return card;
+    }
+
     function buildAchievementCard(game, cardType) {
         const card = buildAchievementCardShell(game, cardType);
         const gameData = achievementsData ? achievementsData[game.id] : null;
@@ -1051,8 +1171,45 @@ require __DIR__ . '/includes/site-header.php';
         const grid = byId('achievementGrid');
         grid.replaceChildren();
         const game = achievementGames[achievementPairIndex];
+        if (game.type === 'steam') {
+            grid.appendChild(buildSteamCard(game));
+            return;
+        }
         grid.appendChild(buildAchievementCard(game, 'stats'));
         grid.appendChild(buildAchievementCard(game, 'links'));
+    }
+
+    // Automatisches Durchwechseln. Pausiert, solange die Maus über den Widgets
+    // ist, ein Element darin den Fokus hat, ein Dialog offen ist oder der Tab
+    // im Hintergrund liegt. Ein Klick auf die Pfeile startet den Takt neu.
+    let achievementRotateTimer = null;
+    let achievementHover = false;
+
+    function achievementRotationPaused() {
+        const section = document.querySelector('.achievements');
+        return achievementHover
+            || document.hidden
+            || (section && section.contains(document.activeElement))
+            || Boolean(document.querySelector('dialog[open]'));
+    }
+
+    function restartAchievementRotation() {
+        clearInterval(achievementRotateTimer);
+        if (achievementGames.length <= 1) return;
+        achievementRotateTimer = setInterval(() => {
+            if (achievementRotationPaused()) return;
+            achievementPairIndex = (achievementPairIndex + 1) % achievementGames.length;
+            renderAchievementGrid();
+        }, ACHIEVEMENT_ROTATE_MS);
+    }
+
+    async function loadSteamAchievements() {
+        try {
+            steamData = await api('steam_achievements');
+        } catch (error) {
+            steamData = { configured: true, linked_players: 1, entries: [], updated_at: '' };
+        }
+        if (achievementGames[achievementPairIndex].type === 'steam') renderAchievementGrid();
     }
 
     async function loadAchievements() {
@@ -1560,6 +1717,7 @@ require __DIR__ . '/includes/site-header.php';
         const user = state.auth.user || {};
         byId('profileUsername').value = user.username || '';
         byId('profilePlayerName').value = user.player_name || '';
+        byId('profileSteamName').value = user.steam_name || '';
         byId('profileAvatarInput').value = '';
         profileAvatarData = user.avatar || '';
         setAvatarPreview(profileAvatarData, user.player_name || user.username || '');
@@ -1639,6 +1797,9 @@ require __DIR__ . '/includes/site-header.php';
         byId('adminUsername').value = user?.username || '';
         byId('adminUserPlayerName').value = user?.player_name || '';
         byId('adminUserIsAuthor').checked = Boolean(user?.is_author);
+        byId('adminUserSteamName').value = user?.steam_name || '';
+        // Der Steam-Name wird beim Bearbeiten gespeichert; beim Anlegen trägt ihn der Spieler selbst ein.
+        byId('adminUserSteamRow').hidden = !editMode;
         byId('adminUserDialogTitle').textContent = editMode ? 'Benutzer bearbeiten' : 'Benutzer anlegen';
         byId('adminUserDialogSubtitle').textContent = editMode
             ? 'Benutzername und Spielerzuordnung ändern oder ein vorläufiges neues Passwort setzen.'
@@ -1816,7 +1977,8 @@ require __DIR__ . '/includes/site-header.php';
             const data = await api('update_profile', {
                 player_name: byId('profilePlayerName').value,
                 default_weekdays: weekdays,
-                avatar: profileAvatarData
+                avatar: profileAvatarData,
+                steam_name: byId('profileSteamName').value
             });
             profileDialog.close();
             applyData(data);
@@ -1912,6 +2074,7 @@ require __DIR__ . '/includes/site-header.php';
                 username: byId('adminUsername').value,
                 player_name: byId('adminUserPlayerName').value,
                 is_author: byId('adminUserIsAuthor').checked,
+                steam_name: editMode ? byId('adminUserSteamName').value : undefined,
                 password,
                 password_confirmation: passwordConfirmation
             });
@@ -2053,11 +2216,16 @@ require __DIR__ . '/includes/site-header.php';
     byId('achievementsPrev').addEventListener('click', () => {
         achievementPairIndex = (achievementPairIndex - 1 + achievementGames.length) % achievementGames.length;
         renderAchievementGrid();
+        restartAchievementRotation();
     });
     byId('achievementsNext').addEventListener('click', () => {
         achievementPairIndex = (achievementPairIndex + 1) % achievementGames.length;
         renderAchievementGrid();
+        restartAchievementRotation();
     });
+    const achievementSection = document.querySelector('.achievements');
+    achievementSection.addEventListener('mouseenter', () => { achievementHover = true; });
+    achievementSection.addEventListener('mouseleave', () => { achievementHover = false; });
 
     let lastRequestedDayCount = computeDesiredDayCount();
     let resizeReloadTimer = null;
@@ -2095,6 +2263,8 @@ require __DIR__ . '/includes/site-header.php';
 
     loadPlan();
     loadAchievements();
+    loadSteamAchievements();
+    restartAchievementRotation();
     loadBlogTeaser();
 </script>
 </body>

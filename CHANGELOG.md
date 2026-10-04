@@ -1,5 +1,28 @@
 # Änderungsprotokoll
 
+## 2.14.0 — Steam-Erfolge, Spieler in der Statistik ausblenden
+
+**Steam-Erfolge**
+- Neues Widget „Steam-Erfolge“, immer als erste Seite bei „Unsere Erfolge“: zeigt
+  je Spieler den jüngsten Steam-Erfolg (Name, Spiel, Beschreibung, Symbol, Zeit),
+  höchstens 7 Spieler, neueste zuerst
+- Steam-Name in „Mein Account“ (für sich selbst) und im Benutzer-Dialog des
+  Adminbereichs (für alle). Erlaubt sind Profilname, SteamID oder Profil-Link
+- Voraussetzungen: `STEAM_API_KEY` in `config.php`, und das Steam-Profil samt
+  Spieldetails muss öffentlich sein. Die Daten werden 30 Minuten zwischengespeichert
+- Die Erfolge-Widgets wechseln jetzt alle 7 Sekunden automatisch. Pause, solange die
+  Maus darüber ist, ein Dialog offen ist oder der Tab im Hintergrund liegt
+
+**Statistik**
+- Admins können auf der Statistik-Seite Discord-Mitglieder ausblenden (z. B. wer
+  nur online ist, aber nicht mitspielt). Sie zählen dann weder auf der Website
+  noch beim Discord-Befehl `/statistik`; erfasst wird ihre Zeit weiterhin
+- Benötigt Bot-Version 1.6.0. Neue öffentliche Abfrage `api.php?action=stats_exclusions`
+  (nur Discord-IDs) für den Bot
+
+**Sonstiges**
+- Slogan oben: „Online-Gaming mit **Freunden**“, der Glanz-Effekt liegt jetzt auf „Freunden“
+
 ## 2.13.0 — Neues Design „Arena"
 
 Neues Standard-Design als Mischung der Gaming-Vorlagen Overworld und Squadforce:

@@ -116,6 +116,8 @@
         }
 
         .topbar-tagline .shine {
+            font-style: normal;
+            font-weight: 700;
             background: linear-gradient(100deg, var(--muted) 30%, #fff 45%, var(--accent) 52%, var(--muted) 66%);
             background-size: 250% 100%;
             -webkit-background-clip: text;
@@ -612,6 +614,67 @@
         .mplus-bar-fill { background: linear-gradient(90deg, var(--primary), var(--accent)); }
         .d4-milestones li, .achievement-links li a { border-radius: 0; }
 
+        /* Steam-Erfolge: eine breite Karte über beide Spalten */
+        .achievement-card.wide { grid-column: 1 / -1; }
+        .achievement-icon.steam { color: #fff; background: linear-gradient(135deg, #1b2838, #2a475e 60%, #66c0f4); }
+
+        .steam-achievements {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(min(100%, 330px), 1fr));
+            gap: 10px;
+            margin: 0;
+            padding: 0;
+            list-style: none;
+        }
+
+        .steam-achievements .widget-empty { grid-column: 1 / -1; }
+
+        .steam-achievement {
+            display: grid;
+            grid-template-columns: 48px minmax(0, 1fr) auto;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 12px;
+            background: rgba(var(--panel-deep-rgb), .85);
+            box-shadow: inset 3px 0 0 var(--accent);
+        }
+
+        .steam-achievement-icon {
+            width: 48px;
+            height: 48px;
+            object-fit: cover;
+            background: rgba(var(--primary-rgb), .35);
+        }
+
+        .steam-achievement-icon.placeholder { display: grid; place-items: center; font-size: 1.4rem; }
+
+        .steam-achievement-text { min-width: 0; display: grid; gap: 1px; }
+        .steam-achievement-text strong {
+            color: #fff;
+            font-family: var(--font-heading);
+            font-size: 1.05rem;
+            line-height: 1.15;
+            letter-spacing: .02em;
+            overflow-wrap: anywhere;
+            text-transform: uppercase;
+        }
+
+        .steam-achievement-meta { overflow: hidden; color: var(--muted); font-size: .84rem; text-overflow: ellipsis; white-space: nowrap; }
+        .steam-achievement-meta a { color: var(--accent-hover); font-weight: 700; text-decoration: none; }
+        .steam-achievement-meta a:hover { text-decoration: underline; }
+        .steam-achievement-text small { color: var(--muted); font-size: .76rem; line-height: 1.35; opacity: .8; }
+
+        .steam-achievement-time {
+            align-self: start;
+            color: var(--accent);
+            font-family: var(--font-heading);
+            font-size: .82rem;
+            font-weight: 700;
+            letter-spacing: .06em;
+            text-transform: uppercase;
+            white-space: nowrap;
+        }
+
         /* ===== Dialoge & Formulare ===== */
         dialog {
             border: 0;
@@ -830,6 +893,39 @@
         .stats-rank { color: var(--accent); opacity: 1; font-family: var(--font-heading); font-size: 1.1rem; }
         .stats-name { font-family: var(--font-heading); font-size: 1.08rem; letter-spacing: .02em; }
         .stats-time { font-family: var(--font-heading); font-size: 1.05rem; }
+
+        .stats-admin { margin-top: 24px; }
+        .stats-admin code { color: #fff; }
+
+        .stats-admin-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr));
+            gap: 8px;
+            margin: 14px 0 18px;
+        }
+
+        .stats-admin-item {
+            display: grid;
+            grid-template-columns: auto minmax(0, 1fr) auto;
+            align-items: center;
+            gap: 10px;
+            margin: 0;
+            padding: 10px 12px;
+            background: var(--panel);
+            cursor: pointer;
+            font-family: var(--font-body);
+            font-size: .95rem;
+            letter-spacing: 0;
+            text-transform: none;
+        }
+
+        .stats-admin-item input { width: 18px; height: 18px; accent-color: var(--accent); }
+        .stats-admin-item span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .stats-admin-item small { color: var(--muted); }
+        .stats-admin-item:has(input:checked) { box-shadow: inset 3px 0 0 var(--accent); opacity: .7; }
+        .stats-admin-item:has(input:checked) span { text-decoration: line-through; }
+        .stats-admin-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; }
+        .stats-admin-actions .stats-note { margin: 0; }
 
         /* ===== Mobil ===== */
         @media (max-width: 680px) {

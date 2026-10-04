@@ -19,7 +19,7 @@ $h = static fn(string $value): string => htmlspecialchars($value, ENT_QUOTES, 'U
 ?>
 <div class="topbar">
     <div class="topbar-inner">
-        <span class="topbar-tagline subtitle">Online-Gaming mit Freunden seit <em class="shine">ewig</em></span>
+        <span class="topbar-tagline subtitle">Online-Gaming mit <em class="shine">Freunden</em></span>
         <?php if ($showInstall): ?>
             <button class="install-app-button" id="installAppButton" type="button" title="Als App zum Home-Bildschirm hinzufügen" aria-label="Kellerkinder-Kalender als App zum Home-Bildschirm hinzufügen">
                 <img src="assets/smartphone-install.svg" alt="">
