@@ -796,6 +796,41 @@
         .game-result:hover, .game-result:focus-visible { background: rgba(var(--primary-rgb), .3); }
         .game-result img, .game-result .game-thumb-empty { border-radius: 0; }
 
+        /* ===== Statistik ===== */
+        .stats-period {
+            border: 0;
+            border-radius: 0;
+            color: #fff;
+            background: rgba(var(--panel-soft-rgb), .95);
+            font-family: var(--font-heading);
+            font-weight: 700;
+            letter-spacing: .08em;
+            text-transform: uppercase;
+            clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px));
+        }
+
+        .stats-period:hover, .stats-period:focus-visible { background: rgba(var(--primary-rgb), .45); }
+        .stats-period.active { color: #fff; background: var(--accent); border-color: transparent; }
+
+        .stats-tile {
+            border: 0;
+            border-radius: 0;
+            background: var(--panel);
+            box-shadow: inset 3px 0 0 var(--primary);
+        }
+
+        .stats-tile strong { font-family: var(--font-heading); font-size: 1.9rem; font-weight: 700; }
+        .stats-tile span { color: var(--muted); opacity: 1; font-family: var(--font-heading); font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
+
+        .stats-section { position: relative; padding-left: 14px; font-size: 1.15rem; font-weight: 700; letter-spacing: .06em; }
+        .stats-section::before { content: ""; position: absolute; left: 0; top: .15em; bottom: .15em; width: 3px; background: var(--primary); }
+
+        .stats-row { border: 0; border-radius: 0; background: var(--panel); }
+        .stats-bar { background: linear-gradient(90deg, rgba(var(--primary-rgb), .45), rgba(var(--accent-rgb), .25)); }
+        .stats-rank { color: var(--accent); opacity: 1; font-family: var(--font-heading); font-size: 1.1rem; }
+        .stats-name { font-family: var(--font-heading); font-size: 1.08rem; letter-spacing: .02em; }
+        .stats-time { font-family: var(--font-heading); font-size: 1.05rem; }
+
         /* ===== Mobil ===== */
         @media (max-width: 680px) {
             .topbar-tagline.subtitle { font-size: .7rem; letter-spacing: .1em; }

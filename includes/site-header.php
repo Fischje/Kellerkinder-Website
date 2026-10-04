@@ -2,7 +2,7 @@
 // Gemeinsamer Seitenkopf für Kalender, Blog und Spiele: schmale Infoleiste,
 // Kopfband mit Logo und Navigation sowie der Seitentitel-Bereich.
 // Erwartet vor dem Einbinden:
-//   $activeNav     'calendar' | 'blog' | 'games'
+//   $activeNav     'calendar' | 'blog' | 'games' | 'stats'
 //   $pageKicker    kleine Zeile über dem Titel (Brotkrumen)
 //   $pageTitle     großer Seitentitel
 //   $pageLead      optionaler Untertitel
@@ -13,6 +13,7 @@ $navItems = [
     'calendar' => ['Kalender', 'index.php'],
     'blog' => ['Blog', 'blog.php'],
     'games' => ['Spiele', 'games.php'],
+    'stats' => ['Statistik', 'statistik.php'],
 ];
 $h = static fn(string $value): string => htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
 ?>

@@ -1,0 +1,203 @@
+<?php
+declare(strict_types=1);
+require __DIR__ . '/includes/bootstrap.php';
+?>
+<!doctype html>
+<html lang="de">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" id="themeColorMeta" content="#140b1b">
+    <meta name="application-name" content="Kellerkinder">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Kellerkinder">
+    <title>Statistik — Kellerkinder</title>
+    <meta name="description" content="Welche Spiele die Kellerkinder auf Discord wie lange gespielt haben.">
+    <link rel="icon" href="assets/kellerkinder-logo.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="assets/app-icon-180.png">
+    <link rel="manifest" href="manifest.webmanifest">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800;900&family=Open+Sans:wght@400;600;700&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+    <?php require __DIR__ . '/includes/styles.php'; ?>
+    <?php require __DIR__ . '/includes/blog-styles.php'; ?>
+    <?php require __DIR__ . '/includes/games-styles.php'; ?>
+    <?php require __DIR__ . '/includes/stats-styles.php'; ?>
+    <?php require __DIR__ . '/includes/arena-styles.php'; ?>
+</head>
+<body data-theme="default">
+<div class="season-scene" aria-hidden="true">
+    <div class="summer-sun"></div>
+    <div class="summer-bubbles"></div>
+    <div class="summer-waves"></div>
+    <div class="winter-snow"></div>
+    <div class="winter-aurora left"></div>
+    <div class="winter-aurora right"></div>
+    <div class="winter-ember-glow"></div>
+    <div class="winter-snowbank"></div>
+</div>
+
+<?php
+$activeNav = 'stats';
+$pageKicker = 'Statistik';
+$pageTitle = 'Spielzeit-Statistik';
+$pageLead = 'Was auf unserem Discord gespielt wird. Der Bot zählt dafür nur volle 15 Minuten pro Spiel.';
+$showInstall = false;
+require __DIR__ . '/includes/site-header.php';
+?>
+
+<main class="page-shell">
+
+    <section class="games-panel">
+        <div class="games-head">
+            <h2 class="section-title"><span class="accent">Meist</span> gespielt</h2>
+        </div>
+
+        <div class="stats-periods" id="statsPeriods" role="group" aria-label="Zeitraum">
+            <button type="button" class="stats-period" data-days="7">7 Tage</button>
+            <button type="button" class="stats-period active" data-days="30">30 Tage</button>
+            <button type="button" class="stats-period" data-days="90">90 Tage</button>
+            <button type="button" class="stats-period" data-days="0">Gesamt</button>
+        </div>
+
+        <div id="statsBody"><p class="widget-loading">Wird geladen …</p></div>
+    </section>
+
+    <footer class="site-footer">Created by Fischje with <span class="heart" aria-label="Love">♥</span> · Made with AI · Version <?= htmlspecialchars($appVersion, ENT_QUOTES, 'UTF-8') ?></footer>
+</main>
+
+<script nonce="<?= htmlspecialchars($cspNonce, ENT_QUOTES, 'UTF-8') ?>">
+    const body = document.getElementById('statsBody');
+    let requestSeq = 0;
+
+    function formatMinutes(minutes) {
+        const hours = Math.floor(minutes / 60);
+        const rest = minutes % 60;
+        if (hours === 0) return `${rest} Min.`;
+        return rest === 0 ? `${hours} Std.` : `${hours} Std. ${rest} Min.`;
+    }
+
+    function formatDate(iso) {
+        const date = new Date(`${iso}T00:00:00`);
+        return Number.isNaN(date.getTime()) ? '' : date.toLocaleDateString('de-DE', { day: '2-digit', month: 'short', year: 'numeric' });
+    }
+
+    function message(text) {
+        const p = document.createElement('p');
+        p.className = 'widget-empty';
+        p.textContent = text;
+        body.replaceChildren(p);
+    }
+
+    function tile(value, label) {
+        const el = document.createElement('div');
+        el.className = 'stats-tile';
+        const strong = document.createElement('strong');
+        strong.textContent = value;
+        const span = document.createElement('span');
+        span.textContent = label;
+        el.append(strong, span);
+        return el;
+    }
+
+    function list(title, rows) {
+        const wrap = document.createDocumentFragment();
+        const heading = document.createElement('h2');
+        heading.className = 'stats-section';
+        heading.textContent = title;
+        const ul = document.createElement('ol');
+        ul.className = 'stats-list';
+        const max = Math.max(1, ...rows.map(row => row.minutes));
+        rows.forEach((row, index) => {
+            const li = document.createElement('li');
+            li.className = 'stats-row';
+            const bar = document.createElement('span');
+            bar.className = 'stats-bar';
+            bar.style.width = `${Math.max(2, Math.round((row.minutes / max) * 100))}%`;
+            const rank = document.createElement('span');
+            rank.className = 'stats-rank';
+            rank.textContent = `${index + 1}.`;
+            const name = document.createElement('span');
+            name.className = 'stats-name';
+            name.textContent = row.name;
+            if (row.sub) {
+                const small = document.createElement('small');
+                small.textContent = row.sub;
+                name.appendChild(small);
+            }
+            const time = document.createElement('span');
+            time.className = 'stats-time';
+            time.textContent = formatMinutes(row.minutes);
+            li.append(bar, rank, name, time);
+            ul.appendChild(li);
+        });
+        wrap.append(heading, ul);
+        return wrap;
+    }
+
+    function render(data) {
+        if (!data.configured) { message('Die Statistik ist noch nicht eingerichtet.'); return; }
+        if (data.games.length === 0) { message('Für diesen Zeitraum liegen noch keine Spielzeiten vor.'); return; }
+
+        const summary = document.createElement('div');
+        summary.className = 'stats-summary';
+        summary.append(
+            tile(formatMinutes(data.total_minutes), 'Gesamte Spielzeit'),
+            tile(String(data.games.length), data.games.length === 1 ? 'Spiel' : 'Spiele'),
+            tile(data.games[0].name, 'Meistgespielt'),
+        );
+
+        const nodes = [summary];
+        if (data.stale) {
+            const note = document.createElement('p');
+            note.className = 'stats-note';
+            note.textContent = 'Der Bot ist gerade nicht erreichbar. Gezeigt wird der letzte bekannte Stand.';
+            nodes.push(note);
+        }
+        nodes.push(list('Spiele', data.games.map(game => ({
+            name: game.name,
+            minutes: game.minutes,
+            sub: `${game.players} Spieler · zuletzt ${formatDate(game.last_played)}`,
+        }))));
+        if (Array.isArray(data.players) && data.players.length > 0) {
+            nodes.push(list('Kellerkinder', data.players.map(player => ({
+                name: player.name,
+                minutes: player.minutes,
+                sub: player.top_game ? `am meisten ${player.top_game}` : '',
+            }))));
+        }
+        body.replaceChildren(...nodes);
+    }
+
+    async function load(days) {
+        const seq = ++requestSeq;
+        try {
+            const response = await fetch(`api.php?action=playtime_stats&days=${days}`, { headers: { Accept: 'application/json' }, credentials: 'same-origin' });
+            const data = await response.json();
+            if (seq !== requestSeq) return;
+            if (!response.ok || data.ok === false) throw new Error(data.error || 'Die Statistik konnte nicht geladen werden.');
+            render(data);
+        } catch (error) {
+            if (seq !== requestSeq) return;
+            message(error.message || 'Die Statistik konnte nicht geladen werden.');
+        }
+    }
+
+    document.getElementById('statsPeriods').addEventListener('click', event => {
+        const button = event.target.closest('.stats-period');
+        if (!button) return;
+        document.querySelectorAll('.stats-period').forEach(el => el.classList.toggle('active', el === button));
+        load(Number(button.dataset.days));
+    });
+
+    load(30);
+
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('./service-worker.js').catch(() => {});
+        });
+    }
+</script>
+</body>
+</html>

@@ -1,6 +1,6 @@
 # Änderungsprotokoll
 
-## 2.12.0 — Neues Design „Arena"
+## 2.13.0 — Neues Design „Arena"
 
 Neues Standard-Design als Mischung der Gaming-Vorlagen Overworld und Squadforce:
 
@@ -22,6 +22,16 @@ Neues Standard-Design als Mischung der Gaming-Vorlagen Overworld und Squadforce:
 - Sommer- und Winter-Theme behalten ihre Farben, übernehmen aber die neuen
   Formen und Schriften
 - Das Design liegt als eigene Stilschicht in `includes/arena-styles.php`
+## 2.12.0 — Neue Seite „Statistik": Spielzeit aus Discord
+
+- Neue Seite `statistik.php` (Menüpunkt „Statistik") mit den meistgespielten
+  Spielen der Kellerkinder, Gesamtspielzeit und Zeiträumen 7/30/90 Tage und gesamt
+- Die Daten stammen vom Kellerkinder-Discord-Bot (ab Version 1.5.0) und werden
+  serverseitig über `api.php?action=playtime_stats` abgerufen und 5 Minuten
+  zwischengespeichert; bei Ausfall des Bots erscheint der letzte bekannte Stand
+- Einrichtung: `BOT_STATS_URL` in `config.php` setzen (siehe README)
+- Spiel- und Spielernamen kommen von Discord und werden ausschließlich als Text
+  eingefügt
 
 ## 2.11.1 — Spielsuche über RAWG (auch Blizzard-Spiele)
 
