@@ -57,7 +57,8 @@ const STEAM_ACHIEVEMENTS_PLAYERS_MAX = 7;
 const STEAM_RECENT_GAMES_MAX = 8;      // so viele Spiele je Spieler auf Erfolge prüfen
 const STEAM_CACHE_TTL_SECONDS = 900;   // 15 Minuten
 const STEAM_RETRY_TTL_SECONDS = 120;
-const STEAM_ACHIEVEMENTS_CACHE_FILE = 'steam-achievements-v2.json';   // nach einer Steam-Störung schon nach 2 Minuten neu versuchen
+const STEAM_PARALLEL_MAX = 6;          // so viele Steam-Abrufe gleichzeitig
+const STEAM_ACHIEVEMENTS_CACHE_FILE = 'steam-achievements-v3.json'; // v3: Ergebnisse der fehlerhaften Version 2.14.3 verwerfen   // nach einer Steam-Störung schon nach 2 Minuten neu versuchen
 const STEAM_SCHEMA_TTL_SECONDS = 86400;
 const ACHIEVEMENT_MANUAL_GAMES = ['hots', 'diablo4', 'rocket_league']; // Spiele mit manuell gepflegter Statistik
 const ACHIEVEMENT_GAMES = ['wow', 'hots', 'diablo4', 'rocket_league']; // Alle Spiele (inkl. WoW, das Titel/Links aber nicht Stats manuell hat)
@@ -449,54 +450,66 @@ function steamProfileUrl(string $steamName): string
 }
 
 /**
- * Mehrere Steam-Abrufe gleichzeitig (curl_multi). Ohne curl-Erweiterung
- * nacheinander. $calls: Schlüssel => [Pfad, Parameter]; Ergebnis mit denselben
- * Schlüsseln, null bei Fehler.
+ * Mehrere Steam-Abrufe gleichzeitig (curl_multi), höchstens STEAM_PARALLEL_MAX
+ * auf einmal. Schlägt ein gleichzeitiger Abruf fehl (curl fehlt oder ist
+ * blockiert, Zertifikatsproblem, Steam drosselt), wird er einzeln über den
+ * bewährten Weg (steamApiGet) wiederholt – langsamer, aber zuverlässig.
+ * $calls: Schlüssel => [Pfad, Parameter]; Ergebnis mit denselben Schlüsseln,
+ * null bei endgültigem Fehler. $GLOBALS['steam_transport'] zählt für die
+ * Diagnose, wie viele Abrufe parallel gelangen bzw. nachgeholt werden mussten.
  */
 function steamApiGetMany(array $calls): array
 {
-    if ($calls === []) {
-        return [];
-    }
-    if (!function_exists('curl_multi_init')) {
-        $results = [];
-        foreach ($calls as $key => [$path, $params]) {
-            $results[$key] = steamApiGet($path, $params);
-        }
-        return $results;
-    }
-    $base = defined('STEAM_API_BASE') ? STEAM_API_BASE : 'https://api.steampowered.com';
-    $multi = curl_multi_init();
-    $handles = [];
-    foreach ($calls as $key => [$path, $params]) {
-        $params['key'] = STEAM_API_KEY;
-        $params['format'] = 'json';
-        $handle = curl_init($base . '/' . $path . '/?' . http_build_query($params));
-        curl_setopt_array($handle, [
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_TIMEOUT => 8,
-            CURLOPT_CONNECTTIMEOUT => 4,
-            CURLOPT_USERAGENT => 'Kellerkinder-Kalender/1.0 (+https://github.com/Fischje)',
-        ]);
-        curl_multi_add_handle($multi, $handle);
-        $handles[$key] = $handle;
-    }
-    do {
-        $status = curl_multi_exec($multi, $running);
-        if ($running) {
-            curl_multi_select($multi, 1.0);
-        }
-    } while ($running && $status === CURLM_OK);
-
+    $stats = &$GLOBALS['steam_transport'];
+    $stats ??= ['parallel_ok' => 0, 'retried' => 0, 'curl' => function_exists('curl_multi_init')];
     $results = [];
-    foreach ($handles as $key => $handle) {
-        $raw = curl_multi_getcontent($handle);
-        $data = is_string($raw) && $raw !== '' ? json_decode($raw, true) : null;
-        $results[$key] = is_array($data) ? $data : null;
-        curl_multi_remove_handle($multi, $handle);
-        curl_close($handle);
+
+    if (function_exists('curl_multi_init')) {
+        $base = defined('STEAM_API_BASE') ? STEAM_API_BASE : 'https://api.steampowered.com';
+        foreach (array_chunk($calls, STEAM_PARALLEL_MAX, true) as $batch) {
+            $multi = curl_multi_init();
+            $handles = [];
+            foreach ($batch as $key => [$path, $params]) {
+                $params['key'] = STEAM_API_KEY;
+                $params['format'] = 'json';
+                $handle = curl_init($base . '/' . $path . '/?' . http_build_query($params));
+                curl_setopt_array($handle, [
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_TIMEOUT => 8,
+                    CURLOPT_CONNECTTIMEOUT => 4,
+                    CURLOPT_USERAGENT => 'Kellerkinder-Kalender/1.0 (+https://github.com/Fischje)',
+                ]);
+                curl_multi_add_handle($multi, $handle);
+                $handles[$key] = $handle;
+            }
+            do {
+                $status = curl_multi_exec($multi, $running);
+                if ($running) {
+                    curl_multi_select($multi, 1.0);
+                }
+            } while ($running && $status === CURLM_OK);
+            foreach ($handles as $key => $handle) {
+                $raw = curl_multi_getcontent($handle);
+                $code = (int) curl_getinfo($handle, CURLINFO_RESPONSE_CODE);
+                $data = ($code === 200 && is_string($raw) && $raw !== '') ? json_decode($raw, true) : null;
+                if (is_array($data)) {
+                    $results[$key] = $data;
+                    $stats['parallel_ok']++;
+                }
+                curl_multi_remove_handle($multi, $handle);
+                curl_close($handle);
+            }
+            curl_multi_close($multi);
+        }
     }
-    curl_multi_close($multi);
+
+    // Alles, was nicht gleichzeitig geklappt hat, einzeln nachholen.
+    foreach ($calls as $key => [$path, $params]) {
+        if (!isset($results[$key])) {
+            $results[$key] = steamApiGet($path, $params);
+            $stats['retried']++;
+        }
+    }
     return $results;
 }
 
@@ -2749,7 +2762,7 @@ if ($action === 'steam_diagnose') {
         }
         $report[] = $row;
     }
-    respond(['ok' => true, 'configured' => true, 'players' => $report]);
+    respond(['ok' => true, 'configured' => true, 'transport' => $GLOBALS['steam_transport'] ?? null, 'players' => $report]);
 }
 
 if ($action === 'steam_achievements') {

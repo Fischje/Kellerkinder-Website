@@ -1,5 +1,18 @@
 # Änderungsprotokoll
 
+## 2.14.4 — Steam-Erfolge: Fehler aus 2.14.3 behoben
+
+- **Fehler behoben:** Mit 2.14.3 stand bei allen Spielern „Steam hat gerade nicht
+  geantwortet“. Die gleichzeitigen Abfragen (curl) schlugen auf dem Server fehl, und
+  das wurde als Steam-Ausfall gewertet
+- Jetzt werden höchstens 6 Abfragen gleichzeitig gestellt. Jede Abfrage, die so nicht
+  klappt (curl fehlt oder ist blockiert, Zertifikatsproblem, Steam drosselt), wird
+  einzeln auf dem bisherigen, bewährten Weg wiederholt. Das ist im schlechtesten Fall
+  so langsam wie vor 2.14.3, aber zuverlässig
+- Die Admin-Diagnose zeigt zusätzlich, wie viele Abfragen gleichzeitig gelangen
+  und wie viele nachgeholt werden mussten (`transport`)
+- Der Zwischenspeicher mit den fehlerhaften Ergebnissen wird verworfen
+
 ## 2.14.3 — Steam-Erfolge schneller, klarer Hinweis bei „Nur Freunde“
 
 - Neuer Hinweis im Widget, wenn die Spieldetails auf „Nur Freunde“ stehen: Die
