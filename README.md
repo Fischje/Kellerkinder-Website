@@ -210,6 +210,7 @@ Die Laufzeitdateien unter `data/store.php*` werden von Git ignoriert und dadurch
 ├── api.php
 ├── blog.php
 ├── games.php
+├── steam-refresh.php (Cron: Steam-Erfolge holen)
 ├── feed.php
 ├── check.php
 ├── index.php
@@ -265,25 +266,36 @@ auf `api.rawg.io` bzw. `store.steampowered.com`.
 
 ## Steam-Erfolge
 
-Das erste Widget bei „Unsere Erfolge“ zeigt für bis zu 7 Spieler den jüngsten
+Das Widget „Steam-Erfolge“ bei „Unsere Erfolge“ zeigt für bis zu 7 Spieler den jüngsten
 Steam-Erfolg, neueste zuerst. Den Steam-Namen trägt jeder unter „Mein Account“
 ein, ein Admin kann ihn im Benutzer-Dialog setzen (Profilname, SteamID oder
-Link zum Steam-Profil). Das Steam-Profil und die Spieldetails müssen öffentlich sein.
+Link zum Steam-Profil).
 
-Einrichtung: kostenlosen Schlüssel unter https://steamcommunity.com/dev/apikey
+**Einrichtung:** kostenlosen Schlüssel unter https://steamcommunity.com/dev/apikey
 holen und in `config.php` eintragen (die Datei liegt nicht im Repository):
 
 ```php
 const STEAM_API_KEY = 'dein-schluessel';
 ```
 
-Der Server braucht ausgehenden Zugriff auf `api.steampowered.com`. Geprüft werden
-bis zu 8 Spiele je Spieler (zuletzt gespielte zuerst, sonst nach Spielzeit).
-Admins finden im Widget einen Link „Diagnose“ (`api.php?action=steam_diagnose`). Die Daten werden 15 Minuten
-zwischengespeichert. Fehlt jemand, nennt das Widget den Grund (z. B. Spieldetails
-nicht öffentlich). Die Widgets wechseln alle 30 Sekunden.
-Wichtig: Erfolge gibt Steam nur heraus, wenn die **Spieldetails auf „Öffentlich“** stehen –
-„Nur Freunde“ reicht nicht, auch wenn die Spieleliste sichtbar ist.
+Der Server braucht ausgehenden Zugriff auf `api.steampowered.com`.
+
+**So wird geladen:** Die Seite liefert immer den Zwischenspeicher aus (`data/cache`) und
+wartet nie auf Steam. Neu bei Steam geholt wird höchstens stündlich, im Hintergrund, und
+sofort, wenn sich ein Steam-Name ändert. Damit die Daten auch ohne Besucher aktuell bleiben,
+empfiehlt sich ein stündlicher Cron-Job:
+
+```cron
+0 * * * * php /srv/kellerkinder-website/steam-refresh.php --force
+```
+
+Ohne Cron holt die Website die Daten bei einem Besuch nach Ablauf der Stunde selbst
+(beim nächsten Besuch sind sie dann neu). Admins sehen unter dem Widget „Jetzt neu laden“
+und „Diagnose“.
+
+**Wichtig:** Erfolge gibt Steam nur heraus, wenn **Profil und Spieldetails auf „Öffentlich“**
+stehen – „Nur Freunde“ reicht nicht, auch wenn die Spieleliste sichtbar ist. Fehlt jemand,
+nennt das Widget den Grund.
 
 ## Statistik
 

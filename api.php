@@ -55,7 +55,7 @@ const STATS_EXCLUDED_MAX = 200;
 const STEAM_NAME_MAX = 64;
 const STEAM_ACHIEVEMENTS_PLAYERS_MAX = 7;
 const STEAM_RECENT_GAMES_MAX = 8;      // so viele Spiele je Spieler auf Erfolge prüfen
-const STEAM_CACHE_TTL_SECONDS = 900;   // 15 Minuten
+const STEAM_CACHE_TTL_SECONDS = 3600;  // Erfolge höchstens stündlich bei Steam abholen
 const STEAM_RETRY_TTL_SECONDS = 120;
 const STEAM_PARALLEL_MAX = 6;          // so viele Steam-Abrufe gleichzeitig
 const STEAM_ACHIEVEMENTS_CACHE_FILE = 'steam-achievements-v3.json'; // v3: Ergebnisse der fehlerhaften Version 2.14.3 verwerfen   // nach einer Steam-Störung schon nach 2 Minuten neu versuchen
@@ -520,7 +520,7 @@ function steamResolveId(string $steamName, bool $askSteam = true): ?string
         return $steamName;
     }
     $cacheFile = 'steam-id-' . md5(strtolower($steamName)) . '.json';
-    $cached = achievementsCacheRead($cacheFile);
+    $cached = achievementsCacheRead($cacheFile, null); // Profilnamen ändern sich nicht
     if (is_array($cached) && isset($cached['steamid'])) {
         return (string) $cached['steamid'];
     }
@@ -542,7 +542,7 @@ function steamAchievementSchema(int $appId): array
     $cacheFile = 'steam-schema-' . $appId . '.json';
     $path = achievementsCacheDirectory() . DIRECTORY_SEPARATOR . $cacheFile;
     if (is_file($path) && (time() - filemtime($path)) < STEAM_SCHEMA_TTL_SECONDS) {
-        $cached = achievementsCacheRead($cacheFile);
+        $cached = achievementsCacheRead($cacheFile, null);
         if (is_array($cached)) {
             return $cached;
         }
@@ -799,18 +799,86 @@ function steamMembers(array $store): array
 }
 
 /**
- * Zwischengespeicherte Widget-Daten für genau diese Mitglieder:
- * ['data' => …, 'fresh' => bool] oder null, wenn nichts Passendes da ist.
+ * Zwischengespeicherte Widget-Daten (ohne Altersgrenze) oder null, wenn es noch
+ * keine gibt. 'fresh' ist true, wenn sie jung genug sind UND zu genau diesen
+ * Mitgliedern gehören; 'matches' sagt, ob die Mitglieder (Steam-Namen) noch
+ * dieselben sind. Ändert jemand seinen Steam-Namen, wird also sofort neu geholt
+ * statt eine Stunde zu warten.
  */
 function steamAchievementsCached(array $members): ?array
 {
-    $cached = achievementsCacheRead(STEAM_ACHIEVEMENTS_CACHE_FILE);
-    if (!is_array($cached) || ($cached['key'] ?? '') !== md5(json_encode($members)) || !is_array($cached['data'] ?? null)) {
+    $cached = achievementsCacheRead(STEAM_ACHIEVEMENTS_CACHE_FILE, null);
+    if (!is_array($cached) || !is_array($cached['data'] ?? null)) {
         return null;
     }
+    $matches = ($cached['key'] ?? '') === md5(json_encode($members));
     $path = achievementsCacheDirectory() . DIRECTORY_SEPARATOR . STEAM_ACHIEVEMENTS_CACHE_FILE;
     $ttl = (int) ($cached['ttl'] ?? STEAM_CACHE_TTL_SECONDS);
-    return ['data' => $cached['data'], 'fresh' => is_file($path) && (time() - filemtime($path)) < $ttl];
+    return [
+        'data' => $cached['data'],
+        'matches' => $matches,
+        'fresh' => $matches && is_file($path) && (time() - filemtime($path)) < $ttl,
+    ];
+}
+
+// ---------- Hintergrund-Aktualisierung der Steam-Erfolge ----------
+
+const STEAM_REFRESH_LOCK_FILE = 'steam-refresh.lock';
+const STEAM_REFRESH_LOCK_SECONDS = 300; // so lange gilt eine laufende Aktualisierung als „läuft“
+
+function steamRefreshRunning(): bool
+{
+    $path = achievementsCacheDirectory() . DIRECTORY_SEPARATOR . STEAM_REFRESH_LOCK_FILE;
+    return is_file($path) && (time() - filemtime($path)) < STEAM_REFRESH_LOCK_SECONDS;
+}
+
+/**
+ * Holt die Erfolge von Steam und speichert sie – höchstens eine Aktualisierung
+ * gleichzeitig. Gibt true zurück, wenn aktualisiert wurde, false wenn schon eine
+ * andere Aktualisierung lief.
+ */
+function steamRefreshNow(array $store): bool
+{
+    if (steamRefreshRunning()) {
+        return false;
+    }
+    $directory = achievementsCacheDirectory();
+    if (!is_dir($directory) && !@mkdir($directory, 0750, true) && !is_dir($directory)) {
+        return false;
+    }
+    $lock = $directory . DIRECTORY_SEPARATOR . STEAM_REFRESH_LOCK_FILE;
+    @file_put_contents($lock, (string) getmypid());
+    try {
+        steamAchievementsData($store);
+    } finally {
+        @unlink($lock);
+    }
+    return true;
+}
+
+/**
+ * Startet die Aktualisierung, ohne dass ein Besucher darauf warten muss:
+ * entweder nach dem Senden der Antwort (PHP-FPM) oder als eigener PHP-Prozess im
+ * Hintergrund. Geht beides nicht, übernimmt der Cron-Job (steam-refresh.php).
+ * $response: Antwort, die zuerst ausgeliefert wird.
+ */
+function steamRefreshInBackground(array $store, array $response): void
+{
+    if (!steamRefreshRunning() && function_exists('fastcgi_finish_request')) {
+        echo json_encode($response, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        fastcgi_finish_request();
+        steamRefreshNow($store);
+        exit;
+    }
+    if (!steamRefreshRunning() && function_exists('exec') && !in_array('exec', array_map('trim', explode(',', (string) ini_get('disable_functions'))), true)) {
+        foreach ([PHP_BINDIR . '/php', '/usr/bin/php', '/usr/local/bin/php'] as $php) {
+            if (is_file($php) && is_executable($php)) {
+                @exec(escapeshellarg($php) . ' ' . escapeshellarg(__DIR__ . '/steam-refresh.php') . ' > /dev/null 2>&1 &');
+                break;
+            }
+        }
+    }
+    respond($response);
 }
 
 /**
@@ -830,7 +898,7 @@ function steamAchievementsData(array $store): array
     $vanityCalls = [];
     foreach ($members as $member) {
         $name = $member['steam_name'];
-        if (!preg_match('/^\d{17}$/', $name) && achievementsCacheRead('steam-id-' . md5(strtolower($name)) . '.json') === null) {
+        if (!preg_match('/^\d{17}$/', $name) && achievementsCacheRead('steam-id-' . md5(strtolower($name)) . '.json', null) === null) {
             $vanityCalls[strtolower($name)] = ['ISteamUser/ResolveVanityURL/v1', ['vanityurl' => $name]];
         }
     }
@@ -1176,10 +1244,10 @@ function achievementsCacheDirectory(): string
     return storageDirectory() . DIRECTORY_SEPARATOR . 'cache';
 }
 
-function achievementsCacheRead(string $file): ?array
+function achievementsCacheRead(string $file, ?int $maxAge = ACHIEVEMENTS_CACHE_TTL_SECONDS): ?array
 {
     $path = achievementsCacheDirectory() . DIRECTORY_SEPARATOR . $file;
-    if (!is_file($path) || (time() - filemtime($path)) >= ACHIEVEMENTS_CACHE_TTL_SECONDS) {
+    if (!is_file($path) || ($maxAge !== null && (time() - filemtime($path)) >= $maxAge)) {
         return null;
     }
     $decoded = json_decode((string) file_get_contents($path), true);
@@ -2766,25 +2834,27 @@ if ($action === 'steam_diagnose') {
 }
 
 if ($action === 'steam_achievements') {
-    // Kann einige Sekunden dauern (Steam-API); Sitzung sofort freigeben.
+    // Antwortet immer sofort aus dem Zwischenspeicher. Ist er veraltet oder hat jemand
+    // seinen Steam-Namen geändert, wird im Hintergrund neu geholt (siehe
+    // steamRefreshInBackground); der Besucher sieht bis dahin den letzten Stand.
     session_write_close();
     $steamStore = readStore();
     if (!steamApiConfigured()) {
         respond(['ok' => true, 'configured' => false, 'entries' => [], 'linked_players' => 0]);
     }
-    $steamCached = steamAchievementsCached(steamMembers($steamStore));
+    $steamMembers = steamMembers($steamStore);
+    if ($steamMembers === []) {
+        respond(['ok' => true, 'configured' => true, 'entries' => [], 'missing' => [], 'linked_players' => 0]);
+    }
+    $steamCached = steamAchievementsCached($steamMembers);
     if ($steamCached !== null && $steamCached['fresh']) {
         respond(['ok' => true] + $steamCached['data']);
     }
-    if ($steamCached !== null && function_exists('fastcgi_finish_request')) {
-        // Veraltete Daten sofort ausliefern und erst danach bei Steam erneuern,
-        // damit niemand auf Steam warten muss (PHP-FPM).
-        echo json_encode(['ok' => true] + $steamCached['data'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-        fastcgi_finish_request();
-        steamAchievementsData($steamStore);
-        exit;
-    }
-    respond(['ok' => true] + steamAchievementsData($steamStore));
+    // Veraltet, geändert oder noch nie geholt: Antwort sofort, Aktualisierung im Hintergrund.
+    $response = $steamCached === null
+        ? ['ok' => true, 'configured' => true, 'pending' => true, 'entries' => [], 'missing' => [], 'linked_players' => count($steamMembers)]
+        : ['ok' => true, 'refreshing' => true] + $steamCached['data'];
+    steamRefreshInBackground($steamStore, $response);
 }
 
 if ($action === 'playtime_stats') {
@@ -3488,6 +3558,14 @@ withWritableStore(function (array &$store) use ($action, $payload): array {
                 'part' => $part,
                 'entry' => $existingEntry,
             ], 200, true];
+
+        case 'admin_steam_refresh':
+            requireAdmin($store);
+            if (!steamApiConfigured()) {
+                return [['ok' => false, 'error' => 'Der Steam-API-Schlüssel fehlt in der config.php.'], 422, false];
+            }
+            $refreshed = steamRefreshNow($store);
+            return [['ok' => true, 'refreshed' => $refreshed], 200, false];
 
         case 'admin_set_stats_exclusions':
             requireAdmin($store);

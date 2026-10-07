@@ -135,7 +135,7 @@ require __DIR__ . '/includes/site-header.php';
     <section class="achievements" aria-label="Erfolge der Kellerkinder">
         <div class="achievements-head">
             <h2 class="section-title"><span class="accent">Unsere</span> Erfolge</h2>
-            <div class="achievements-nav" id="achievementsNav" aria-label="Widget wechseln">
+            <div class="achievements-nav" id="achievementsNav" aria-label="Widget wechseln" hidden>
                 <button class="nav-arrow" id="achievementsPrev" type="button" aria-label="Vorheriges Widget" disabled>‹</button>
                 <span class="achievements-nav-label" id="achievementsNavLabel">Steam-Erfolge</span>
                 <button class="nav-arrow" id="achievementsNext" type="button" aria-label="Nächstes Widget" disabled>›</button>
@@ -835,29 +835,29 @@ require __DIR__ . '/includes/site-header.php';
         }
     }
 
-    // Erfolgs-Widgets: die erste Seite zeigt die jüngsten Steam-Erfolge
-    // (eine breite Karte). Danach hat jedes Spiel GENAU EINE Seite mit zwei
-    // Karten — links Statistik, rechts die dazugehörigen Links. Bei WoW kommt
-    // die Statistik live von Raider.IO, bei den anderen drei ist sie manuell
-    // gepflegt. Titel und Links sind bei allen vier Admin-editierbar.
-    // Die Seiten wechseln alle ACHIEVEMENT_ROTATE_MS automatisch.
+    // Erfolgs-Widgets: kompakte Karten, immer zwei nebeneinander (auf dem Handy
+    // untereinander). Aktuell: Steam-Erfolge und World of Warcraft (M+-Wertungen
+    // live von Raider.IO, darunter die Links). Kommen weitere Karten dazu, bilden
+    // je zwei eine Seite, und die Seiten wechseln alle ACHIEVEMENT_ROTATE_MS.
+    // Bei nur einer Seite entfallen Pfeile und Wechsel.
     const ACHIEVEMENT_ROTATE_MS = 30000;
+    const ACHIEVEMENTS_PER_PAGE = 2;
     const achievementGames = [
-        { id: 'steam', label: 'Steam-Erfolge', icon: '🏆', type: 'steam', source: 'Die jüngsten Erfolge der Kellerkinder auf Steam' },
-        { id: 'wow', label: 'World of Warcraft', icon: '⚔', type: 'wow', source: 'Beste Mythisch-Plus-Läufe, live via Raider.IO' },
-        { id: 'hots', label: 'Heroes of the Storm', icon: '🌀', type: 'manual', source: 'Manuell gepflegt' },
-        { id: 'diablo4', label: 'Diablo IV', icon: '🔥', type: 'manual', source: 'Manuell gepflegt' },
-        { id: 'rocket_league', label: 'Rocket League', icon: '🚀', type: 'manual', source: 'Manuell gepflegt' },
+        { id: 'steam', label: 'Steam-Erfolge', icon: '🏆', type: 'steam', source: 'Jüngster Erfolg je Spieler' },
+        { id: 'wow', label: 'World of Warcraft', icon: '⚔', type: 'wow', source: 'Beste M+-Läufe, live via Raider.IO' },
     ];
     const achievementGamesById = Object.fromEntries(achievementGames.map(game => [game.id, game]));
-    let achievementPairIndex = 0;
+    let achievementPageIndex = 0;
     let achievementsData = null;
     let steamData = null;
 
+    function achievementPageCount() {
+        return Math.max(1, Math.ceil(achievementGames.length / ACHIEVEMENTS_PER_PAGE));
+    }
+
     function statsCardTitle(game) {
         if (game.type === 'wow') return 'M+ Wertungen';
-        const data = achievementsData ? achievementsData[game.id] : null;
-        return (data && data.title) || game.label;
+        return game.label;
     }
 
     function linksCardTitle(game) {
@@ -866,10 +866,11 @@ require __DIR__ . '/includes/site-header.php';
     }
 
     function renderAchievementNav() {
-        const game = achievementGames[achievementPairIndex];
-        byId('achievementsNavLabel').textContent = game.label;
-        byId('achievementsPrev').disabled = achievementGames.length <= 1;
-        byId('achievementsNext').disabled = achievementGames.length <= 1;
+        const pages = achievementPageCount();
+        byId('achievementsNav').hidden = pages <= 1;
+        byId('achievementsNavLabel').textContent = `${achievementPageIndex + 1} / ${pages}`;
+        byId('achievementsPrev').disabled = pages <= 1;
+        byId('achievementsNext').disabled = pages <= 1;
     }
 
     function formatUpdatedAt(isoString) {
@@ -1058,6 +1059,10 @@ require __DIR__ . '/includes/site-header.php';
             empty('Die Steam-Erfolge sind noch nicht eingerichtet: Es fehlt der Steam-API-Schlüssel auf dem Server.');
             return { body: list, updated: '' };
         }
+        if (data.pending) {
+            empty('Die Erfolge werden gerade bei Steam abgeholt – einen Moment …');
+            return { body: list, updated: '' };
+        }
         if (!data.linked_players) {
             empty('Noch niemand hat einen Steam-Namen hinterlegt. Trag deinen unter „Mein Account“ ein.');
             return { body: list, updated: '' };
@@ -1138,61 +1143,92 @@ require __DIR__ . '/includes/site-header.php';
                 line.textContent = `${member.player_name} – ${reasons[member.reason] || 'keine Daten'}`;
                 note.appendChild(line);
             }
-            if (state.admin) {
-                const diagnose = document.createElement('a');
-                diagnose.href = 'api.php?action=steam_diagnose';
-                diagnose.target = '_blank';
-                diagnose.rel = 'noopener';
-                diagnose.textContent = 'Diagnose (nur Admin)';
-                note.appendChild(diagnose);
-            }
             list.appendChild(note);
         }
         return { body: list, updated: formatUpdatedAt(data.updated_at) };
     }
 
+    // Nur für Admins: Erfolge sofort neu bei Steam holen und die Diagnose öffnen.
+    function buildSteamAdminTools() {
+        const tools = document.createElement('div');
+        tools.className = 'steam-admin-tools';
+        const refresh = document.createElement('button');
+        refresh.type = 'button';
+        refresh.className = 'steam-admin-link';
+        refresh.textContent = 'Jetzt neu laden';
+        refresh.addEventListener('click', async () => {
+            refresh.disabled = true;
+            refresh.textContent = 'Wird bei Steam abgeholt …';
+            try {
+                await api('admin_steam_refresh', {});
+                steamPolls = 0;
+                await loadSteamAchievements();
+            } catch (error) {
+                showToast(error.message || 'Aktualisierung fehlgeschlagen.');
+                refresh.disabled = false;
+                refresh.textContent = 'Jetzt neu laden';
+            }
+        });
+        const diagnose = document.createElement('a');
+        diagnose.className = 'steam-admin-link';
+        diagnose.href = 'api.php?action=steam_diagnose';
+        diagnose.target = '_blank';
+        diagnose.rel = 'noopener';
+        diagnose.textContent = 'Diagnose';
+        tools.append(refresh, diagnose);
+        return tools;
+    }
+
     function buildSteamCard(game) {
         const card = buildAchievementCardShell(game, 'stats');
-        card.classList.add('wide');
         const built = buildSteamBody(steamData);
         card.appendChild(built.body);
         const updated = document.createElement('p');
         updated.className = 'achievement-updated';
         updated.textContent = built.updated;
         card.appendChild(updated);
+        if (state.admin) card.appendChild(buildSteamAdminTools());
         return card;
     }
 
-    function buildAchievementCard(game, cardType) {
-        const card = buildAchievementCardShell(game, cardType);
+    // WoW: M+-Wertungen und darunter die Links in einer gemeinsamen Karte.
+    function buildWowCard(game) {
+        const card = buildAchievementCardShell(game, 'stats');
         const gameData = achievementsData ? achievementsData[game.id] : null;
 
         if (!achievementsData) {
             const loading = document.createElement('p');
             loading.className = 'widget-loading';
             loading.textContent = 'Wird geladen …';
-            card.appendChild(loading);
-            card.appendChild(document.createElement('p')).className = 'achievement-updated';
+            card.append(loading, Object.assign(document.createElement('p'), { className: 'achievement-updated' }));
             return card;
         }
 
-        let built;
-        if (cardType === 'links') {
-            built = buildLinksBody(gameData);
-        } else {
-            built = game.type === 'wow' ? buildWowBody(gameData) : buildManualStatsBody(gameData);
+        const stats = buildWowBody(gameData);
+        card.appendChild(stats.body);
+
+        const links = buildLinksBody(gameData);
+        const linksHead = document.createElement('div');
+        linksHead.className = 'achievement-links-head';
+        const linksTitle = document.createElement('span');
+        linksTitle.textContent = linksCardTitle(game);
+        linksHead.appendChild(linksTitle);
+        if (state.admin) {
+            const edit = document.createElement('button');
+            edit.type = 'button';
+            edit.className = 'achievement-edit-button';
+            edit.title = `${game.label}: Links bearbeiten`;
+            edit.setAttribute('aria-label', `${game.label}: Links bearbeiten`);
+            edit.textContent = '✎';
+            edit.addEventListener('click', () => openAchievementEditDialog(game.id, 'links'));
+            linksHead.appendChild(edit);
         }
-        card.appendChild(built.body);
+        card.append(linksHead, links.body);
 
         const updated = document.createElement('p');
         updated.className = 'achievement-updated';
-        if (cardType === 'stats' && game.type === 'manual' && (!gameData || !gameData.configured)) {
-            updated.innerHTML = 'Platzhalter-Daten <span class="mock-tag">Beispiel</span>';
-        } else {
-            updated.textContent = built.updated;
-        }
+        updated.textContent = stats.updated;
         card.appendChild(updated);
-
         return card;
     }
 
@@ -1200,18 +1236,21 @@ require __DIR__ . '/includes/site-header.php';
         renderAchievementNav();
         const grid = byId('achievementGrid');
         grid.replaceChildren();
-        const game = achievementGames[achievementPairIndex];
-        if (game.type === 'steam') {
-            grid.appendChild(buildSteamCard(game));
-            return;
+        const first = achievementPageIndex * ACHIEVEMENTS_PER_PAGE;
+        for (const game of achievementGames.slice(first, first + ACHIEVEMENTS_PER_PAGE)) {
+            grid.appendChild(game.type === 'steam' ? buildSteamCard(game) : buildWowCard(game));
         }
-        grid.appendChild(buildAchievementCard(game, 'stats'));
-        grid.appendChild(buildAchievementCard(game, 'links'));
     }
 
-    // Automatisches Durchwechseln. Pausiert, solange die Maus über den Widgets
-    // ist, ein Element darin den Fokus hat, ein Dialog offen ist oder der Tab
-    // im Hintergrund liegt. Ein Klick auf die Pfeile startet den Takt neu.
+    function showAchievementPage(index) {
+        const pages = achievementPageCount();
+        achievementPageIndex = ((index % pages) + pages) % pages;
+        renderAchievementGrid();
+    }
+
+    // Automatisches Durchwechseln (nur bei mehr als einer Seite). Pausiert, solange die
+    // Maus über den Widgets ist, ein Element darin den Fokus hat, ein Dialog offen ist
+    // oder der Tab im Hintergrund liegt. Ein Klick auf die Pfeile startet den Takt neu.
     let achievementRotateTimer = null;
     let achievementHover = false;
 
@@ -1225,33 +1264,38 @@ require __DIR__ . '/includes/site-header.php';
 
     function restartAchievementRotation() {
         clearInterval(achievementRotateTimer);
-        if (achievementGames.length <= 1) return;
+        if (achievementPageCount() <= 1) return;
         achievementRotateTimer = setInterval(() => {
             if (achievementRotationPaused()) return;
-            achievementPairIndex = (achievementPairIndex + 1) % achievementGames.length;
-            renderAchievementGrid();
+            showAchievementPage(achievementPageIndex + 1);
         }, ACHIEVEMENT_ROTATE_MS);
     }
 
+    // Die Steam-Daten kommen sofort aus dem Zwischenspeicher des Servers. Holt der Server
+    // sie gerade zum ersten Mal bei Steam („pending“), fragen wir alle 6 Sekunden nach
+    // (höchstens 12-mal); bei „refreshing“ einmal nach 20 Sekunden, um Neues zu zeigen.
+    let steamPolls = 0;
     async function loadSteamAchievements() {
         try {
             steamData = await api('steam_achievements');
         } catch (error) {
-            steamData = { configured: true, linked_players: 1, entries: [], updated_at: '' };
+            steamData = { configured: true, linked_players: 1, entries: [], missing: [], updated_at: '' };
         }
-        if (achievementGames[achievementPairIndex].type === 'steam') renderAchievementGrid();
+        renderAchievementGrid();
+        if (steamData.pending && steamPolls < 12) {
+            steamPolls += 1;
+            setTimeout(loadSteamAchievements, 6000);
+        } else if (steamData.refreshing && steamPolls < 1) {
+            steamPolls += 1;
+            setTimeout(loadSteamAchievements, 20000);
+        }
     }
 
     async function loadAchievements() {
         renderAchievementGrid();
         try {
             const data = await api('achievements');
-            achievementsData = {
-                wow: data.wow,
-                hots: data.hots,
-                diablo4: data.diablo4,
-                rocket_league: data.rocket_league,
-            };
+            achievementsData = { wow: data.wow };
         } catch (error) {
             achievementsData = null;
             showToast('Die Erfolge konnten nicht geladen werden.');
@@ -2244,13 +2288,11 @@ require __DIR__ . '/includes/site-header.php';
     })();
 
     byId('achievementsPrev').addEventListener('click', () => {
-        achievementPairIndex = (achievementPairIndex - 1 + achievementGames.length) % achievementGames.length;
-        renderAchievementGrid();
+        showAchievementPage(achievementPageIndex - 1);
         restartAchievementRotation();
     });
     byId('achievementsNext').addEventListener('click', () => {
-        achievementPairIndex = (achievementPairIndex + 1) % achievementGames.length;
-        renderAchievementGrid();
+        showAchievementPage(achievementPageIndex + 1);
         restartAchievementRotation();
     });
     const achievementSection = document.querySelector('.achievements');

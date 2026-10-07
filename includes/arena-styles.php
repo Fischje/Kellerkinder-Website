@@ -614,79 +614,97 @@
         .mplus-bar-fill { background: linear-gradient(90deg, var(--primary), var(--accent)); }
         .d4-milestones li, .achievement-links li a { border-radius: 0; }
 
-        /* Steam-Erfolge: eine breite Karte über beide Spalten */
-        .achievement-card.wide { grid-column: 1 / -1; }
+        /* Erfolge-Widgets: kompakt, zwei Karten nebeneinander */
+        .achievement-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-items: start; }
+        .achievement-card { padding: 14px 14px 12px; min-width: 0; }
+        .achievement-card-head { margin-bottom: 10px; gap: 10px; }
+        .achievement-card-head h3 { font-size: 1.1rem; }
+        .achievement-source { font-size: .76rem; }
         .achievement-icon.steam { color: #fff; background: linear-gradient(135deg, #1b2838, #2a475e 60%, #66c0f4); }
 
-        .steam-achievements {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(min(100%, 330px), 1fr));
-            gap: 10px;
-            margin: 0;
-            padding: 0;
-            list-style: none;
-        }
-
-        .steam-achievements .widget-empty { grid-column: 1 / -1; }
+        .steam-achievements { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+        .steam-achievements .widget-empty { margin: 8px 0; }
 
         .steam-achievement {
             display: grid;
-            grid-template-columns: 48px minmax(0, 1fr) auto;
+            grid-template-columns: 38px minmax(0, 1fr) auto;
             align-items: center;
-            gap: 12px;
-            padding: 10px 12px;
+            gap: 10px;
+            padding: 7px 10px;
             background: rgba(var(--panel-deep-rgb), .85);
             box-shadow: inset 3px 0 0 var(--accent);
         }
 
-        .steam-achievement-icon {
-            width: 48px;
-            height: 48px;
-            object-fit: cover;
-            background: rgba(var(--primary-rgb), .35);
-        }
+        .steam-achievement-icon { width: 38px; height: 38px; object-fit: cover; background: rgba(var(--primary-rgb), .35); }
+        .steam-achievement-icon.placeholder { display: grid; place-items: center; font-size: 1.1rem; }
 
-        .steam-achievement-icon.placeholder { display: grid; place-items: center; font-size: 1.4rem; }
-
-        .steam-achievement-text { min-width: 0; display: grid; gap: 1px; }
+        .steam-achievement-text { min-width: 0; display: grid; gap: 0; }
         .steam-achievement-text strong {
+            overflow: hidden;
             color: #fff;
             font-family: var(--font-heading);
-            font-size: 1.05rem;
-            line-height: 1.15;
+            font-size: .98rem;
+            line-height: 1.2;
             letter-spacing: .02em;
-            overflow-wrap: anywhere;
-            text-transform: uppercase;
-        }
-
-        .steam-achievement-meta { overflow: hidden; color: var(--muted); font-size: .84rem; text-overflow: ellipsis; white-space: nowrap; }
-        .steam-achievement-meta a { color: var(--accent-hover); font-weight: 700; text-decoration: none; }
-        .steam-achievement-meta a:hover { text-decoration: underline; }
-        .steam-achievement-text small { color: var(--muted); font-size: .76rem; line-height: 1.35; opacity: .8; }
-
-        .steam-achievement-time {
-            align-self: start;
-            color: var(--accent);
-            font-family: var(--font-heading);
-            font-size: .82rem;
-            font-weight: 700;
-            letter-spacing: .06em;
+            text-overflow: ellipsis;
             text-transform: uppercase;
             white-space: nowrap;
         }
 
-        .steam-missing {
-            grid-column: 1 / -1;
+        .steam-achievement-meta { overflow: hidden; color: var(--muted); font-size: .78rem; text-overflow: ellipsis; white-space: nowrap; }
+        .steam-achievement-meta a { color: var(--accent-hover); font-weight: 700; text-decoration: none; }
+        .steam-achievement-meta a:hover { text-decoration: underline; }
+        .steam-achievement-text small { display: none; }
+
+        .steam-achievement-time {
+            color: var(--accent);
+            font-family: var(--font-heading);
+            font-size: .78rem;
+            font-weight: 700;
+            letter-spacing: .05em;
+            text-transform: uppercase;
+            white-space: nowrap;
+        }
+
+        .steam-admin-tools { display: flex; gap: 14px; margin-top: 6px; }
+        .steam-admin-link {
+            padding: 0;
+            border: 0;
+            color: var(--accent-hover);
+            background: none;
+            cursor: pointer;
+            font: inherit;
+            font-size: .8rem;
+            font-weight: 700;
+            text-decoration: underline;
+        }
+
+        .steam-admin-link:disabled { opacity: .6; cursor: default; }
+
+        .achievement-links-head {
             display: flex;
-            flex-wrap: wrap;
-            gap: 4px 14px;
-            padding: 8px 12px;
+            align-items: center;
+            justify-content: space-between;
+            margin: 12px 0 6px;
+            color: #fff;
+            font-family: var(--font-heading);
+            font-size: .95rem;
+            font-weight: 700;
+            letter-spacing: .08em;
+            text-transform: uppercase;
+        }
+
+        .achievement-links-head .achievement-edit-button { width: 28px; height: 28px; }
+
+        .steam-missing {
+            display: grid;
+            gap: 2px;
+            padding: 8px 10px;
             color: var(--muted);
-            font-size: .82rem;
+            font-size: .78rem;
             background: rgba(var(--panel-deep-rgb), .5);
         }
 
-        .steam-missing a { color: var(--accent-hover); font-weight: 700; }
         .steam-missing strong { color: #fff; font-family: var(--font-heading); letter-spacing: .06em; text-transform: uppercase; }
 
         /* ===== Dialoge & Formulare ===== */
@@ -957,6 +975,7 @@
             .section-title::before { flex-basis: 14px; }
             .board-toolbar { padding: 18px 14px 14px; }
             .achievements { padding: 20px 14px; }
+            .achievement-grid { grid-template-columns: 1fr; }
             .blog-teaser-label { padding: 10px 18px 10px 12px; font-size: .78rem; }
             .blog-teaser-title { padding: 0 14px; }
             .blog-teaser-meta { padding: 0 0 10px 14px; }

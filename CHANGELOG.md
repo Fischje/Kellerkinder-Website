@@ -1,5 +1,29 @@
 # Änderungsprotokoll
 
+## 2.15.0 — Steam-Erfolge laden sofort, kompaktere Erfolge-Widgets
+
+**Steam-Erfolge laden jetzt sofort**
+- Die Seite zeigt immer den zwischengespeicherten Stand und wartet nie auf Steam
+  (Antwortzeit im Test: wenige Millisekunden statt mehrerer Sekunden)
+- Die Erfolge werden höchstens **stündlich** neu bei Steam geholt, im Hintergrund:
+  nach der Antwort an den Besucher (PHP-FPM) oder als eigener PHP-Prozess
+- **Sofort** statt nach einer Stunde, wenn sich ein Steam-Name ändert oder neu dazukommt
+- Neues Skript `steam-refresh.php` für einen stündlichen Cron-Job (siehe README), damit die
+  Daten auch ohne Besucher aktuell bleiben
+- Beim allerersten Aufruf ohne Daten zeigt das Widget „werden gerade abgeholt“ und lädt
+  selbständig nach
+- Admins: Links „Jetzt neu laden“ und „Diagnose“ unter dem Steam-Widget
+- **Fehler behoben:** Der Zwischenspeicher verwarf alle Dateien nach 30 Minuten, auch die
+  dauerhaft gedachten Steam-IDs und Erfolgsnamen. Dadurch wurde ständig alles neu abgefragt
+
+**Erfolge-Widgets kompakter**
+- Zwei Widgets nebeneinander (auf dem Handy untereinander): „Steam-Erfolge“ und
+  „World of Warcraft“. Die WoW-Links stehen jetzt in der WoW-Karte
+- Die Widgets zu Heroes of the Storm, Diablo IV und Rocket League sind ausgeblendet
+  (die gespeicherten Daten bleiben erhalten)
+- Seitenwechsel, Pfeile und Auto-Wechsel gibt es nur noch, wenn mehr als zwei Karten
+  vorhanden sind
+
 ## 2.14.4 — Steam-Erfolge: Fehler aus 2.14.3 behoben
 
 - **Fehler behoben:** Mit 2.14.3 stand bei allen Spielern „Steam hat gerade nicht
