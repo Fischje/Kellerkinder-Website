@@ -13,8 +13,18 @@ if (preg_match('/^[a-z0-9][a-z0-9._-]{0,120}\.(png|jpe?g|webp|gif)$/', $file, $m
     exit;
 }
 
-$path = __DIR__ . DIRECTORY_SEPARATOR . 'data' . DIRECTORY_SEPARATOR . 'media' . DIRECTORY_SEPARATOR . $file;
-if (!is_file($path)) {
+// Dieselbe Reihenfolge wie runtimeDirectory() in api.php: erst data/media, sonst der Ersatzordner im Temp-Verzeichnis.
+$path = null;
+foreach ([
+    __DIR__ . DIRECTORY_SEPARATOR . 'data' . DIRECTORY_SEPARATOR . 'media',
+    rtrim(sys_get_temp_dir(), '/\\') . DIRECTORY_SEPARATOR . 'kellerkinder-' . substr(md5(__DIR__), 0, 10) . '-media',
+] as $directory) {
+    if (is_file($directory . DIRECTORY_SEPARATOR . $file)) {
+        $path = $directory . DIRECTORY_SEPARATOR . $file;
+        break;
+    }
+}
+if ($path === null) {
     http_response_code(404);
     exit;
 }

@@ -1066,14 +1066,14 @@ function searchGames(string $term): ?array
 
 function mediaDirectory(): string
 {
-    return storageDirectory() . DIRECTORY_SEPARATOR . 'media';
+    return runtimeDirectory('media');
 }
 
 /** Legt data/media an, falls nötig. false, wenn das nicht geht. */
 function mediaDirectoryEnsure(): bool
 {
     $directory = mediaDirectory();
-    return is_dir($directory) || @mkdir($directory, 0750, true) || is_dir($directory);
+    return (is_dir($directory) || @mkdir($directory, 0750, true) || is_dir($directory)) && is_writable($directory);
 }
 
 /** Gibt es diese heruntergeladene Datei (nur Dateiname, kein Pfad)? */
@@ -1609,9 +1609,49 @@ function ensureStorageDirectory(): bool
     return @mkdir($directory, 0750, true) || is_dir($directory);
 }
 
+/**
+ * Ordner für Zwischenspeicher ('cache') und heruntergeladene Bilder ('media'): bevorzugt unter data/.
+ * Darf PHP dort keine Unterordner anlegen (Datei data/store.php beschreibbar, Ordner data aber nicht –
+ * kommt vor, wenn die Rechte nur auf der Datei gesetzt wurden), dient ein Ordner im Temp-Verzeichnis des
+ * Servers als Ersatz. Das ist nur ein Zwischenspeicher: Nach einem Neustart wird alles automatisch neu geholt.
+ * Dauerhaft löst das: chown -R <PHP-Benutzer> data
+ */
+function runtimeDirectory(string $name): string
+{
+    static $resolved = [];
+    if (isset($resolved[$name])) {
+        return $resolved[$name];
+    }
+    $primary = storageDirectory() . DIRECTORY_SEPARATOR . $name;
+    if ((is_dir($primary) && is_writable($primary))
+        || (!is_dir($primary) && is_dir(storageDirectory()) && is_writable(storageDirectory()) && (@mkdir($primary, 0750, true) || is_dir($primary)))) {
+        return $resolved[$name] = $primary;
+    }
+    $fallback = runtimeFallbackDirectory($name);
+    if ((is_dir($fallback) || @mkdir($fallback, 0700, true) || is_dir($fallback)) && is_writable($fallback)) {
+        return $resolved[$name] = $fallback;
+    }
+    return $resolved[$name] = $primary; // nichts geht: Schreibversuche scheitern still, Seite läuft ohne Zwischenspeicher
+}
+
+function runtimeFallbackDirectory(string $name): string
+{
+    return rtrim(sys_get_temp_dir(), '/\\') . DIRECTORY_SEPARATOR . 'kellerkinder-' . substr(md5(__DIR__), 0, 10) . '-' . $name;
+}
+
+/** 'data' (normal), 'temp' (Ersatzordner) oder 'none' (nichts beschreibbar) für die Statusanzeige. */
+function runtimeLocation(string $name): string
+{
+    $directory = runtimeDirectory($name);
+    if (!is_dir($directory) || !is_writable($directory)) {
+        return 'none';
+    }
+    return $directory === storageDirectory() . DIRECTORY_SEPARATOR . $name ? 'data' : 'temp';
+}
+
 function achievementsCacheDirectory(): string
 {
-    return storageDirectory() . DIRECTORY_SEPARATOR . 'cache';
+    return runtimeDirectory('cache');
 }
 
 function achievementsCacheRead(string $file, ?int $maxAge = ACHIEVEMENTS_CACHE_TTL_SECONDS): ?array
@@ -3351,7 +3391,8 @@ if ($action === 'playtime_stats') {
         $out['roster'] = $roster;
         $out['roster_supported'] = is_array($stats['roster'] ?? null);
         // Für die Fehlersuche bei den Profilbildern: Wie viele kennt der Bot, wie viele sind geladen, ist der Ordner beschreibbar?
-        $avatarStatus['writable'] = is_dir(mediaDirectory()) ? is_writable(mediaDirectory()) : is_writable(storageDirectory());
+        $avatarStatus['location'] = runtimeLocation('media'); // 'data', 'temp' oder 'none'
+        $avatarStatus['writable'] = $avatarStatus['location'] !== 'none';
         $out['avatar_status'] = $avatarStatus;
     }
     // Fehlende Spiele-Symbole im Hintergrund suchen und herunterladen; die Antwort geht sofort raus.

@@ -330,7 +330,8 @@ require __DIR__ . '/site-header.php';
                 avatarNote.textContent = 'Profilbilder: Der Discord-Bot liefert noch keine Bild-Adressen. Das braucht Bot-Version 1.8.0; der Bot fragt sie beim Start und danach täglich bei Discord ab.';
             } else {
                 avatarNote.textContent = `Profilbilder: ${status.local} von ${status.players} Spielern geladen (der Bot kennt ${status.bot}).`
-                    + (status.writable ? '' : ' Der Ordner data/media ist für PHP nicht beschreibbar – bitte Schreibrechte geben.');
+                    + (status.location === 'temp' ? ' Hinweis: Der Ordner „data“ ist für PHP nicht beschreibbar, deshalb liegen die Bilder vorläufig im Temp-Ordner des Servers (nach einem Neustart werden sie neu geladen). Dauerhaft hilft auf dem Server: chown -R www-data:www-data data'
+                        : (status.writable ? '' : ' Weder „data“ noch der Temp-Ordner sind für PHP beschreibbar – bitte Schreibrechte geben: chown -R www-data:www-data data'));
             }
         }
         for (const member of data.roster) {

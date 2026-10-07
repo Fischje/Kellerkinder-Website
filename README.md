@@ -214,7 +214,7 @@ Die Laufzeitdateien unter `data/store.php*` werden von Git ignoriert und dadurch
 ├── alle-spiele.php     (Alle Spiele: komplette Rangliste)
 ├── statistik.php       (leitet auf games.php um)
 ├── steam-refresh.php   (Cron: Steam-Erfolge, Spiele-Symbole, Profilbilder holen)
-├── media.php           (liefert Spiele-Symbole und Profilbilder aus data/media aus)
+├── media.php           (liefert Spiele-Symbole und Profilbilder aus data/media aus; ist data nicht beschreibbar: Temp-Ordner als Ersatz)
 ├── feed.php
 ├── check.php
 ├── index.php
@@ -338,6 +338,7 @@ Dafür ist Bot-Version 1.6.0 nötig.
 
 **Profilbilder:** Neben den Spielern steht ihr Discord-Profilbild (Bot-Version 1.8.0). Die Website lädt
 es nach `data/media` herunter (ausgeliefert über `media.php`) und prüft es einmal pro Woche auf Änderung;
+Ist `data` für PHP nicht beschreibbar, weicht die Seite auf das System-Temp-Verzeichnis aus; dauerhaft besser: `chown -R www-data:www-data data` (Webserver-Benutzer anpassen).
 Besucher laden nichts von Discord. Ohne eigenes Bild erscheint ein Platzhalter. Der Ordner `data` muss für PHP
 beschreibbar sein (wie ohnehin nötig); weitere Rechte braucht es nicht.
 

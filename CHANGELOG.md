@@ -1,5 +1,15 @@
 # Änderungsprotokoll
 
+## 2.19.3 — Zwischenspeicher und Bilder funktionieren auch bei schreibgeschütztem `data`-Ordner
+
+- **Ursache gefunden:** Auf dem Server darf PHP nur die Datei `data/store.php` schreiben, aber keine Unterordner im
+  Ordner `data` anlegen – daher entstanden weder `data/media` (Profilbilder, Spiele-Symbole) noch `data/cache`
+- Ist `data` nicht beschreibbar, nutzt die Seite jetzt automatisch einen Ordner im System-Temp-Verzeichnis
+  (`media.php` liefert die Bilder von dort aus); Widgets und Zwischenspeicher arbeiten damit ebenfalls
+- Die Statuszeile für Admins nennt den Speicherort und empfiehlt den dauerhaften Fix:
+  `chown -R www-data:www-data data` (bzw. den tatsächlichen Webserver-Benutzer); der Cron-Job
+  `steam-refresh.php` sollte als derselbe Benutzer laufen
+
 ## 2.19.2 — Profilbilder und Spiele-Symbole brauchen keine Extra-Schreibrechte mehr
 
 - **Fehler behoben:** Auf dem Server durfte PHP nicht in `assets/avatars` und `assets/game-icons`
