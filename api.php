@@ -2884,15 +2884,43 @@ if ($action === 'playtime_stats') {
         'generated_at' => (string) ($stats['generatedAt'] ?? ''),
         'games' => [],
     ];
+    // Einzelwerte (Top-Spieler je Spiel, Top-Spiele je Spieler): öffentlich nur, wenn der
+    // Bot Spielernamen freigibt (STATS_PUBLIC_PLAYERS); Admins sehen sie immer.
+    $statsDetails = is_array($stats['details'] ?? null) ? $stats['details'] : null;
+    $showPersons = $statsDetails !== null && (is_array($stats['players'] ?? null) || $statsIsAdmin);
+    $cleanMinutes = static fn(array $rows, string $nameKey, int $limit): array => array_map(
+        static fn(array $row): array => [
+            'name' => mb_substr((string) ($row[$nameKey] ?? ''), 0, 100, 'UTF-8'),
+            'minutes' => (int) ($row['minutes'] ?? 0),
+        ],
+        array_slice(array_values(array_filter($rows, 'is_array')), 0, $limit)
+    );
     foreach (array_slice($stats['games'], 0, 100) as $game) {
-        $out['games'][] = [
-            'name' => mb_substr((string) ($game['name'] ?? ''), 0, 100, 'UTF-8'),
+        $gameName = mb_substr((string) ($game['name'] ?? ''), 0, 100, 'UTF-8');
+        $row = [
+            'name' => $gameName,
             'minutes' => (int) ($game['minutes'] ?? 0),
             'players' => (int) ($game['players'] ?? 0),
             'last_played' => (string) ($game['lastPlayed'] ?? ''),
         ];
+        if ($showPersons && is_array($statsDetails['games'][$gameName] ?? null)) {
+            $row['top_players'] = $cleanMinutes($statsDetails['games'][$gameName], 'name', 10);
+        }
+        $out['games'][] = $row;
     }
-    if (is_array($stats['players'] ?? null)) {
+    if ($showPersons && is_array($statsDetails['players'] ?? null)) {
+        $out['players'] = [];
+        foreach (array_slice($statsDetails['players'], 0, 50) as $player) {
+            $topGames = is_array($player['games'] ?? null) ? $cleanMinutes($player['games'], 'name', 5) : [];
+            $out['players'][] = [
+                'name' => mb_substr((string) ($player['name'] ?? ''), 0, 60, 'UTF-8'),
+                'minutes' => (int) ($player['minutes'] ?? 0),
+                'top_game' => $topGames[0]['name'] ?? null,
+                'top_games' => $topGames,
+            ];
+        }
+    } elseif (is_array($stats['players'] ?? null)) {
+        // Älterer Bot ohne Einzelwerte: nur die einfache Spielerliste.
         $out['players'] = [];
         foreach (array_slice($stats['players'], 0, 50) as $player) {
             $out['players'][] = [

@@ -322,6 +322,10 @@ zählen dann weder auf der Website noch bei `/statistik` im Discord (der Bot hol
 die Liste über `api.php?action=stats_exclusions`, höchstens 5 Minuten verzögert).
 Dafür ist Bot-Version 1.6.0 nötig.
 
+**Aufklappen:** Ein Spiel anklicken zeigt die Top-Spieler, ein Spieler seine Top-5-Spiele
+(Bot-Version 1.7.0). Öffentlich nur, wenn der Bot Spielernamen freigibt
+(`STATS_PUBLIC_PLAYERS=true`), Admins sehen sie immer.
+
 Spielernamen erscheinen nur, wenn im Bot `STATS_PUBLIC_PLAYERS=true` gesetzt ist.
 
 ## Blog

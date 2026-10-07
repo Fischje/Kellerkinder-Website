@@ -113,6 +113,40 @@ require __DIR__ . '/includes/site-header.php';
         return el;
     }
 
+    // Kleine Liste im aufgeklappten Bereich (Top-Spieler eines Spiels bzw. Top-Spiele eines Spielers).
+    function detailList(title, rows) {
+        const box = document.createElement('div');
+        box.className = 'stats-detail';
+        const heading = document.createElement('p');
+        heading.className = 'stats-detail-title';
+        heading.textContent = title;
+        const ol = document.createElement('ol');
+        ol.className = 'stats-detail-list';
+        const max = Math.max(1, ...rows.map(row => row.minutes));
+        rows.forEach((row, index) => {
+            const li = document.createElement('li');
+            const bar = document.createElement('span');
+            bar.className = 'stats-bar';
+            bar.style.width = `${Math.max(2, Math.round((row.minutes / max) * 100))}%`;
+            const rank = document.createElement('span');
+            rank.className = 'stats-rank';
+            rank.textContent = `${index + 1}.`;
+            const name = document.createElement('span');
+            name.className = 'stats-name';
+            name.textContent = row.name;
+            const time = document.createElement('span');
+            time.className = 'stats-time';
+            time.textContent = formatMinutes(row.minutes);
+            li.append(bar, rank, name, time);
+            ol.appendChild(li);
+        });
+        box.append(heading, ol);
+        return box;
+    }
+
+    let detailSeq = 0;
+
+    // rows: { name, minutes, sub, detail?: { title, rows } } – mit `detail` lässt sich die Zeile aufklappen.
     function list(title, rows) {
         const wrap = document.createDocumentFragment();
         const heading = document.createElement('h2');
@@ -123,7 +157,11 @@ require __DIR__ . '/includes/site-header.php';
         const max = Math.max(1, ...rows.map(row => row.minutes));
         rows.forEach((row, index) => {
             const li = document.createElement('li');
-            li.className = 'stats-row';
+            li.className = 'stats-item';
+            const expandable = Boolean(row.detail && row.detail.rows.length > 0);
+            const main = document.createElement(expandable ? 'button' : 'div');
+            main.className = 'stats-row' + (expandable ? ' expandable' : '');
+            if (expandable) main.type = 'button';
             const bar = document.createElement('span');
             bar.className = 'stats-bar';
             bar.style.width = `${Math.max(2, Math.round((row.minutes / max) * 100))}%`;
@@ -141,7 +179,30 @@ require __DIR__ . '/includes/site-header.php';
             const time = document.createElement('span');
             time.className = 'stats-time';
             time.textContent = formatMinutes(row.minutes);
-            li.append(bar, rank, name, time);
+            main.append(bar, rank, name, time);
+            if (expandable) {
+                const caret = document.createElement('span');
+                caret.className = 'stats-caret';
+                caret.setAttribute('aria-hidden', 'true');
+                caret.textContent = '▾';
+                main.appendChild(caret);
+            }
+            li.appendChild(main);
+
+            if (expandable) {
+                const panel = detailList(row.detail.title, row.detail.rows);
+                panel.id = `statsDetail${detailSeq++}`;
+                panel.hidden = true;
+                main.setAttribute('aria-expanded', 'false');
+                main.setAttribute('aria-controls', panel.id);
+                main.addEventListener('click', () => {
+                    const open = panel.hidden;
+                    panel.hidden = !open;
+                    main.setAttribute('aria-expanded', String(open));
+                    li.classList.toggle('open', open);
+                });
+                li.appendChild(panel);
+            }
             ul.appendChild(li);
         });
         wrap.append(heading, ul);
@@ -238,17 +299,26 @@ require __DIR__ . '/includes/site-header.php';
             note.textContent = 'Der Bot ist gerade nicht erreichbar. Gezeigt wird der letzte bekannte Stand.';
             nodes.push(note);
         }
+        const hasDetails = Array.isArray(data.players) && data.players.some(player => Array.isArray(player.top_games));
         nodes.push(list('Spiele', data.games.map(game => ({
             name: game.name,
             minutes: game.minutes,
             sub: `${game.players} Spieler · zuletzt ${formatDate(game.last_played)}`,
+            detail: Array.isArray(game.top_players) ? { title: 'Top-Spieler', rows: game.top_players } : null,
         }))));
         if (Array.isArray(data.players) && data.players.length > 0) {
             nodes.push(list('Kellerkinder', data.players.map(player => ({
                 name: player.name,
                 minutes: player.minutes,
                 sub: player.top_game ? `am meisten ${player.top_game}` : '',
+                detail: Array.isArray(player.top_games) ? { title: 'Top-5-Spiele', rows: player.top_games } : null,
             }))));
+        }
+        if (hasDetails || data.games.some(game => Array.isArray(game.top_players))) {
+            const hint = document.createElement('p');
+            hint.className = 'stats-note';
+            hint.textContent = 'Tipp: Ein Spiel oder einen Spieler anklicken, um die Top-Spieler bzw. Top-5-Spiele zu sehen.';
+            nodes.splice(nodes.indexOf(summary) + 1, 0, hint);
         }
         body.replaceChildren(...nodes);
     }

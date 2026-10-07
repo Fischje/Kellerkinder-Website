@@ -1,5 +1,16 @@
 # Änderungsprotokoll
 
+## 2.16.0 — Statistik zum Aufklappen
+
+- Auf der Statistik-Seite lässt sich jetzt jede Zeile anklicken:
+  - **Spiel anklicken** zeigt die Top-Spieler dieses Spiels (bis zu 10) mit ihrer Spielzeit
+  - **Spieler anklicken** zeigt seine Top-5-Spiele mit Spielzeit
+- Ausgeblendete Spieler tauchen auch dort nicht auf
+- Die Einzelwerte sehen alle Besucher nur, wenn der Bot Spielernamen freigibt
+  (`STATS_PUBLIC_PLAYERS=true`); Admins sehen sie immer, auch ohne Freigabe
+- Benötigt Bot-Version 1.7.0. Mit einem älteren Bot bleibt die Statistik wie bisher,
+  nur ohne Aufklappen
+
 ## 2.15.0 — Steam-Erfolge laden sofort, kompaktere Erfolge-Widgets
 
 **Steam-Erfolge laden jetzt sofort**

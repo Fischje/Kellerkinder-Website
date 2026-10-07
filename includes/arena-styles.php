@@ -926,6 +926,51 @@
         .stats-name { font-family: var(--font-heading); font-size: 1.08rem; letter-spacing: .02em; }
         .stats-time { font-family: var(--font-heading); font-size: 1.05rem; }
 
+        /* Aufklappbare Zeilen (Top-Spieler je Spiel, Top-5-Spiele je Spieler) */
+        .stats-item { list-style: none; }
+        .stats-row.expandable {
+            width: 100%;
+            border: 0;
+            color: inherit;
+            font: inherit;
+            text-align: left;
+            cursor: pointer;
+            grid-template-columns: 2.2em minmax(0, 1fr) auto 1.2em;
+        }
+        .stats-row.expandable:hover { background: var(--panel-soft); }
+        .stats-row.expandable:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+        .stats-caret { position: relative; color: var(--accent); transition: transform .15s ease; }
+        .stats-item.open > .stats-row .stats-caret { transform: rotate(180deg); }
+
+        .stats-detail {
+            margin: 2px 0 6px 14px;
+            padding: 10px 12px 12px;
+            background: rgba(var(--panel-deep-rgb), .85);
+            box-shadow: inset 3px 0 0 var(--primary);
+        }
+        .stats-detail[hidden] { display: none; }
+        .stats-detail-title {
+            margin: 0 0 8px;
+            color: var(--muted);
+            font-family: var(--font-heading);
+            font-size: .85rem;
+            letter-spacing: .1em;
+            text-transform: uppercase;
+        }
+        .stats-detail-list { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
+        .stats-detail-list li {
+            position: relative;
+            display: grid;
+            grid-template-columns: 2em minmax(0, 1fr) auto;
+            align-items: center;
+            gap: 8px;
+            padding: 5px 8px;
+            overflow: hidden;
+            background: var(--panel);
+        }
+        .stats-detail-list .stats-name { font-size: .95rem; }
+        .stats-detail-list .stats-time { font-size: .9rem; }
+
         .stats-admin { margin-top: 24px; }
         .stats-admin code { color: #fff; }
 
