@@ -1,5 +1,12 @@
 # Änderungsprotokoll
 
+## 2.19.1 — Profilbilder: Fehlersuche für Admins
+
+- Unter der Liste „Spieler ausblenden“ steht für Admins jetzt eine Zeile zu den Discord-Profilbildern:
+  wie viele Spieler ein Bild haben, wie viele der Bot kennt, und ob der Ordner `assets/avatars` für
+  PHP beschreibbar ist. Damit lässt sich sofort sehen, woran es hängt, wenn keine Bilder erscheinen
+- Die Profilbilder selbst brauchen Bot-Version **1.8.1**: Der Bot fragt die Bild-Adressen jetzt aktiv bei Discord ab
+
 ## 2.19.0 — Spiele: Top 10, aufklappbar bis Platz 30, eigene Seite für alle
 
 - Auf der Seite „Spiele“ sind sofort nur die **Top 10** zu sehen. Mit „Platz 11–30 anzeigen“

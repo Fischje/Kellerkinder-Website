@@ -83,6 +83,7 @@ require __DIR__ . '/site-header.php';
             weder hier noch beim Discord-Befehl <code>/statistik</code>. Ihre Spielzeit wird weiter erfasst, sodass du sie
             jederzeit wieder einblenden kannst.</p>
         <div id="statsAdminList" class="stats-admin-list"></div>
+        <p class="stats-note" id="statsAvatarStatus"></p>
         <div class="stats-admin-actions">
             <button class="primary-button" id="statsAdminSave" type="button">Speichern</button>
             <span class="stats-note" id="statsAdminStatus" role="status" aria-live="polite"></span>
@@ -320,6 +321,17 @@ require __DIR__ . '/site-header.php';
             note.className = 'widget-empty';
             note.textContent = 'Im gewählten Zeitraum hat noch niemand gespielt.';
             container.appendChild(note);
+        }
+        // Hinweis zu den Discord-Profilbildern (nur für Admins): wo hängt es, falls keine erscheinen?
+        const avatarNote = document.getElementById('statsAvatarStatus');
+        const status = data.avatar_status;
+        if (avatarNote && status) {
+            if (status.bot === 0) {
+                avatarNote.textContent = 'Profilbilder: Der Discord-Bot liefert noch keine Bild-Adressen. Das braucht Bot-Version 1.8.0; der Bot fragt sie beim Start und danach täglich bei Discord ab.';
+            } else {
+                avatarNote.textContent = `Profilbilder: ${status.local} von ${status.players} Spielern geladen (der Bot kennt ${status.bot}).`
+                    + (status.writable ? '' : ' Der Ordner assets/avatars ist für PHP nicht beschreibbar – bitte Schreibrechte geben.');
+            }
         }
         for (const member of data.roster) {
             const label = document.createElement('label');

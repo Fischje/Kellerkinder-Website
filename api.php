@@ -3267,6 +3267,7 @@ if ($action === 'playtime_stats') {
             $excludedMap[$entry['id']] = $entry['name'];
         }
         $roster = [];
+        $avatarStatus = ['players' => 0, 'bot' => 0, 'local' => 0];
         foreach (is_array($stats['roster'] ?? null) ? $stats['roster'] : [] as $member) {
             $memberId = (string) ($member['id'] ?? '');
             if (!preg_match('/^\d{5,25}$/', $memberId)) {
@@ -3279,8 +3280,15 @@ if ($action === 'playtime_stats') {
                 'excluded' => isset($excludedMap[$memberId]),
                 'avatar' => discordAvatarLocal($memberId, $avatarIndex),
             ];
-            if (!isset($excludedMap[$memberId]) && validDiscordAvatarUrl($member['avatar'] ?? null) !== null) {
-                $avatarSources[$memberId] ??= $member['avatar'];
+            if (!isset($excludedMap[$memberId])) {
+                $avatarStatus['players']++;
+                if (validDiscordAvatarUrl($member['avatar'] ?? null) !== null) {
+                    $avatarSources[$memberId] ??= $member['avatar'];
+                    $avatarStatus['bot']++;
+                }
+                if (discordAvatarLocal($memberId, $avatarIndex) !== null) {
+                    $avatarStatus['local']++;
+                }
             }
         }
         // Ausgeblendete ohne Spielzeit im Zeitraum trotzdem anzeigen, damit man sie wieder einblenden kann.
@@ -3291,6 +3299,10 @@ if ($action === 'playtime_stats') {
         usort($roster, static fn(array $a, array $b): int => $b['minutes'] <=> $a['minutes'] ?: strcasecmp($a['name'], $b['name']));
         $out['roster'] = $roster;
         $out['roster_supported'] = is_array($stats['roster'] ?? null);
+        // Für die Fehlersuche bei den Profilbildern: Wie viele kennt der Bot, wie viele sind geladen, ist der Ordner beschreibbar?
+        $avatarDirectory = __DIR__ . '/' . DISCORD_AVATAR_DIR;
+        $avatarStatus['writable'] = is_dir($avatarDirectory) ? is_writable($avatarDirectory) : is_writable(__DIR__ . '/assets');
+        $out['avatar_status'] = $avatarStatus;
     }
     // Fehlende Spiele-Symbole im Hintergrund suchen und herunterladen; die Antwort geht sofort raus.
     $gameNames = array_column($out['games'], 'name');
