@@ -203,13 +203,15 @@ Die Laufzeitdateien unter `data/store.php*` werden von Git ignoriert und dadurch
 │   ├── bootstrap.php   (Version, Hintergrundbilder, Sicherheits-Header)
 │   ├── styles.php      (gemeinsames Stylesheet für alle Seiten)
 │   ├── site-header.php (gemeinsamer Seitenkopf)
+│   ├── games-view.php  (gemeinsame Ansicht von games.php und alle-spiele.php)
 │   ├── arena-styles.php (Design „Arena“, über styles.php gelegt)
 │   ├── blog-styles.php
 │   └── stats-styles.php
 ├── .gitignore
 ├── api.php
 ├── blog.php
-├── games.php
+├── games.php           (Spiele: Top 10 / aufklappbar bis 30)
+├── alle-spiele.php     (Alle Spiele: komplette Rangliste)
 ├── statistik.php       (leitet auf games.php um)
 ├── steam-refresh.php   (Cron: Steam-Erfolge, Spiele-Symbole, Profilbilder holen)
 ├── feed.php
@@ -254,6 +256,9 @@ Kellerkinder-Discord gespielt werden und wie lange. Die Zahlen liefert der Disco
 Spiele-Bibliothek gibt es nicht mehr.
 
 **Zeiträume:** Letzte 7 Tage, Letzte 30 Tage (Standard), Ein Jahr, Immer.
+
+**Umfang:** Sichtbar sind die Top 10, mit „Platz 11–30 anzeigen“ klappt die Liste bis Platz 30 auf.
+Alles darüber steht auf der eigenen Seite „Alle Spiele“ (`alle-spiele.php`, Knopf „Alle N Spiele ansehen“).
 
 **Spiele-Symbole:** Zu jedem Spiel der Rangliste sucht die Website einmal ein Bild und lädt es
 nach `assets/game-icons` herunter (dort liegen nur automatisch erzeugte Dateien, sie sind nicht

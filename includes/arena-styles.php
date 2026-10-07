@@ -861,6 +861,11 @@
         .games-panel { margin-top: 0; padding: 26px 24px; }
         .games-head .section-title { margin-bottom: 20px; }
 
+        /* „Mehr anzeigen“-Knopf und Link zur Seite mit allen Spielen */
+        .stats-more-toggle, .stats-link-button { display: inline-flex; align-items: center; justify-content: center; margin: 4px 0 22px; text-decoration: none; }
+        .stats-link-button { margin-top: 0; }
+        .stats-item[hidden] { display: none; }
+
         /* Profilbild des Spielers (Discord) */
         .stats-row.with-avatar { grid-template-columns: 2.2em 40px minmax(0, 1fr) auto; }
         .stats-row.expandable.with-avatar { grid-template-columns: 2.2em 40px minmax(0, 1fr) auto 1.2em; }

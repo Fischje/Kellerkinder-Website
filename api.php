@@ -3220,7 +3220,10 @@ if ($action === 'playtime_stats') {
         return $result;
     };
     $iconIndex = gameIconIndex();
-    foreach (array_slice($stats['games'], 0, 100) as $game) {
+    // „Spiele“ zeigt höchstens die Top 30, „Alle Spiele“ (all=1) bis zu 500; total_games ist die Gesamtzahl.
+    $gameLimit = ((string) ($payload['all'] ?? '')) === '1' ? 500 : 30;
+    $out['total_games'] = count($stats['games']);
+    foreach (array_slice($stats['games'], 0, $gameLimit) as $game) {
         $gameName = mb_substr((string) ($game['name'] ?? ''), 0, 100, 'UTF-8');
         $row = [
             'name' => $gameName,

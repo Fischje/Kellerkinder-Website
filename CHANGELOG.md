@@ -1,5 +1,16 @@
 # Änderungsprotokoll
 
+## 2.19.0 — Spiele: Top 10, aufklappbar bis Platz 30, eigene Seite für alle
+
+- Auf der Seite „Spiele“ sind sofort nur die **Top 10** zu sehen. Mit „Platz 11–30 anzeigen“
+  klappt die Liste bis Platz 30 auf (und wieder zu)
+- Gibt es mehr als 30 Spiele, führt der Knopf „Alle N Spiele ansehen →“ auf die neue Seite
+  **„Alle Spiele“** (`alle-spiele.php`) mit der kompletten Rangliste, ebenfalls mit Symbolen,
+  Aufklapp-Details und Zeitraum-Auswahl. Der gewählte Zeitraum wird mitgenommen (auch zurück)
+- Die Kachel „Spiele“ zeigt weiterhin die Gesamtzahl aller Spiele
+- Die Seiten „Spiele“ und „Alle Spiele“ teilen sich die Ansicht (`includes/games-view.php`);
+  im Menü bleibt „Spiele“ aktiv
+
 ## 2.18.0 — Discord-Profilbilder neben den Spielern
 
 - Auf der Seite „Spiele“ steht neben jedem Spieler jetzt sein Discord-Profilbild: in der
