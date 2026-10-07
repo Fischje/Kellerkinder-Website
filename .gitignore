@@ -12,11 +12,3 @@ data/*
 !data/.htaccess
 !data/index.php
 bk/
-# Heruntergeladene Spiele-Symbole (werden automatisch geholt)
-assets/game-icons/*
-!assets/game-icons/.htaccess
-!assets/game-icons/README.txt
-# Heruntergeladene Discord-Profilbilder (werden automatisch geholt)
-assets/avatars/*
-!assets/avatars/.htaccess
-!assets/avatars/README.txt

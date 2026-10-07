@@ -1,5 +1,15 @@
 # Änderungsprotokoll
 
+## 2.19.2 — Profilbilder und Spiele-Symbole brauchen keine Extra-Schreibrechte mehr
+
+- **Fehler behoben:** Auf dem Server durfte PHP nicht in `assets/avatars` und `assets/game-icons`
+  schreiben (die Ordner gehören dem Benutzer, der die Dateien per Git holt). Deshalb kam trotz
+  Bild-Adressen vom Bot keine Profilbild-Datei an, und Spiele-Symbole kamen nur direkt vom Anbieter
+- Heruntergeladene Bilder liegen jetzt in `data/media` – dort muss PHP ohnehin schreiben dürfen – und werden
+  über das neue `media.php` ausgeliefert (Dateinamen mit Hash, daher lange im Browser-Cache)
+- Bereits gefundene Bilder, deren Download früher scheiterte, werden automatisch nachgeholt (ohne neue Suche)
+- Die Ordner `assets/avatars` und `assets/game-icons` entfallen. Die Statuszeile für Admins prüft jetzt `data/media`
+
 ## 2.19.1 — Profilbilder: Fehlersuche für Admins
 
 - Unter der Liste „Spieler ausblenden“ steht für Admins jetzt eine Zeile zu den Discord-Profilbildern:

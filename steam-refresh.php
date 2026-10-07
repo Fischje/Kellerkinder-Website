@@ -6,8 +6,8 @@ declare(strict_types=1);
 //   0 * * * * php /srv/kellerkinder-website/steam-refresh.php --force
 //
 // 1. Steam-Erfolge für das Widget „Steam-Erfolge“ holen (Zwischenspeicher in data/cache).
-// 2. Symbole der Spiele aus der Spiele-Seite suchen und nach assets/game-icons laden.
-// 3. Discord-Profilbilder der Spieler nach assets/avatars laden und einmal pro Woche prüfen.
+// 2. Symbole der Spiele aus der Spiele-Seite suchen und nach data/media laden.
+// 3. Discord-Profilbilder der Spieler nach data/media laden und einmal pro Woche prüfen.
 //
 // Ohne --force wird nur gearbeitet, wenn nötig (veraltet bzw. Symbole fehlen).
 // --force      Steam-Erfolge in jedem Fall neu holen und erfolglose Spiele-Symbole erneut suchen

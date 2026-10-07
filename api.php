@@ -82,8 +82,7 @@ const CURRENT_GAME_NAME_MAX = 100;
 const STEAM_SEARCH_RESULTS_MAX = 8;
 
 // Discord-Profilbilder der Spieler: Der Bot liefert die Bild-Adresse, die Website lädt das Bild
-// nach assets/avatars (die Besucher laden also nichts von Discord) und prüft es einmal pro Woche.
-const DISCORD_AVATAR_DIR = 'assets/avatars';
+// nach data/media (die Besucher laden also nichts von Discord; ausgeliefert über media.php) und prüft es einmal pro Woche.
 const DISCORD_AVATAR_INDEX_FILE = 'discord-avatars.json';
 const DISCORD_AVATAR_CHECK_SECONDS = 604800;   // Bild einmal pro Woche auf Änderung prüfen
 const DISCORD_AVATAR_RETRY_SECONDS = 3600;     // nach einem Fehlschlag frühestens nach 1 Stunde erneut
@@ -91,8 +90,7 @@ const DISCORD_AVATAR_MAX_BYTES = 400000;
 const DISCORD_AVATAR_BATCH_MAX = 25;
 
 // Spiele-Symbole: Zu jedem Spiel der Statistik wird einmal ein Bild über die Spielsuche
-// (RAWG bzw. Steam-Store) gefunden und nach assets/game-icons heruntergeladen.
-const GAME_ICON_DIR = 'assets/game-icons';
+// (RAWG bzw. Steam-Store) gefunden und nach data/media heruntergeladen (ausgeliefert über media.php).
 const GAME_ICON_INDEX_FILE = 'game-icons.json';
 const GAME_ICON_LOCK_FILE = 'game-icons.lock';
 const GAME_ICON_BATCH_MAX = 12;            // so viele neue Symbole je Durchlauf
@@ -1060,6 +1058,63 @@ function searchGames(string $term): ?array
     return $results;
 }
 
+// ---------- Heruntergeladene Bilder (Spiele-Symbole, Profilbilder) ----------
+//
+// Die Bilder liegen in data/media – dort muss PHP ohnehin schreiben dürfen – und werden über
+// media.php ausgeliefert. So braucht es keine zusätzlichen Schreibrechte auf Ordner des
+// Programmcodes (die per Git übertragen werden und oft einem anderen Benutzer gehören).
+
+function mediaDirectory(): string
+{
+    return storageDirectory() . DIRECTORY_SEPARATOR . 'media';
+}
+
+/** Legt data/media an, falls nötig. false, wenn das nicht geht. */
+function mediaDirectoryEnsure(): bool
+{
+    $directory = mediaDirectory();
+    return is_dir($directory) || @mkdir($directory, 0750, true) || is_dir($directory);
+}
+
+/** Gibt es diese heruntergeladene Datei (nur Dateiname, kein Pfad)? */
+function mediaFileExists(string $file): bool
+{
+    return preg_match('/^[a-z0-9][a-z0-9._-]{0,120}\.(?:png|jpe?g|webp|gif)$/', $file) === 1
+        && is_file(mediaDirectory() . DIRECTORY_SEPARATOR . $file);
+}
+
+/**
+ * Adresse einer heruntergeladenen Datei für den Browser, oder null, wenn es sie nicht gibt.
+ * Ältere Einträge können noch einen Pfad unter assets/ enthalten – der gilt weiter, solange die Datei da ist.
+ */
+function mediaUrl(string $file): ?string
+{
+    if ($file === '') {
+        return null;
+    }
+    if (str_starts_with($file, 'assets/')) {
+        return is_file(__DIR__ . '/' . $file) ? $file : null;
+    }
+    return mediaFileExists($file) ? 'media.php?f=' . rawurlencode($file) : null;
+}
+
+/** Speichert ein heruntergeladenes Bild nach data/media; gibt den Dateinamen zurück. */
+function mediaStore(string $binary, string $file): ?string
+{
+    if (!mediaDirectoryEnsure()) {
+        return null;
+    }
+    return @file_put_contents(mediaDirectory() . DIRECTORY_SEPARATOR . $file, $binary) === false ? null : $file;
+}
+
+/** Löscht eine heruntergeladene Datei (nur neue Ablage, alte assets/-Pfade bleiben unangetastet). */
+function mediaDelete(string $file): void
+{
+    if ($file !== '' && !str_starts_with($file, 'assets/') && mediaFileExists($file)) {
+        @unlink(mediaDirectory() . DIRECTORY_SEPARATOR . $file);
+    }
+}
+
 // ---------- Discord-Profilbilder ----------
 
 /** Nur Bilder von Discords eigenem Bildserver zulassen. */
@@ -1085,8 +1140,7 @@ function discordAvatarIndex(): array
 /** Heruntergeladenes Profilbild (relativer Pfad) oder null. Es wird nie direkt von Discord eingebunden. */
 function discordAvatarLocal(string $playerId, array $index): ?string
 {
-    $file = (string) ($index[$playerId]['file'] ?? '');
-    return $file !== '' && is_file(__DIR__ . '/' . $file) ? $file : null;
+    return mediaUrl((string) ($index[$playerId]['file'] ?? ''));
 }
 
 /** Muss dieses Profilbild neu geholt bzw. geprüft werden? */
@@ -1130,7 +1184,7 @@ function discordAvatarsSync(array $sources, int $max = DISCORD_AVATAR_BATCH_MAX)
             break;
         }
         $entry = $index[$playerId] ?? [];
-        $currentFile = discordAvatarLocal($playerId, [$playerId => $entry]);
+        $currentFile = discordAvatarLocal($playerId, [$playerId => $entry]) !== null ? (string) $entry['file'] : null;
         if ($currentFile !== null && ($entry['url'] ?? '') === $url) {
             $entry['checked_at'] = time(); // unverändert
             unset($entry['failed_at']);
@@ -1144,7 +1198,7 @@ function discordAvatarsSync(array $sources, int $max = DISCORD_AVATAR_BATCH_MAX)
             continue;
         }
         if ($currentFile !== null && $currentFile !== $file) {
-            @unlink(__DIR__ . '/' . $currentFile);
+            mediaDelete($currentFile);
         }
         $index[$playerId] = ['url' => $url, 'file' => $file, 'checked_at' => time()];
         $downloaded++;
@@ -1171,12 +1225,7 @@ function discordAvatarDownload(string $url, string $playerId): ?string
     if ($info === false || !isset($extensions[$info[2]])) {
         return null;
     }
-    $directory = __DIR__ . '/' . DISCORD_AVATAR_DIR;
-    if (!is_dir($directory) && !@mkdir($directory, 0755, true) && !is_dir($directory)) {
-        return null;
-    }
-    $file = 'discord-' . substr(md5($playerId), 0, 10) . '-' . substr(md5($url), 0, 8) . '.' . $extensions[$info[2]];
-    return @file_put_contents($directory . '/' . $file, $binary) === false ? null : DISCORD_AVATAR_DIR . '/' . $file;
+    return mediaStore($binary, 'discord-' . substr(md5($playerId), 0, 10) . '-' . substr(md5($url), 0, 8) . '.' . $extensions[$info[2]]);
 }
 
 // ---------- Spiele-Symbole ----------
@@ -1204,11 +1253,7 @@ function gameIconUrl(?array $entry): ?string
     if ($entry === null) {
         return null;
     }
-    $file = (string) ($entry['file'] ?? '');
-    if ($file !== '' && is_file(__DIR__ . '/' . $file)) {
-        return $file;
-    }
-    return validGameImage($entry['remote'] ?? null);
+    return mediaUrl((string) ($entry['file'] ?? '')) ?? validGameImage($entry['remote'] ?? null);
 }
 
 /** Muss für dieses Spiel (noch) nach einem Symbol gesucht werden? */
@@ -1217,10 +1262,14 @@ function gameIconNeedsLookup(?array $entry, bool $retryAll = false): bool
     if ($entry === null) {
         return true;
     }
-    if (gameIconUrl($entry) !== null) {
+    $age = time() - (int) ($entry['tried_at'] ?? 0);
+    if (mediaUrl((string) ($entry['file'] ?? '')) !== null) {
         return false;
     }
-    $age = time() - (int) ($entry['tried_at'] ?? 0);
+    if (validGameImage($entry['remote'] ?? null) !== null) {
+        // Bild gefunden, aber noch nicht heruntergeladen (bis dahin wird das Bild des Anbieters gezeigt): nach 1 Stunde erneut versuchen.
+        return $retryAll || $age >= GAME_ICON_RETRY_ERROR_SECONDS;
+    }
     return $retryAll || $age >= (!empty($entry['error']) ? GAME_ICON_RETRY_ERROR_SECONDS : GAME_ICON_RETRY_NOTFOUND_SECONDS);
 }
 
@@ -1267,7 +1316,7 @@ function gameIconLookup(string $name)
     return $bestScore >= 70.0 ? $best : null;
 }
 
-/** Lädt das Bild herunter und speichert es unter assets/game-icons. Gibt den relativen Pfad zurück. */
+/** Lädt das Bild herunter und speichert es unter data/media. Gibt den Dateinamen zurück. */
 function gameIconDownload(string $url, string $key): ?string
 {
     $url = validGameImage($url);
@@ -1289,16 +1338,8 @@ function gameIconDownload(string $url, string $key): ?string
     if ($info === false || !isset($extensions[$info[2]])) {
         return null;
     }
-    $directory = __DIR__ . '/' . GAME_ICON_DIR;
-    if (!is_dir($directory) && !@mkdir($directory, 0755, true) && !is_dir($directory)) {
-        return null;
-    }
     $slug = substr(trim((string) preg_replace('/[^a-z0-9]+/', '-', strtolower($key)), '-'), 0, 40);
-    $file = ($slug !== '' ? $slug : 'spiel') . '-' . substr(md5($url), 0, 8) . '.' . $extensions[$info[2]];
-    if (@file_put_contents($directory . '/' . $file, $binary) === false) {
-        return null;
-    }
-    return GAME_ICON_DIR . '/' . $file;
+    return mediaStore($binary, 'spiel-' . ($slug !== '' ? $slug : 'x') . '-' . substr(md5($url), 0, 8) . '.' . $extensions[$info[2]]);
 }
 
 /**
@@ -1318,6 +1359,16 @@ function gameIconsSync(array $names, int $max = GAME_ICON_BATCH_MAX, bool $retry
     }
     $added = 0;
     foreach (array_slice($todo, 0, $max, true) as $key => $name) {
+        $known = $index[$key] ?? null;
+        if ($known !== null && validGameImage($known['remote'] ?? null) !== null) {
+            // Bild schon gefunden, nur der Download fehlt noch: nicht erneut suchen.
+            $known['file'] = gameIconDownload($known['remote'], $key);
+            $known['tried_at'] = time();
+            $index[$key] = $known;
+            $added += $known['file'] !== null ? 1 : 0;
+            gameIconIndexWrite($index);
+            continue;
+        }
         $found = gameIconLookup($name);
         $entry = ['name' => mb_substr($name, 0, CURRENT_GAME_NAME_MAX, 'UTF-8'), 'tried_at' => time(), 'file' => null, 'remote' => null];
         if ($found === false) {
@@ -1325,7 +1376,7 @@ function gameIconsSync(array $names, int $max = GAME_ICON_BATCH_MAX, bool $retry
         } elseif ($found !== null) {
             $entry['remote'] = validGameImage($found['image'] ?? null);
             $entry['file'] = $entry['remote'] === null ? null : gameIconDownload($entry['remote'], $key);
-            $added += gameIconUrl($entry) !== null ? 1 : 0;
+            $added += $entry['file'] !== null ? 1 : 0;
         }
         $index[$key] = $entry;
         gameIconIndexWrite($index); // nach jedem Spiel sichern, falls der Durchlauf abbricht
@@ -3300,8 +3351,7 @@ if ($action === 'playtime_stats') {
         $out['roster'] = $roster;
         $out['roster_supported'] = is_array($stats['roster'] ?? null);
         // Für die Fehlersuche bei den Profilbildern: Wie viele kennt der Bot, wie viele sind geladen, ist der Ordner beschreibbar?
-        $avatarDirectory = __DIR__ . '/' . DISCORD_AVATAR_DIR;
-        $avatarStatus['writable'] = is_dir($avatarDirectory) ? is_writable($avatarDirectory) : is_writable(__DIR__ . '/assets');
+        $avatarStatus['writable'] = is_dir(mediaDirectory()) ? is_writable(mediaDirectory()) : is_writable(storageDirectory());
         $out['avatar_status'] = $avatarStatus;
     }
     // Fehlende Spiele-Symbole im Hintergrund suchen und herunterladen; die Antwort geht sofort raus.

@@ -214,6 +214,7 @@ Die Laufzeitdateien unter `data/store.php*` werden von Git ignoriert und dadurch
 ├── alle-spiele.php     (Alle Spiele: komplette Rangliste)
 ├── statistik.php       (leitet auf games.php um)
 ├── steam-refresh.php   (Cron: Steam-Erfolge, Spiele-Symbole, Profilbilder holen)
+├── media.php           (liefert Spiele-Symbole und Profilbilder aus data/media aus)
 ├── feed.php
 ├── check.php
 ├── index.php
@@ -261,8 +262,7 @@ Spiele-Bibliothek gibt es nicht mehr.
 Alles darüber steht auf der eigenen Seite „Alle Spiele“ (`alle-spiele.php`, Knopf „Alle N Spiele ansehen“).
 
 **Spiele-Symbole:** Zu jedem Spiel der Rangliste sucht die Website einmal ein Bild und lädt es
-nach `assets/game-icons` herunter (dort liegen nur automatisch erzeugte Dateien, sie sind nicht
-im Repository). Die Suche läuft im Hintergrund, die Seite wartet nicht darauf. Für Spiele
+nach `data/media` herunter (ausgeliefert über `media.php`; dort liegen nur automatisch erzeugte Dateien). Die Suche läuft im Hintergrund, die Seite wartet nicht darauf. Für Spiele
 außerhalb von Steam (z. B. Blizzard) wird [RAWG](https://rawg.io/apidocs) verwendet. Dafür einen
 kostenlosen API-Key holen und in `config.php` im Hauptordner eintragen (die Datei ist in
 `.gitignore` und wird nicht hochgeladen):
@@ -337,9 +337,9 @@ die Liste über `api.php?action=stats_exclusions`, höchstens 5 Minuten verzöge
 Dafür ist Bot-Version 1.6.0 nötig.
 
 **Profilbilder:** Neben den Spielern steht ihr Discord-Profilbild (Bot-Version 1.8.0). Die Website lädt
-es nach `assets/avatars` herunter (nicht im Repository) und prüft es einmal pro Woche auf Änderung;
-Besucher laden nichts von Discord. Ohne eigenes Bild erscheint ein Platzhalter. Der Ordner muss für PHP
-beschreibbar sein.
+es nach `data/media` herunter (ausgeliefert über `media.php`) und prüft es einmal pro Woche auf Änderung;
+Besucher laden nichts von Discord. Ohne eigenes Bild erscheint ein Platzhalter. Der Ordner `data` muss für PHP
+beschreibbar sein (wie ohnehin nötig); weitere Rechte braucht es nicht.
 
 **Aufklappen:** Ein Spiel anklicken zeigt die Top-Spieler, ein Spieler seine Top-5-Spiele
 (Bot-Version 1.7.0). Öffentlich nur, wenn der Bot Spielernamen freigibt

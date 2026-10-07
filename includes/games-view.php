@@ -330,7 +330,7 @@ require __DIR__ . '/site-header.php';
                 avatarNote.textContent = 'Profilbilder: Der Discord-Bot liefert noch keine Bild-Adressen. Das braucht Bot-Version 1.8.0; der Bot fragt sie beim Start und danach täglich bei Discord ab.';
             } else {
                 avatarNote.textContent = `Profilbilder: ${status.local} von ${status.players} Spielern geladen (der Bot kennt ${status.bot}).`
-                    + (status.writable ? '' : ' Der Ordner assets/avatars ist für PHP nicht beschreibbar – bitte Schreibrechte geben.');
+                    + (status.writable ? '' : ' Der Ordner data/media ist für PHP nicht beschreibbar – bitte Schreibrechte geben.');
             }
         }
         for (const member of data.roster) {
