@@ -205,12 +205,13 @@ Die Laufzeitdateien unter `data/store.php*` werden von Git ignoriert und dadurch
 │   ├── site-header.php (gemeinsamer Seitenkopf)
 │   ├── arena-styles.php (Design „Arena“, über styles.php gelegt)
 │   ├── blog-styles.php
-│   └── games-styles.php
+│   └── stats-styles.php
 ├── .gitignore
 ├── api.php
 ├── blog.php
 ├── games.php
-├── steam-refresh.php (Cron: Steam-Erfolge holen)
+├── statistik.php       (leitet auf games.php um)
+├── steam-refresh.php   (Cron: Steam-Erfolge und Spiele-Symbole holen)
 ├── feed.php
 ├── check.php
 ├── index.php
@@ -247,13 +248,18 @@ und müssen direkt auf den Server hochgeladen werden (z. B. per FTP/SCP oder
 
 ## Spiele
 
-Unter `games.php` führen die Kellerkinder eine Bibliothek der aktuell gespielten
-Spiele. Angemeldete Benutzer suchen ein Spiel über das Suchfeld und übernehmen
-den Treffer samt Bild. Spiele ohne Treffer lassen sich auch ohne Bild eintragen.
+Die Seite `games.php` (Menüpunkt „Spiele“, früher „Statistik“) zeigt, welche Spiele auf dem
+Kellerkinder-Discord gespielt werden und wie lange. Die Zahlen liefert der Discord-Bot
+(siehe Abschnitt „Spielzeit-Statistik“ weiter unten). Die frühere, von Hand gepflegte
+Spiele-Bibliothek gibt es nicht mehr.
 
-**Spieldatenbank:** Für Spiele außerhalb von Steam (z. B. Blizzard) wird
-[RAWG](https://rawg.io/apidocs) verwendet. Dafür einen kostenlosen API-Key
-holen und in `config.php` im Hauptordner eintragen (die Datei ist in
+**Zeiträume:** Letzte 7 Tage, Letzte 30 Tage (Standard), Ein Jahr, Immer.
+
+**Spiele-Symbole:** Zu jedem Spiel der Rangliste sucht die Website einmal ein Bild und lädt es
+nach `assets/game-icons` herunter (dort liegen nur automatisch erzeugte Dateien, sie sind nicht
+im Repository). Die Suche läuft im Hintergrund, die Seite wartet nicht darauf. Für Spiele
+außerhalb von Steam (z. B. Blizzard) wird [RAWG](https://rawg.io/apidocs) verwendet. Dafür einen
+kostenlosen API-Key holen und in `config.php` im Hauptordner eintragen (die Datei ist in
 `.gitignore` und wird nicht hochgeladen):
 
 ```php
@@ -261,8 +267,10 @@ holen und in `config.php` im Hauptordner eintragen (die Datei ist in
 const RAWG_API_KEY = 'dein-key';
 ```
 
-Ohne Key sucht die Seite im Steam-Store. Der Server braucht ausgehenden Zugriff
-auf `api.rawg.io` bzw. `store.steampowered.com`.
+Ohne Key sucht die Seite im Steam-Store (dort fehlen z. B. Blizzard-Spiele, sie zeigen dann
+ein Platzhalter-Symbol). Der Server braucht ausgehenden Zugriff auf `api.rawg.io` bzw.
+`store.steampowered.com`. Nicht gefundene Spiele werden nach 7 Tagen erneut gesucht; der
+Cron-Job (siehe Steam-Erfolge) mit `--force` sucht sofort erneut.
 
 ## Steam-Erfolge
 
@@ -289,6 +297,8 @@ empfiehlt sich ein stündlicher Cron-Job:
 0 * * * * php /srv/kellerkinder-website/steam-refresh.php --force
 ```
 
+Das Skript holt außerdem die Symbole für die Seite „Spiele“.
+
 Ohne Cron holt die Website die Daten bei einem Besuch nach Ablauf der Stunde selbst
 (beim nächsten Besuch sind sie dann neu). Admins sehen unter dem Widget „Jetzt neu laden“
 und „Diagnose“.
@@ -297,11 +307,10 @@ und „Diagnose“.
 stehen – „Nur Freunde“ reicht nicht, auch wenn die Spieleliste sichtbar ist. Fehlt jemand,
 nennt das Widget den Grund.
 
-## Statistik
+## Spielzeit-Statistik (Discord-Bot)
 
-Unter `statistik.php` zeigt die Seite, welche Spiele auf dem Kellerkinder-Discord
-wie lange gespielt wurden (Zeiträume 7, 30, 90 Tage und gesamt). Die Zahlen
-liefert der Discord-Bot (Repository `kk-discord-bot`, ab Version 1.5.0); gezählt
+Die Spielzeiten auf der Seite „Spiele“ (`games.php`) liefert der Discord-Bot
+(Zeiträume 7, 30, 365 Tage und gesamt). Der Discord-Bot (Repository `kk-discord-bot`, ab Version 1.5.0); gezählt
 werden nur volle 15-Minuten-Blöcke.
 
 Der Server ruft die Daten selbst beim Bot ab, der Browser spricht nie direkt mit
@@ -316,7 +325,7 @@ Die Antwort wird 5 Minuten zwischengespeichert. Ist der Bot kurz nicht
 erreichbar, zeigt die Seite den letzten bekannten Stand mit Hinweis. Ohne
 `BOT_STATS_URL` meldet die Seite, dass die Statistik noch nicht eingerichtet ist.
 
-**Spieler ausblenden:** Admins sehen auf der Statistik-Seite unten eine Liste
+**Spieler ausblenden:** Admins sehen auf der Seite „Spiele“ unten eine Liste
 aller Discord-Mitglieder mit Spielzeit und können einzelne ausblenden. Diese
 zählen dann weder auf der Website noch bei `/statistik` im Discord (der Bot holt
 die Liste über `api.php?action=stats_exclusions`, höchstens 5 Minuten verzögert).

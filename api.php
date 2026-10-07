@@ -47,7 +47,7 @@ const ACHIEVEMENTS_CACHE_TTL_SECONDS = 1800;
 // Spielzeit-Statistik vom Discord-Bot. Die Adresse steht (nicht im Repository)
 // in config.php, z. B.: const BOT_STATS_URL = 'http://127.0.0.1:3100/api/stats';
 const BOT_STATS_TTL_SECONDS = 300;
-const BOT_STATS_ALLOWED_DAYS = [7, 30, 90, 0]; // 0 = gesamte Zeit
+const BOT_STATS_ALLOWED_DAYS = [7, 30, 365, 0]; // 0 = gesamte Zeit (Immer)
 const STATS_EXCLUDED_MAX = 200;
 
 // Steam-Erfolge: Schlüssel (nicht im Repository) in config.php, z. B.
@@ -78,9 +78,18 @@ const BLOG_CONTENT_MAX = 120000;
 const BLOG_IMAGE_MAX_WIDTH = 1600;
 const BLOG_IMAGE_MAX_BYTES = 6000000;
 
-const CURRENT_GAMES_MAX = 100;
 const CURRENT_GAME_NAME_MAX = 100;
 const STEAM_SEARCH_RESULTS_MAX = 8;
+
+// Spiele-Symbole: Zu jedem Spiel der Statistik wird einmal ein Bild über die Spielsuche
+// (RAWG bzw. Steam-Store) gefunden und nach assets/game-icons heruntergeladen.
+const GAME_ICON_DIR = 'assets/game-icons';
+const GAME_ICON_INDEX_FILE = 'game-icons.json';
+const GAME_ICON_LOCK_FILE = 'game-icons.lock';
+const GAME_ICON_BATCH_MAX = 12;            // so viele neue Symbole je Durchlauf
+const GAME_ICON_MAX_BYTES = 1500000;
+const GAME_ICON_RETRY_NOTFOUND_SECONDS = 604800; // „nicht gefunden“: nach 7 Tagen erneut suchen
+const GAME_ICON_RETRY_ERROR_SECONDS = 3600;      // Suchdienst nicht erreichbar: nach 1 Stunde
 
 /**
  * Erlaubte Tags und Attribute für Blog-Inhalte. Alles andere wird entfernt.
@@ -348,35 +357,6 @@ function normalizeBlogPosts($posts): array
     return $result;
 }
 
-function normalizeCurrentGames($games): array
-{
-    if (!is_array($games)) {
-        return [];
-    }
-    $result = [];
-    foreach ($games as $game) {
-        if (!is_array($game) || (int) ($game['id'] ?? 0) <= 0) {
-            continue;
-        }
-        $name = mb_substr(trim((string) ($game['name'] ?? '')), 0, CURRENT_GAME_NAME_MAX, 'UTF-8');
-        if ($name === '') {
-            continue;
-        }
-        $steamAppId = (int) ($game['steam_appid'] ?? 0);
-        $image = validGameImage($game['image'] ?? null) ?? ($steamAppId > 0 ? steamImageUrl($steamAppId) : null);
-        $result[] = [
-            'id' => (int) $game['id'],
-            'name' => $name,
-            'steam_appid' => $steamAppId > 0 ? $steamAppId : null,
-            'image' => $image,
-            'added_by_user_id' => (int) ($game['added_by_user_id'] ?? 0),
-            'added_by_name' => (string) ($game['added_by_name'] ?? ''),
-            'added_at' => (string) ($game['added_at'] ?? gmdate('c')),
-        ];
-    }
-    return array_slice($result, 0, CURRENT_GAMES_MAX);
-}
-
 function steamImageUrl(int $appId): string
 {
     return 'https://cdn.akamai.steamstatic.com/steam/apps/' . $appId . '/header.jpg';
@@ -386,6 +366,10 @@ function steamImageUrl(int $appId): string
 function validGameImage($value): ?string
 {
     $url = is_string($value) ? trim($value) : '';
+    // GAME_IMAGE_TEST_PREFIX nur für lokale Tests mit einer Attrappe (config.php), im Betrieb nicht setzen.
+    if ($url !== '' && defined('GAME_IMAGE_TEST_PREFIX') && str_starts_with($url, GAME_IMAGE_TEST_PREFIX) && strlen($url) <= 300) {
+        return $url;
+    }
     if ($url !== '' && strlen($url) <= 300
         && preg_match('#^https://(media\.rawg\.io/media/[A-Za-z0-9_/.-]+|cdn\.akamai\.steamstatic\.com/steam/apps/\d+/[A-Za-z0-9_.-]+)$#', $url)) {
         return $url;
@@ -870,15 +854,28 @@ function steamRefreshInBackground(array $store, array $response): void
         steamRefreshNow($store);
         exit;
     }
-    if (!steamRefreshRunning() && function_exists('exec') && !in_array('exec', array_map('trim', explode(',', (string) ini_get('disable_functions'))), true)) {
-        foreach ([PHP_BINDIR . '/php', '/usr/bin/php', '/usr/local/bin/php'] as $php) {
-            if (is_file($php) && is_executable($php)) {
-                @exec(escapeshellarg($php) . ' ' . escapeshellarg(__DIR__ . '/steam-refresh.php') . ' > /dev/null 2>&1 &');
-                break;
-            }
-        }
+    if (!steamRefreshRunning()) {
+        backgroundSpawnCli('');
     }
     respond($response);
+}
+
+/**
+ * Startet steam-refresh.php als eigenen, abgekoppelten PHP-Prozess (wenn exec erlaubt ist).
+ * $argument: z. B. '--icons-only'.
+ */
+function backgroundSpawnCli(string $argument): void
+{
+    $disabled = array_map('trim', explode(',', (string) ini_get('disable_functions')));
+    if (!function_exists('exec') || in_array('exec', $disabled, true)) {
+        return;
+    }
+    foreach ([PHP_BINDIR . '/php', '/usr/bin/php', '/usr/local/bin/php'] as $php) {
+        if (is_file($php) && is_executable($php)) {
+            @exec(escapeshellarg($php) . ' ' . escapeshellarg(__DIR__ . '/steam-refresh.php') . ($argument !== '' ? ' ' . $argument : '') . ' > /dev/null 2>&1 &');
+            return;
+        }
+    }
 }
 
 /**
@@ -1010,7 +1007,7 @@ function searchGames(string $term): ?array
 {
     $results = [];
     if (defined('RAWG_API_KEY') && RAWG_API_KEY !== '') {
-        $data = gameHttpGet('https://api.rawg.io/api/games?key=' . rawurlencode(RAWG_API_KEY)
+        $data = gameHttpGet((defined('RAWG_API_BASE') ? RAWG_API_BASE : 'https://api.rawg.io') . '/api/games?key=' . rawurlencode(RAWG_API_KEY)
             . '&search=' . rawurlencode($term) . '&search_precise=true&page_size=' . STEAM_SEARCH_RESULTS_MAX);
         if ($data === null || !is_array($data['results'] ?? null)) {
             return null;
@@ -1052,6 +1049,199 @@ function searchGames(string $term): ?array
         }
     }
     return $results;
+}
+
+// ---------- Spiele-Symbole ----------
+
+/** Vergleichsschlüssel für Spielnamen: klein, ohne ™ ® © und Satzzeichen. */
+function gameIconKey(string $name): string
+{
+    $name = mb_strtolower(str_replace(['™', '®', '©'], '', $name), 'UTF-8');
+    return trim((string) preg_replace('/[^\p{L}\p{N}]+/u', ' ', $name));
+}
+
+function gameIconIndex(): array
+{
+    return achievementsCacheRead(GAME_ICON_INDEX_FILE, null) ?? [];
+}
+
+function gameIconIndexWrite(array $index): void
+{
+    achievementsCacheWrite(GAME_ICON_INDEX_FILE, $index);
+}
+
+/** Adresse des Symbols für den Browser: die heruntergeladene Datei, sonst das Bild beim Anbieter. */
+function gameIconUrl(?array $entry): ?string
+{
+    if ($entry === null) {
+        return null;
+    }
+    $file = (string) ($entry['file'] ?? '');
+    if ($file !== '' && is_file(__DIR__ . '/' . $file)) {
+        return $file;
+    }
+    return validGameImage($entry['remote'] ?? null);
+}
+
+/** Muss für dieses Spiel (noch) nach einem Symbol gesucht werden? */
+function gameIconNeedsLookup(?array $entry, bool $retryAll = false): bool
+{
+    if ($entry === null) {
+        return true;
+    }
+    if (gameIconUrl($entry) !== null) {
+        return false;
+    }
+    $age = time() - (int) ($entry['tried_at'] ?? 0);
+    return $retryAll || $age >= (!empty($entry['error']) ? GAME_ICON_RETRY_ERROR_SECONDS : GAME_ICON_RETRY_NOTFOUND_SECONDS);
+}
+
+function gameIconsMissing(array $names): bool
+{
+    $index = gameIconIndex();
+    foreach ($names as $name) {
+        if (gameIconKey((string) $name) !== '' && gameIconNeedsLookup($index[gameIconKey((string) $name)] ?? null)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/**
+ * Sucht über die Spielsuche das passende Bild: erster Treffer mit gleichem Namen,
+ * sonst der ähnlichste (mindestens 70 %). null = nichts Passendes, false = Suchdienst nicht erreichbar.
+ *
+ * @return array|null|false
+ */
+function gameIconLookup(string $name)
+{
+    $results = searchGames(mb_substr($name, 0, CURRENT_GAME_NAME_MAX, 'UTF-8'));
+    if ($results === null) {
+        return false;
+    }
+    $wanted = gameIconKey($name);
+    $best = null;
+    $bestScore = 0.0;
+    foreach ($results as $result) {
+        if (empty($result['image'])) {
+            continue;
+        }
+        $found = gameIconKey((string) $result['name']);
+        if ($found === $wanted) {
+            return $result;
+        }
+        similar_text($wanted, $found, $percent);
+        if ($percent > $bestScore) {
+            $bestScore = $percent;
+            $best = $result;
+        }
+    }
+    return $bestScore >= 70.0 ? $best : null;
+}
+
+/** Lädt das Bild herunter und speichert es unter assets/game-icons. Gibt den relativen Pfad zurück. */
+function gameIconDownload(string $url, string $key): ?string
+{
+    $url = validGameImage($url);
+    if ($url === null) {
+        return null;
+    }
+    $context = stream_context_create(['http' => [
+        'timeout' => 8,
+        'ignore_errors' => true,
+        'header' => "User-Agent: Kellerkinder-Kalender/1.0 (+https://github.com/Fischje)\r\n",
+    ]]);
+    $binary = @file_get_contents($url, false, $context);
+    if ($binary === false || $binary === '' || strlen($binary) > GAME_ICON_MAX_BYTES) {
+        return null;
+    }
+    // Tatsächlichen Bildinhalt prüfen, nicht die Endung.
+    $info = @getimagesizefromstring($binary);
+    $extensions = [IMAGETYPE_JPEG => 'jpg', IMAGETYPE_PNG => 'png', IMAGETYPE_WEBP => 'webp'];
+    if ($info === false || !isset($extensions[$info[2]])) {
+        return null;
+    }
+    $directory = __DIR__ . '/' . GAME_ICON_DIR;
+    if (!is_dir($directory) && !@mkdir($directory, 0755, true) && !is_dir($directory)) {
+        return null;
+    }
+    $slug = substr(trim((string) preg_replace('/[^a-z0-9]+/', '-', strtolower($key)), '-'), 0, 40);
+    $file = ($slug !== '' ? $slug : 'spiel') . '-' . substr(md5($url), 0, 8) . '.' . $extensions[$info[2]];
+    if (@file_put_contents($directory . '/' . $file, $binary) === false) {
+        return null;
+    }
+    return GAME_ICON_DIR . '/' . $file;
+}
+
+/**
+ * Sucht und lädt Symbole für Spiele, die noch keines haben (höchstens $max pro Durchlauf).
+ * $retryAll: auch bisher erfolglose Spiele sofort erneut versuchen. Gibt die Anzahl neuer Symbole zurück.
+ */
+function gameIconsSync(array $names, int $max = GAME_ICON_BATCH_MAX, bool $retryAll = false): int
+{
+    $index = gameIconIndex();
+    $todo = [];
+    foreach ($names as $name) {
+        $name = trim((string) $name);
+        $key = gameIconKey($name);
+        if ($key !== '' && !isset($todo[$key]) && gameIconNeedsLookup($index[$key] ?? null, $retryAll)) {
+            $todo[$key] = $name;
+        }
+    }
+    $added = 0;
+    foreach (array_slice($todo, 0, $max, true) as $key => $name) {
+        $found = gameIconLookup($name);
+        $entry = ['name' => mb_substr($name, 0, CURRENT_GAME_NAME_MAX, 'UTF-8'), 'tried_at' => time(), 'file' => null, 'remote' => null];
+        if ($found === false) {
+            $entry['error'] = true;
+        } elseif ($found !== null) {
+            $entry['remote'] = validGameImage($found['image'] ?? null);
+            $entry['file'] = $entry['remote'] === null ? null : gameIconDownload($entry['remote'], $key);
+            $added += gameIconUrl($entry) !== null ? 1 : 0;
+        }
+        $index[$key] = $entry;
+        gameIconIndexWrite($index); // nach jedem Spiel sichern, falls der Durchlauf abbricht
+    }
+    return $added;
+}
+
+/** Wie gameIconsSync, aber nur eine Suche gleichzeitig. false = es lief schon eine. */
+function gameIconsSyncLocked(array $names, int $max = GAME_ICON_BATCH_MAX, bool $retryAll = false): bool
+{
+    $lock = achievementsCacheDirectory() . DIRECTORY_SEPARATOR . GAME_ICON_LOCK_FILE;
+    if (is_file($lock) && (time() - filemtime($lock)) < STEAM_REFRESH_LOCK_SECONDS) {
+        return false;
+    }
+    if (!is_dir(dirname($lock)) && !@mkdir(dirname($lock), 0750, true) && !is_dir(dirname($lock))) {
+        return false;
+    }
+    @file_put_contents($lock, (string) getmypid());
+    try {
+        gameIconsSync($names, $max, $retryAll);
+    } finally {
+        @unlink($lock);
+    }
+    return true;
+}
+
+/**
+ * Antwortet sofort und holt fehlende Symbole danach (PHP-FPM) bzw. in einem eigenen
+ * PHP-Prozess. Geht beides nicht, erledigt das der Cron-Job (steam-refresh.php).
+ */
+function gameIconsInBackground(array $names, array $response): void
+{
+    $lock = achievementsCacheDirectory() . DIRECTORY_SEPARATOR . GAME_ICON_LOCK_FILE;
+    $running = is_file($lock) && (time() - filemtime($lock)) < STEAM_REFRESH_LOCK_SECONDS;
+    if (!$running && function_exists('fastcgi_finish_request')) {
+        echo json_encode($response, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        fastcgi_finish_request();
+        gameIconsSyncLocked($names);
+        exit;
+    }
+    if (!$running) {
+        backgroundSpawnCli('--icons-only');
+    }
+    respond($response);
 }
 
 /**
@@ -1505,8 +1695,6 @@ function defaultStore(): array
         'remember_tokens' => [],
         'blog_posts' => [],
         'next_post_id' => 1,
-        'current_games' => [],
-        'next_game_id' => 1,
         'settings' => [
             'admin_player_names' => [],
             'theme' => 'default',
@@ -1591,12 +1779,8 @@ function normalizeStore(array $store): array
     $store['remember_tokens'] = pruneRememberTokens($store['remember_tokens'] ?? []);
     $store['blog_posts'] = normalizeBlogPosts($store['blog_posts'] ?? []);
     $store['next_post_id'] = max(1, (int) ($store['next_post_id'] ?? 1));
-    $store['current_games'] = normalizeCurrentGames($store['current_games'] ?? []);
-    $maxGameId = 0;
-    foreach ($store['current_games'] as $currentGame) {
-        $maxGameId = max($maxGameId, $currentGame['id']);
-    }
-    $store['next_game_id'] = max($maxGameId + 1, (int) ($store['next_game_id'] ?? 1), 1);
+    // Die frühere, von Hand gepflegte Spiele-Bibliothek gibt es nicht mehr; alte Einträge fallen beim nächsten Speichern weg.
+    unset($store['current_games'], $store['next_game_id']);
     $store['settings'] = is_array($store['settings'] ?? null) ? $store['settings'] : $defaults['settings'];
     $store['settings']['admin_player_names'] = is_array($store['settings']['admin_player_names'] ?? null)
         ? array_values($store['settings']['admin_player_names'])
@@ -2783,14 +2967,6 @@ if ($action === 'blog_posts') {
     respond(['ok' => true, 'posts' => $posts, 'tags' => $tags]);
 }
 
-if ($action === 'games') {
-    session_write_close();
-    $gamesStore = readStore();
-    $games = $gamesStore['current_games'];
-    usort($games, static fn(array $a, array $b): int => strcmp($b['added_at'], $a['added_at']));
-    respond(['ok' => true, 'games' => $games]);
-}
-
 if ($action === 'stats_exclusions') {
     // Wird vom Discord-Bot abgefragt, damit /statistik dieselben Spieler ausblendet.
     session_write_close();
@@ -2895,6 +3071,7 @@ if ($action === 'playtime_stats') {
         ],
         array_slice(array_values(array_filter($rows, 'is_array')), 0, $limit)
     );
+    $iconIndex = gameIconIndex();
     foreach (array_slice($stats['games'], 0, 100) as $game) {
         $gameName = mb_substr((string) ($game['name'] ?? ''), 0, 100, 'UTF-8');
         $row = [
@@ -2902,6 +3079,7 @@ if ($action === 'playtime_stats') {
             'minutes' => (int) ($game['minutes'] ?? 0),
             'players' => (int) ($game['players'] ?? 0),
             'last_played' => (string) ($game['lastPlayed'] ?? ''),
+            'icon' => gameIconUrl($iconIndex[gameIconKey($gameName)] ?? null),
         ];
         if ($showPersons && is_array($statsDetails['games'][$gameName] ?? null)) {
             $row['top_players'] = $cleanMinutes($statsDetails['games'][$gameName], 'name', 10);
@@ -2958,22 +3136,12 @@ if ($action === 'playtime_stats') {
         $out['roster'] = $roster;
         $out['roster_supported'] = is_array($stats['roster'] ?? null);
     }
+    // Fehlende Spiele-Symbole im Hintergrund suchen und herunterladen; die Antwort geht sofort raus.
+    $gameNames = array_column($out['games'], 'name');
+    if (gameIconsMissing($gameNames)) {
+        gameIconsInBackground($gameNames, $out);
+    }
     respond($out);
-}
-
-if ($action === 'game_search') {
-    [, $searchUser] = requireUser(readStore());
-    session_write_close();
-    $term = trim((string) ($payload['term'] ?? ''));
-    if (textLength($term) < 2) {
-        respond(['ok' => true, 'results' => []]);
-    }
-    $term = mb_substr($term, 0, CURRENT_GAME_NAME_MAX, 'UTF-8');
-    $results = searchGames($term);
-    if ($results === null) {
-        respond(['ok' => false, 'error' => 'Die Spielsuche ist gerade nicht erreichbar. Du kannst das Spiel auch ohne Icon eintragen.'], 502);
-    }
-    respond(['ok' => true, 'results' => $results]);
 }
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -3466,60 +3634,6 @@ withWritableStore(function (array &$store) use ($action, $payload): array {
                 return [['ok' => false, 'error' => 'Du kannst nur eigene Beiträge löschen.'], 403, false];
             }
             array_splice($store['blog_posts'], $deleteIndex, 1);
-            return [['ok' => true], 200, true];
-
-        case 'game_add':
-            [, $gameUser] = requireUser($store);
-            $gameName = trim((string) ($payload['name'] ?? ''));
-            if ($gameName === '' || textLength($gameName) > CURRENT_GAME_NAME_MAX) {
-                return [['ok' => false, 'error' => 'Bitte gib einen Spielnamen an (max. ' . CURRENT_GAME_NAME_MAX . ' Zeichen).'], 422, false];
-            }
-            $gameAppId = (int) ($payload['steam_appid'] ?? 0);
-            if ($gameAppId < 0 || $gameAppId > 100000000) {
-                return [['ok' => false, 'error' => 'Die Steam-ID ist ungültig.'], 422, false];
-            }
-            $gameImage = validGameImage($payload['image'] ?? null) ?? ($gameAppId > 0 ? steamImageUrl($gameAppId) : null);
-            if (count($store['current_games']) >= CURRENT_GAMES_MAX) {
-                return [['ok' => false, 'error' => 'Die Bibliothek ist voll.'], 422, false];
-            }
-            foreach ($store['current_games'] as $existingGame) {
-                $sameApp = $gameAppId > 0 && $existingGame['steam_appid'] === $gameAppId;
-                if ($sameApp || textLower($existingGame['name']) === textLower($gameName)) {
-                    return [['ok' => false, 'error' => '„' . $existingGame['name'] . '“ ist bereits in der Bibliothek.'], 409, false];
-                }
-            }
-            $gamePlayer = playerForUser($store, $gameUser);
-            $newGameId = (int) $store['next_game_id'];
-            $store['next_game_id'] = $newGameId + 1;
-            $store['current_games'][] = [
-                'id' => $newGameId,
-                'name' => $gameName,
-                'steam_appid' => $gameAppId > 0 ? $gameAppId : null,
-                'image' => $gameImage,
-                'added_by_user_id' => (int) $gameUser['id'],
-                'added_by_name' => $gamePlayer === null ? (string) $gameUser['username'] : (string) $gamePlayer['name'],
-                'added_at' => gmdate('c'),
-            ];
-            return [['ok' => true, 'id' => $newGameId], 200, true];
-
-        case 'game_remove':
-            [, $removingUser] = requireUser($store);
-            $removeGameId = validateId($payload['id'] ?? null, 'Spiel-ID');
-            $removeIndex = null;
-            foreach ($store['current_games'] as $existingIndex => $existingGame) {
-                if ((int) $existingGame['id'] === $removeGameId) {
-                    $removeIndex = $existingIndex;
-                    break;
-                }
-            }
-            if ($removeIndex === null) {
-                return [['ok' => false, 'error' => 'Das Spiel wurde nicht gefunden.'], 404, false];
-            }
-            $ownsGame = (int) $store['current_games'][$removeIndex]['added_by_user_id'] === (int) $removingUser['id'];
-            if (!$ownsGame && !isAdminUser($store, $removingUser)) {
-                return [['ok' => false, 'error' => 'Du kannst nur selbst eingetragene Spiele entfernen.'], 403, false];
-            }
-            array_splice($store['current_games'], $removeIndex, 1);
             return [['ok' => true], 200, true];
 
         case 'blog_upload_image':

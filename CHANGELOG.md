@@ -1,5 +1,23 @@
 # Änderungsprotokoll
 
+## 2.17.0 — „Statistik“ heißt jetzt „Spiele“, Spiele-Symbole
+
+- Die alte, von Hand gepflegte Seite „Spiele“ (Bibliothek mit Suchfeld) ist weg, samt
+  ihren Funktionen (`games`, `game_search`, `game_add`, `game_remove`). Bereits eingetragene
+  Spiele fallen beim nächsten Speichern aus der Datendatei
+- Die Seite „Statistik“ heißt jetzt **„Spiele“** und liegt unter `games.php`. Die alte Adresse
+  `statistik.php` leitet dauerhaft dorthin um. Die Spielzeit-Rangliste steht ganz oben
+- **Zeiträume:** Letzte 7 Tage, Letzte 30 Tage (Standard), Ein Jahr, Immer (vorher 7/30/90/gesamt)
+- **Spiele-Symbole:** Zu jedem Spiel der Rangliste sucht die Website einmal ein Bild (RAWG,
+  sonst Steam-Store) und lädt es nach `assets/game-icons` herunter. Das läuft im Hintergrund
+  (PHP-FPM, eigener PHP-Prozess oder Cron `steam-refresh.php`), die Seite wartet nie darauf.
+  Spiele ohne Treffer zeigen ein Platzhalter-Symbol und werden nach 7 Tagen erneut gesucht
+- Die Spielsuche der alten Seite dient jetzt nur noch dem Auffinden der Symbole; der
+  RAWG-Key in `config.php` wird dafür weiter genutzt
+- `steam-refresh.php` holt neben den Steam-Erfolgen auch die Spiele-Symbole (`--icons-only`
+  nur diese)
+- Kompaktere Kennzahl-Kacheln auf dem Handy, damit die Rangliste weiter oben steht
+
 ## 2.16.0 — Statistik zum Aufklappen
 
 - Auf der Statistik-Seite lässt sich jetzt jede Zeile anklicken:

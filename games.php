@@ -13,7 +13,7 @@ require __DIR__ . '/includes/bootstrap.php';
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Kellerkinder">
     <title>Spiele — Kellerkinder</title>
-    <meta name="description" content="Was die Kellerkinder aktuell spielen.">
+    <meta name="description" content="Welche Spiele die Kellerkinder spielen und wie lange.">
     <link rel="icon" href="assets/kellerkinder-logo.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" href="assets/app-icon-180.png">
     <link rel="manifest" href="manifest.webmanifest">
@@ -22,7 +22,7 @@ require __DIR__ . '/includes/bootstrap.php';
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800;900&family=Open+Sans:wght@400;600;700&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
     <?php require __DIR__ . '/includes/styles.php'; ?>
     <?php require __DIR__ . '/includes/blog-styles.php'; ?>
-    <?php require __DIR__ . '/includes/games-styles.php'; ?>
+    <?php require __DIR__ . '/includes/stats-styles.php'; ?>
     <?php require __DIR__ . '/includes/arena-styles.php'; ?>
 </head>
 <body data-theme="default">
@@ -40,8 +40,8 @@ require __DIR__ . '/includes/bootstrap.php';
 <?php
 $activeNav = 'games';
 $pageKicker = 'Spiele';
-$pageTitle = 'Das spielen wir gerade';
-$pageLead = 'Unsere kleine Bibliothek der aktuell gespielten Spiele – das Bild kommt automatisch aus einer Spiele-Datenbank.';
+$pageTitle = 'Das spielen wir';
+$pageLead = 'Welche Spiele bei uns auf Discord laufen und wie lange. Der Bot zählt dafür nur volle 15 Minuten pro Spiel.';
 $showInstall = false;
 require __DIR__ . '/includes/site-header.php';
 ?>
@@ -50,73 +50,113 @@ require __DIR__ . '/includes/site-header.php';
 
     <section class="games-panel">
         <div class="games-head">
-            <h2 class="section-title"><span class="accent">Aktuelle</span> Bibliothek</h2>
+            <h2 class="section-title"><span class="accent">Meist</span> gespielt</h2>
         </div>
 
-        <div class="game-search" id="gameSearchBox" hidden>
-            <label for="gameSearch">Spiel hinzufügen</label>
-            <input type="text" id="gameSearch" maxlength="100" autocomplete="off" placeholder="Spielname eingeben, z. B. Diablo IV">
-            <ul class="game-results" id="gameResults" hidden></ul>
+        <div class="stats-periods" id="statsPeriods" role="group" aria-label="Zeitraum">
+            <button type="button" class="stats-period" data-days="7">Letzte 7 Tage</button>
+            <button type="button" class="stats-period active" data-days="30">Letzte 30 Tage</button>
+            <button type="button" class="stats-period" data-days="365">Ein Jahr</button>
+            <button type="button" class="stats-period" data-days="0">Immer</button>
         </div>
-        <p class="post-meta" id="loginHint" hidden>Zum Eintragen von Spielen bitte zuerst <a href="index.php">im Kalender anmelden</a>.</p>
 
-        <div class="game-grid" id="gameGrid">
-            <p class="widget-loading">Wird geladen …</p>
+        <div id="statsBody"><p class="widget-loading">Wird geladen …</p></div>
+    </section>
+
+    <section class="games-panel stats-admin" id="statsAdmin" hidden>
+        <h2 class="section-title"><span class="accent">Spieler</span> ausblenden</h2>
+        <p class="stats-note">Nur für Admins sichtbar. Angehakte Discord-Mitglieder zählen nicht zur Statistik –
+            weder hier noch beim Discord-Befehl <code>/statistik</code>. Ihre Spielzeit wird weiter erfasst, sodass du sie
+            jederzeit wieder einblenden kannst.</p>
+        <div id="statsAdminList" class="stats-admin-list"></div>
+        <div class="stats-admin-actions">
+            <button class="primary-button" id="statsAdminSave" type="button">Speichern</button>
+            <span class="stats-note" id="statsAdminStatus" role="status" aria-live="polite"></span>
         </div>
     </section>
 
     <footer class="site-footer">Created by Fischje with <span class="heart" aria-label="Love">♥</span> · Made with AI · Version <?= htmlspecialchars($appVersion, ENT_QUOTES, 'UTF-8') ?></footer>
 </main>
 
-<div class="toast" id="toast" role="status" aria-live="polite"></div>
-
 <script nonce="<?= htmlspecialchars($cspNonce, ENT_QUOTES, 'UTF-8') ?>">
-    const byId = id => document.getElementById(id);
-    const state = { csrf: '', auth: { logged_in: false, is_admin: false, user: null }, games: [] };
+    const body = document.getElementById('statsBody');
+    let requestSeq = 0;
 
-    let toastTimer = null;
-    function showToast(message) {
-        const toast = byId('toast');
-        toast.textContent = message;
-        toast.classList.add('visible');
-        clearTimeout(toastTimer);
-        toastTimer = setTimeout(() => toast.classList.remove('visible'), 4200);
+    function formatMinutes(minutes) {
+        const hours = Math.floor(minutes / 60);
+        const rest = minutes % 60;
+        if (hours === 0) return `${rest} Min.`;
+        return rest === 0 ? `${hours} Std.` : `${hours} Std. ${rest} Min.`;
     }
 
-    async function api(action, payload = null, query = null) {
-        const options = payload === null
-            ? { headers: { Accept: 'application/json' }, credentials: 'same-origin' }
-            : {
-                method: 'POST',
-                credentials: 'same-origin',
-                headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-Token': state.csrf },
-                body: JSON.stringify({ action, ...payload })
-            };
-        let url = payload === null ? `api.php?action=${encodeURIComponent(action)}` : 'api.php';
-        if (payload === null && query) {
-            for (const [key, value] of Object.entries(query)) {
-                url += `&${encodeURIComponent(key)}=${encodeURIComponent(value)}`;
-            }
-        }
-        const response = await fetch(url, options);
-        let data;
-        try { data = await response.json(); }
-        catch { throw new Error('Der Server hat keine gültige Antwort geliefert.'); }
-        if (!response.ok || data.ok === false) {
-            throw new Error(data.error || 'Die Aktion ist fehlgeschlagen.');
-        }
-        return data;
+    function formatDate(iso) {
+        const date = new Date(`${iso}T00:00:00`);
+        return Number.isNaN(date.getTime()) ? '' : date.toLocaleDateString('de-DE', { day: '2-digit', month: 'short', year: 'numeric' });
     }
 
-    function thumb(src, className) {
+    function message(text) {
+        const p = document.createElement('p');
+        p.className = 'widget-empty';
+        p.textContent = text;
+        body.replaceChildren(p);
+    }
+
+    function tile(value, label) {
+        const el = document.createElement('div');
+        el.className = 'stats-tile';
+        const strong = document.createElement('strong');
+        strong.textContent = value;
+        const span = document.createElement('span');
+        span.textContent = label;
+        el.append(strong, span);
+        return el;
+    }
+
+    // Kleine Liste im aufgeklappten Bereich (Top-Spieler eines Spiels bzw. Top-Spiele eines Spielers).
+    function detailList(title, rows) {
+        const box = document.createElement('div');
+        box.className = 'stats-detail';
+        const heading = document.createElement('p');
+        heading.className = 'stats-detail-title';
+        heading.textContent = title;
+        const ol = document.createElement('ol');
+        ol.className = 'stats-detail-list';
+        const max = Math.max(1, ...rows.map(row => row.minutes));
+        rows.forEach((row, index) => {
+            const li = document.createElement('li');
+            const bar = document.createElement('span');
+            bar.className = 'stats-bar';
+            bar.style.width = `${Math.max(2, Math.round((row.minutes / max) * 100))}%`;
+            const rank = document.createElement('span');
+            rank.className = 'stats-rank';
+            rank.textContent = `${index + 1}.`;
+            const name = document.createElement('span');
+            name.className = 'stats-name';
+            name.textContent = row.name;
+            const time = document.createElement('span');
+            time.className = 'stats-time';
+            time.textContent = formatMinutes(row.minutes);
+            li.append(bar, rank, name, time);
+            ol.appendChild(li);
+        });
+        box.append(heading, ol);
+        return box;
+    }
+
+    let detailSeq = 0;
+
+    // Spiele-Symbol: das heruntergeladene Bild, sonst ein Platzhalter (auch wenn das Bild nicht lädt).
+    function gameIcon(src) {
         const placeholder = () => {
-            const empty = document.createElement('div');
-            empty.className = 'game-thumb-empty' + (className ? ' ' + className : '');
-            empty.textContent = '🎮';
-            return empty;
+            const box = document.createElement('span');
+            box.className = 'stats-icon placeholder';
+            box.setAttribute('aria-hidden', 'true');
+            box.textContent = '🎮';
+            return box;
         };
         if (!src) return placeholder();
         const img = document.createElement('img');
+        img.className = 'stats-icon';
         img.src = src;
         img.alt = '';
         img.loading = 'lazy';
@@ -124,172 +164,214 @@ require __DIR__ . '/includes/site-header.php';
         return img;
     }
 
-    function formatDate(iso) {
-        const date = new Date(iso);
-        return Number.isNaN(date.getTime()) ? '' : date.toLocaleDateString('de-DE', { day: '2-digit', month: 'short', year: 'numeric' });
-    }
-
-    function renderGames() {
-        const grid = byId('gameGrid');
-        grid.replaceChildren();
-        if (state.games.length === 0) {
-            const empty = document.createElement('p');
-            empty.className = 'widget-empty';
-            empty.textContent = 'Noch kein Spiel eingetragen.';
-            grid.appendChild(empty);
-            return;
-        }
-        for (const game of state.games) {
-            const card = document.createElement('article');
-            card.className = 'game-card';
-            card.appendChild(thumb(game.image));
-
-            const body = document.createElement('div');
-            body.className = 'game-card-body';
-            const title = document.createElement('h2');
-            title.textContent = game.name;
-            const meta = document.createElement('p');
-            meta.className = 'post-meta';
-            meta.textContent = `${game.added_by_name} · ${formatDate(game.added_at)}`;
-            body.append(title, meta);
-            card.appendChild(body);
-
-            const canRemove = state.auth.is_admin
-                || (state.auth.user && game.added_by_user_id === state.auth.user.id);
-            if (canRemove) {
-                const remove = document.createElement('button');
-                remove.type = 'button';
-                remove.className = 'game-remove';
-                remove.title = 'Aus der Bibliothek entfernen';
-                remove.setAttribute('aria-label', `${game.name} entfernen`);
-                remove.textContent = '✕';
-                remove.addEventListener('click', () => removeGame(game));
-                card.appendChild(remove);
+    // rows: { name, minutes, sub, detail?: { title, rows } } – mit `detail` lässt sich die Zeile aufklappen.
+    function list(title, rows) {
+        const wrap = document.createDocumentFragment();
+        const heading = document.createElement('h2');
+        heading.className = 'stats-section';
+        heading.textContent = title;
+        const ul = document.createElement('ol');
+        ul.className = 'stats-list';
+        const max = Math.max(1, ...rows.map(row => row.minutes));
+        rows.forEach((row, index) => {
+            const li = document.createElement('li');
+            li.className = 'stats-item';
+            const expandable = Boolean(row.detail && row.detail.rows.length > 0);
+            const main = document.createElement(expandable ? 'button' : 'div');
+            main.className = 'stats-row' + (expandable ? ' expandable' : '');
+            if (expandable) main.type = 'button';
+            const bar = document.createElement('span');
+            bar.className = 'stats-bar';
+            bar.style.width = `${Math.max(2, Math.round((row.minutes / max) * 100))}%`;
+            const rank = document.createElement('span');
+            rank.className = 'stats-rank';
+            rank.textContent = `${index + 1}.`;
+            const icon = row.hasIcon ? gameIcon(row.icon) : null;
+            const name = document.createElement('span');
+            name.className = 'stats-name';
+            name.textContent = row.name;
+            if (row.sub) {
+                const small = document.createElement('small');
+                small.textContent = row.sub;
+                name.appendChild(small);
             }
-            grid.appendChild(card);
-        }
-    }
-
-    async function loadGames() {
-        try {
-            state.games = (await api('games')).games || [];
-            renderGames();
-        } catch (error) {
-            byId('gameGrid').innerHTML = '<p class="widget-empty">Die Spiele konnten nicht geladen werden.</p>';
-            showToast(error.message);
-        }
-    }
-
-    async function addGame(name, image, appid) {
-        hideResults();
-        byId('gameSearch').value = '';
-        try {
-            await api('game_add', { name, image: image || '', steam_appid: appid || 0 });
-            showToast(`„${name}“ wurde hinzugefügt.`);
-            await loadGames();
-        } catch (error) {
-            showToast(error.message);
-        }
-    }
-
-    async function removeGame(game) {
-        if (!window.confirm(`„${game.name}“ aus der Bibliothek entfernen?`)) return;
-        try {
-            await api('game_remove', { id: game.id });
-            await loadGames();
-        } catch (error) {
-            showToast(error.message);
-        }
-    }
-
-    // ===== Steam-Suche =====
-    const resultsBox = byId('gameResults');
-    const searchInput = byId('gameSearch');
-    let searchTimer = null;
-    let searchSeq = 0;
-
-    function hideResults() {
-        resultsBox.hidden = true;
-        resultsBox.replaceChildren();
-    }
-
-    function resultRow(content) {
-        const item = document.createElement('li');
-        item.appendChild(content);
-        resultsBox.appendChild(item);
-    }
-
-    function hint(text) {
-        const p = document.createElement('div');
-        p.className = 'game-result-hint';
-        p.textContent = text;
-        return p;
-    }
-
-    function manualRow(name) {
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.className = 'game-result';
-        button.append(thumb(''), document.createTextNode(`„${name}“ ohne Bild hinzufügen`));
-        button.addEventListener('click', () => addGame(name, '', 0));
-        return button;
-    }
-
-    async function runSearch() {
-        const term = searchInput.value.trim();
-        const seq = ++searchSeq;
-        if (term.length < 2) { hideResults(); return; }
-        resultsBox.hidden = false;
-        resultsBox.replaceChildren();
-        resultRow(hint('Suche …'));
-        try {
-            const data = await api('game_search', null, { term });
-            if (seq !== searchSeq) return;
-            resultsBox.replaceChildren();
-            for (const entry of data.results) {
-                const button = document.createElement('button');
-                button.type = 'button';
-                button.className = 'game-result';
-                const label = document.createElement('span');
-                label.textContent = entry.name;
-                button.append(thumb(entry.image), label);
-                button.addEventListener('click', () => addGame(entry.name, entry.image, entry.steam_appid));
-                resultRow(button);
+            const time = document.createElement('span');
+            time.className = 'stats-time';
+            time.textContent = formatMinutes(row.minutes);
+            if (icon) {
+                main.classList.add('with-icon');
+                main.append(bar, rank, icon, name, time);
+            } else {
+                main.append(bar, rank, name, time);
             }
-            if (data.results.length === 0) resultRow(hint('Kein Treffer.'));
-            resultRow(manualRow(term));
-        } catch (error) {
-            if (seq !== searchSeq) return;
-            resultsBox.replaceChildren();
-            resultRow(hint(error.message));
-            resultRow(manualRow(term));
+            if (expandable) {
+                const caret = document.createElement('span');
+                caret.className = 'stats-caret';
+                caret.setAttribute('aria-hidden', 'true');
+                caret.textContent = '▾';
+                main.appendChild(caret);
+            }
+            li.appendChild(main);
+
+            if (expandable) {
+                const panel = detailList(row.detail.title, row.detail.rows);
+                panel.id = `statsDetail${detailSeq++}`;
+                panel.hidden = true;
+                main.setAttribute('aria-expanded', 'false');
+                main.setAttribute('aria-controls', panel.id);
+                main.addEventListener('click', () => {
+                    const open = panel.hidden;
+                    panel.hidden = !open;
+                    main.setAttribute('aria-expanded', String(open));
+                    li.classList.toggle('open', open);
+                });
+                li.appendChild(panel);
+            }
+            ul.appendChild(li);
+        });
+        wrap.append(heading, ul);
+        return wrap;
+    }
+
+    // ===== Admin: Spieler aus der Statistik ausblenden =====
+    let csrfToken = '';
+    let currentDays = 30;
+
+    function renderAdmin(data) {
+        const panel = document.getElementById('statsAdmin');
+        if (!Array.isArray(data.roster)) { panel.hidden = true; return; }
+        panel.hidden = false;
+        const container = document.getElementById('statsAdminList');
+        container.replaceChildren();
+        if (data.roster_supported === false) {
+            const note = document.createElement('p');
+            note.className = 'widget-empty';
+            note.textContent = 'Der Discord-Bot liefert noch keine Spielerliste. Dafür ist Bot-Version 1.6.0 nötig.';
+            container.appendChild(note);
+        }
+        if (data.roster.length === 0 && data.roster_supported !== false) {
+            const note = document.createElement('p');
+            note.className = 'widget-empty';
+            note.textContent = 'Im gewählten Zeitraum hat noch niemand gespielt.';
+            container.appendChild(note);
+        }
+        for (const member of data.roster) {
+            const label = document.createElement('label');
+            label.className = 'stats-admin-item';
+            const box = document.createElement('input');
+            box.type = 'checkbox';
+            box.checked = member.excluded;
+            box.dataset.id = member.id;
+            box.dataset.name = member.name;
+            const name = document.createElement('span');
+            name.textContent = member.name;
+            const time = document.createElement('small');
+            time.textContent = member.minutes > 0 ? formatMinutes(member.minutes) : '–';
+            label.append(box, name, time);
+            container.appendChild(label);
         }
     }
 
-    searchInput.addEventListener('input', () => {
-        clearTimeout(searchTimer);
-        searchTimer = setTimeout(runSearch, 350);
-    });
-    searchInput.addEventListener('keydown', event => { if (event.key === 'Escape') hideResults(); });
-    document.addEventListener('click', event => {
-        if (!byId('gameSearchBox').contains(event.target)) hideResults();
+    document.getElementById('statsAdminSave').addEventListener('click', async () => {
+        const button = document.getElementById('statsAdminSave');
+        const status = document.getElementById('statsAdminStatus');
+        const players = [...document.querySelectorAll('#statsAdminList input:checked')]
+            .map(box => ({ id: box.dataset.id, name: box.dataset.name }));
+        button.disabled = true;
+        status.textContent = 'Wird gespeichert …';
+        try {
+            if (!csrfToken) {
+                const boot = await (await fetch('api.php?action=bootstrap', { headers: { Accept: 'application/json' }, credentials: 'same-origin' })).json();
+                csrfToken = boot.csrf_token || '';
+            }
+            const response = await fetch('api.php', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+                body: JSON.stringify({ action: 'admin_set_stats_exclusions', players }),
+            });
+            const data = await response.json();
+            if (!response.ok || data.ok === false) throw new Error(data.error || 'Speichern fehlgeschlagen.');
+            status.textContent = players.length === 0
+                ? 'Gespeichert. Alle Spieler zählen zur Statistik.'
+                : `Gespeichert. ${players.length} Spieler ausgeblendet.`;
+            load(currentDays);
+        } catch (error) {
+            status.textContent = error.message;
+        } finally {
+            button.disabled = false;
+        }
     });
 
-    async function loadAuth() {
-        try {
-            const data = await api('bootstrap');
-            state.csrf = data.csrf_token || '';
-            state.auth = data.auth || state.auth;
-        } catch { /* Die Liste bleibt auch ohne Anmeldung lesbar. */ }
-        const canWrite = !!(state.auth.logged_in && state.auth.can_write);
-        byId('gameSearchBox').hidden = !canWrite;
-        byId('loginHint').hidden = canWrite;
+    function render(data) {
+        renderAdmin(data);
+        if (!data.configured) { message('Die Statistik ist noch nicht eingerichtet.'); return; }
+        if (data.games.length === 0) { message('Für diesen Zeitraum liegen noch keine Spielzeiten vor.'); return; }
+
+        const summary = document.createElement('div');
+        summary.className = 'stats-summary';
+        summary.append(
+            tile(formatMinutes(data.total_minutes), 'Gesamte Spielzeit'),
+            tile(String(data.games.length), data.games.length === 1 ? 'Spiel' : 'Spiele'),
+            tile(data.games[0].name, 'Meistgespielt'),
+        );
+
+        const nodes = [summary];
+        if (data.stale) {
+            const note = document.createElement('p');
+            note.className = 'stats-note';
+            note.textContent = 'Der Bot ist gerade nicht erreichbar. Gezeigt wird der letzte bekannte Stand.';
+            nodes.push(note);
+        }
+        const hasDetails = Array.isArray(data.players) && data.players.some(player => Array.isArray(player.top_games));
+        nodes.push(list('Spiele', data.games.map(game => ({
+            name: game.name,
+            minutes: game.minutes,
+            sub: `${game.players} Spieler · zuletzt ${formatDate(game.last_played)}`,
+            detail: Array.isArray(game.top_players) ? { title: 'Top-Spieler', rows: game.top_players } : null,
+            hasIcon: true,
+            icon: game.icon || '',
+        }))));
+        if (Array.isArray(data.players) && data.players.length > 0) {
+            nodes.push(list('Kellerkinder', data.players.map(player => ({
+                name: player.name,
+                minutes: player.minutes,
+                sub: player.top_game ? `am meisten ${player.top_game}` : '',
+                detail: Array.isArray(player.top_games) ? { title: 'Top-5-Spiele', rows: player.top_games } : null,
+            }))));
+        }
+        if (hasDetails || data.games.some(game => Array.isArray(game.top_players))) {
+            const hint = document.createElement('p');
+            hint.className = 'stats-note';
+            hint.textContent = 'Tipp: Ein Spiel oder einen Spieler anklicken, um die Top-Spieler bzw. Top-5-Spiele zu sehen.';
+            nodes.splice(nodes.indexOf(summary) + 1, 0, hint);
+        }
+        body.replaceChildren(...nodes);
     }
 
-    (async () => {
-        await loadAuth();
-        await loadGames();
-    })();
+    async function load(days) {
+        currentDays = days;
+        const seq = ++requestSeq;
+        try {
+            const response = await fetch(`api.php?action=playtime_stats&days=${days}`, { headers: { Accept: 'application/json' }, credentials: 'same-origin' });
+            const data = await response.json();
+            if (seq !== requestSeq) return;
+            if (!response.ok || data.ok === false) throw new Error(data.error || 'Die Statistik konnte nicht geladen werden.');
+            render(data);
+        } catch (error) {
+            if (seq !== requestSeq) return;
+            message(error.message || 'Die Statistik konnte nicht geladen werden.');
+        }
+    }
+
+    document.getElementById('statsPeriods').addEventListener('click', event => {
+        const button = event.target.closest('.stats-period');
+        if (!button) return;
+        document.querySelectorAll('.stats-period').forEach(el => el.classList.toggle('active', el === button));
+        load(Number(button.dataset.days));
+    });
+
+    load(30);
 
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {

@@ -2,6 +2,15 @@
 // Ergänzende Styles nur für die Statistik-Seite (Spielzeit der Kellerkinder).
 ?>
     <style>
+        .games-panel {
+            margin-top: 19px;
+            padding: 22px;
+            border: 1px solid var(--line);
+            border-radius: var(--radius-lg);
+            background: rgba(var(--panel-deep-rgb), .5);
+            box-shadow: var(--shadow);
+        }
+
         .stats-periods { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
 
         .stats-period {

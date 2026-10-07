@@ -76,7 +76,7 @@
         }
 
         .board, .achievements, .account-strip, .blog-panel, .games-panel, .sidebar-box,
-        .post-card, .achievement-card, .game-card, dialog, .blog-teaser {
+        .post-card, .achievement-card, dialog, .blog-teaser {
             clip-path: polygon(0 0, calc(100% - var(--cut-lg)) 0, 100% var(--cut-lg), 100% 100%, var(--cut-lg) 100%, 0 calc(100% - var(--cut-lg)));
         }
 
@@ -324,8 +324,7 @@
         .card-title,
         .modal-title,
         .post-card h2,
-        .achievement-card-head h3,
-        .game-card h2 {
+        .achievement-card-head h3 {
             font-family: var(--font-heading);
             font-weight: 700;
             letter-spacing: .02em;
@@ -858,38 +857,29 @@
 
         .editor-toolbar button, .editor-surface { border-radius: 0; }
 
-        /* ===== Spiele (Squadforce-Kategoriekarten) ===== */
+        /* ===== Spiele-Seite ===== */
         .games-panel { margin-top: 0; padding: 26px 24px; }
         .games-head .section-title { margin-bottom: 20px; }
 
-        .game-card {
-            border: 0;
-            border-radius: 0;
-            background: var(--panel);
-            transition: transform .15s ease, background-color .15s ease;
+        /* Spiele-Symbol in der Rangliste */
+        .stats-row.with-icon { grid-template-columns: 2.2em 64px minmax(0, 1fr) auto; }
+        .stats-row.expandable.with-icon { grid-template-columns: 2.2em 64px minmax(0, 1fr) auto 1.2em; }
+
+        .stats-icon {
+            position: relative;
+            display: block;
+            width: 64px;
+            height: 38px;
+            object-fit: cover;
+            background: rgba(var(--primary-rgb), .35);
         }
 
-        .game-card:hover { transform: translateY(-3px); background: var(--panel-soft); }
-        .game-card-body { padding: 12px 14px 16px; box-shadow: inset 0 3px 0 var(--accent); }
-        .game-card h2 { font-size: 1.2rem; }
-        .game-card .post-meta { font-size: .8rem; }
-
-        .game-card .game-thumb-empty,
-        .game-result .game-thumb-empty {
-            display: flex;
-            align-items: center;
-            justify-content: center;
+        .stats-icon.placeholder {
+            display: grid;
+            place-items: center;
+            font-size: 1.15rem;
             background: linear-gradient(135deg, rgba(var(--primary-rgb), .55), rgba(var(--accent-rgb), .35));
-            font-size: 2rem;
         }
-
-        .game-remove { border-radius: 0; background: rgba(12, 7, 16, .8); }
-        .game-remove:hover { background: var(--accent); }
-
-        .game-results { border: 0; border-radius: 0; background: var(--panel-strong); box-shadow: inset 0 0 0 1px var(--line-strong), var(--shadow); }
-        .game-result { border-radius: 0; }
-        .game-result:hover, .game-result:focus-visible { background: rgba(var(--primary-rgb), .3); }
-        .game-result img, .game-result .game-thumb-empty { border-radius: 0; }
 
         /* ===== Statistik ===== */
         .stats-period {
@@ -1026,6 +1016,13 @@
             .blog-teaser-meta { padding: 0 0 10px 14px; }
             .blog-teaser-arrow { padding-bottom: 10px; }
             .games-panel { padding: 20px 14px; }
+            .stats-summary { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 14px; }
+            .stats-tile { padding: 8px 10px; }
+            .stats-tile strong { overflow: hidden; font-size: 1rem; line-height: 1.2; text-overflow: ellipsis; white-space: nowrap; }
+            .stats-tile span { font-size: .7rem; letter-spacing: .04em; }
+            .stats-row.with-icon { grid-template-columns: 2em 48px minmax(0, 1fr) auto; gap: 8px; }
+            .stats-row.expandable.with-icon { grid-template-columns: 2em 48px minmax(0, 1fr) auto 1em; }
+            .stats-icon { width: 48px; height: 30px; }
             .achievements-head .section-title,
             .blog-head .section-title { flex: none; width: 100%; }
             .status-badge-main { font-size: .84rem; letter-spacing: 0; text-transform: none; }
