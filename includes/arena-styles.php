@@ -861,6 +861,35 @@
         .games-panel { margin-top: 0; padding: 26px 24px; }
         .games-head .section-title { margin-bottom: 20px; }
 
+        /* Profilbild des Spielers (Discord) */
+        .stats-row.with-avatar { grid-template-columns: 2.2em 40px minmax(0, 1fr) auto; }
+        .stats-row.expandable.with-avatar { grid-template-columns: 2.2em 40px minmax(0, 1fr) auto 1.2em; }
+
+        .stats-avatar {
+            position: relative;
+            display: block;
+            width: 40px;
+            height: 40px;
+            object-fit: cover;
+            background: rgba(var(--primary-rgb), .45);
+            clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px));
+        }
+
+        .stats-avatar.placeholder {
+            display: grid;
+            place-items: center;
+            color: #fff;
+            font-family: var(--font-heading);
+            font-size: 1.15rem;
+            font-weight: 700;
+        }
+
+        .stats-detail-list li.with-avatar { grid-template-columns: 2em 28px minmax(0, 1fr) auto; }
+        .stats-detail-list .stats-avatar { width: 28px; height: 28px; font-size: .9rem; clip-path: none; }
+
+        .stats-admin-item { grid-template-columns: auto 28px minmax(0, 1fr) auto; }
+        .stats-admin-item .stats-avatar { width: 28px; height: 28px; font-size: .9rem; clip-path: none; }
+
         /* Spiele-Symbol in der Rangliste */
         .stats-row.with-icon { grid-template-columns: 2.2em 64px minmax(0, 1fr) auto; }
         .stats-row.expandable.with-icon { grid-template-columns: 2.2em 64px minmax(0, 1fr) auto 1.2em; }
@@ -1023,6 +1052,9 @@
             .stats-row.with-icon { grid-template-columns: 2em 48px minmax(0, 1fr) auto; gap: 8px; }
             .stats-row.expandable.with-icon { grid-template-columns: 2em 48px minmax(0, 1fr) auto 1em; }
             .stats-icon { width: 48px; height: 30px; }
+            .stats-row.with-avatar { grid-template-columns: 2em 36px minmax(0, 1fr) auto; gap: 8px; }
+            .stats-row.expandable.with-avatar { grid-template-columns: 2em 36px minmax(0, 1fr) auto 1em; }
+            .stats-avatar { width: 36px; height: 36px; }
             .achievements-head .section-title,
             .blog-head .section-title { flex: none; width: 100%; }
             .status-badge-main { font-size: .84rem; letter-spacing: 0; text-transform: none; }

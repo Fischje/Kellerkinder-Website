@@ -211,7 +211,7 @@ Die Laufzeitdateien unter `data/store.php*` werden von Git ignoriert und dadurch
 ├── blog.php
 ├── games.php
 ├── statistik.php       (leitet auf games.php um)
-├── steam-refresh.php   (Cron: Steam-Erfolge und Spiele-Symbole holen)
+├── steam-refresh.php   (Cron: Steam-Erfolge, Spiele-Symbole, Profilbilder holen)
 ├── feed.php
 ├── check.php
 ├── index.php
@@ -330,6 +330,11 @@ aller Discord-Mitglieder mit Spielzeit und können einzelne ausblenden. Diese
 zählen dann weder auf der Website noch bei `/statistik` im Discord (der Bot holt
 die Liste über `api.php?action=stats_exclusions`, höchstens 5 Minuten verzögert).
 Dafür ist Bot-Version 1.6.0 nötig.
+
+**Profilbilder:** Neben den Spielern steht ihr Discord-Profilbild (Bot-Version 1.8.0). Die Website lädt
+es nach `assets/avatars` herunter (nicht im Repository) und prüft es einmal pro Woche auf Änderung;
+Besucher laden nichts von Discord. Ohne eigenes Bild erscheint ein Platzhalter. Der Ordner muss für PHP
+beschreibbar sein.
 
 **Aufklappen:** Ein Spiel anklicken zeigt die Top-Spieler, ein Spieler seine Top-5-Spiele
 (Bot-Version 1.7.0). Öffentlich nur, wenn der Bot Spielernamen freigibt

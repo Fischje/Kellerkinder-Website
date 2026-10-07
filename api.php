@@ -81,6 +81,15 @@ const BLOG_IMAGE_MAX_BYTES = 6000000;
 const CURRENT_GAME_NAME_MAX = 100;
 const STEAM_SEARCH_RESULTS_MAX = 8;
 
+// Discord-Profilbilder der Spieler: Der Bot liefert die Bild-Adresse, die Website lädt das Bild
+// nach assets/avatars (die Besucher laden also nichts von Discord) und prüft es einmal pro Woche.
+const DISCORD_AVATAR_DIR = 'assets/avatars';
+const DISCORD_AVATAR_INDEX_FILE = 'discord-avatars.json';
+const DISCORD_AVATAR_CHECK_SECONDS = 604800;   // Bild einmal pro Woche auf Änderung prüfen
+const DISCORD_AVATAR_RETRY_SECONDS = 3600;     // nach einem Fehlschlag frühestens nach 1 Stunde erneut
+const DISCORD_AVATAR_MAX_BYTES = 400000;
+const DISCORD_AVATAR_BATCH_MAX = 25;
+
 // Spiele-Symbole: Zu jedem Spiel der Statistik wird einmal ein Bild über die Spielsuche
 // (RAWG bzw. Steam-Store) gefunden und nach assets/game-icons heruntergeladen.
 const GAME_ICON_DIR = 'assets/game-icons';
@@ -1051,6 +1060,125 @@ function searchGames(string $term): ?array
     return $results;
 }
 
+// ---------- Discord-Profilbilder ----------
+
+/** Nur Bilder von Discords eigenem Bildserver zulassen. */
+function validDiscordAvatarUrl($value): ?string
+{
+    $url = is_string($value) ? trim($value) : '';
+    if ($url !== '' && strlen($url) <= 300
+        && preg_match('#^https://(?:cdn\.discordapp\.com|media\.discordapp\.net)/[A-Za-z0-9_/.-]+(?:\?[A-Za-z0-9_=&.-]*)?$#', $url)) {
+        return $url;
+    }
+    // DISCORD_AVATAR_TEST_PREFIX nur für lokale Tests mit einer Attrappe (config.php), im Betrieb nicht setzen.
+    if ($url !== '' && defined('DISCORD_AVATAR_TEST_PREFIX') && str_starts_with($url, DISCORD_AVATAR_TEST_PREFIX) && strlen($url) <= 300) {
+        return $url;
+    }
+    return null;
+}
+
+function discordAvatarIndex(): array
+{
+    return achievementsCacheRead(DISCORD_AVATAR_INDEX_FILE, null) ?? [];
+}
+
+/** Heruntergeladenes Profilbild (relativer Pfad) oder null. Es wird nie direkt von Discord eingebunden. */
+function discordAvatarLocal(string $playerId, array $index): ?string
+{
+    $file = (string) ($index[$playerId]['file'] ?? '');
+    return $file !== '' && is_file(__DIR__ . '/' . $file) ? $file : null;
+}
+
+/** Muss dieses Profilbild neu geholt bzw. geprüft werden? */
+function discordAvatarDue(string $playerId, ?array $entry): bool
+{
+    if ($entry === null || discordAvatarLocal($playerId, [$playerId => $entry]) === null) {
+        return time() - (int) ($entry['failed_at'] ?? 0) >= DISCORD_AVATAR_RETRY_SECONDS;
+    }
+    return time() - (int) ($entry['checked_at'] ?? 0) >= DISCORD_AVATAR_CHECK_SECONDS;
+}
+
+/** $sources: Discord-ID => Bild-Adresse vom Bot. */
+function discordAvatarsMissing(array $sources): bool
+{
+    $index = discordAvatarIndex();
+    foreach ($sources as $playerId => $url) {
+        if (validDiscordAvatarUrl($url) !== null && discordAvatarDue((string) $playerId, $index[$playerId] ?? null)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/**
+ * Lädt fehlende Profilbilder und prüft vorhandene einmal pro Woche. Ändert sich die Adresse
+ * (Discord baut die Bild-Kennung hinein), wird das neue Bild geholt und das alte gelöscht.
+ * Gibt die Anzahl neu geladener Bilder zurück.
+ */
+function discordAvatarsSync(array $sources, int $max = DISCORD_AVATAR_BATCH_MAX): int
+{
+    $index = discordAvatarIndex();
+    $downloaded = 0;
+    $worked = 0;
+    foreach ($sources as $playerId => $rawUrl) {
+        $playerId = (string) $playerId;
+        $url = validDiscordAvatarUrl($rawUrl);
+        if ($url === null || !preg_match('/^\d{5,25}$/', $playerId) || !discordAvatarDue($playerId, $index[$playerId] ?? null)) {
+            continue;
+        }
+        if (++$worked > $max) {
+            break;
+        }
+        $entry = $index[$playerId] ?? [];
+        $currentFile = discordAvatarLocal($playerId, [$playerId => $entry]);
+        if ($currentFile !== null && ($entry['url'] ?? '') === $url) {
+            $entry['checked_at'] = time(); // unverändert
+            unset($entry['failed_at']);
+            $index[$playerId] = $entry;
+            continue;
+        }
+        $file = discordAvatarDownload($url, $playerId);
+        if ($file === null) {
+            $entry['failed_at'] = time();
+            $index[$playerId] = $entry;
+            continue;
+        }
+        if ($currentFile !== null && $currentFile !== $file) {
+            @unlink(__DIR__ . '/' . $currentFile);
+        }
+        $index[$playerId] = ['url' => $url, 'file' => $file, 'checked_at' => time()];
+        $downloaded++;
+    }
+    if ($worked > 0) {
+        achievementsCacheWrite(DISCORD_AVATAR_INDEX_FILE, $index);
+    }
+    return $downloaded;
+}
+
+function discordAvatarDownload(string $url, string $playerId): ?string
+{
+    $context = stream_context_create(['http' => [
+        'timeout' => 8,
+        'ignore_errors' => true,
+        'header' => "User-Agent: Kellerkinder-Kalender/1.0 (+https://github.com/Fischje)\r\n",
+    ]]);
+    $binary = @file_get_contents($url, false, $context);
+    if ($binary === false || $binary === '' || strlen($binary) > DISCORD_AVATAR_MAX_BYTES) {
+        return null;
+    }
+    $info = @getimagesizefromstring($binary);
+    $extensions = [IMAGETYPE_JPEG => 'jpg', IMAGETYPE_PNG => 'png', IMAGETYPE_WEBP => 'webp', IMAGETYPE_GIF => 'gif'];
+    if ($info === false || !isset($extensions[$info[2]])) {
+        return null;
+    }
+    $directory = __DIR__ . '/' . DISCORD_AVATAR_DIR;
+    if (!is_dir($directory) && !@mkdir($directory, 0755, true) && !is_dir($directory)) {
+        return null;
+    }
+    $file = 'discord-' . substr(md5($playerId), 0, 10) . '-' . substr(md5($url), 0, 8) . '.' . $extensions[$info[2]];
+    return @file_put_contents($directory . '/' . $file, $binary) === false ? null : DISCORD_AVATAR_DIR . '/' . $file;
+}
+
 // ---------- Spiele-Symbole ----------
 
 /** Vergleichsschlüssel für Spielnamen: klein, ohne ™ ® © und Satzzeichen. */
@@ -1206,7 +1334,7 @@ function gameIconsSync(array $names, int $max = GAME_ICON_BATCH_MAX, bool $retry
 }
 
 /** Wie gameIconsSync, aber nur eine Suche gleichzeitig. false = es lief schon eine. */
-function gameIconsSyncLocked(array $names, int $max = GAME_ICON_BATCH_MAX, bool $retryAll = false): bool
+function gameIconsSyncLocked(array $names, int $max = GAME_ICON_BATCH_MAX, bool $retryAll = false, array $avatars = []): bool
 {
     $lock = achievementsCacheDirectory() . DIRECTORY_SEPARATOR . GAME_ICON_LOCK_FILE;
     if (is_file($lock) && (time() - filemtime($lock)) < STEAM_REFRESH_LOCK_SECONDS) {
@@ -1218,6 +1346,7 @@ function gameIconsSyncLocked(array $names, int $max = GAME_ICON_BATCH_MAX, bool 
     @file_put_contents($lock, (string) getmypid());
     try {
         gameIconsSync($names, $max, $retryAll);
+        discordAvatarsSync($avatars);
     } finally {
         @unlink($lock);
     }
@@ -1228,14 +1357,14 @@ function gameIconsSyncLocked(array $names, int $max = GAME_ICON_BATCH_MAX, bool 
  * Antwortet sofort und holt fehlende Symbole danach (PHP-FPM) bzw. in einem eigenen
  * PHP-Prozess. Geht beides nicht, erledigt das der Cron-Job (steam-refresh.php).
  */
-function gameIconsInBackground(array $names, array $response): void
+function gameIconsInBackground(array $names, array $response, array $avatars = []): void
 {
     $lock = achievementsCacheDirectory() . DIRECTORY_SEPARATOR . GAME_ICON_LOCK_FILE;
     $running = is_file($lock) && (time() - filemtime($lock)) < STEAM_REFRESH_LOCK_SECONDS;
     if (!$running && function_exists('fastcgi_finish_request')) {
         echo json_encode($response, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         fastcgi_finish_request();
-        gameIconsSyncLocked($names);
+        gameIconsSyncLocked($names, GAME_ICON_BATCH_MAX, false, $avatars);
         exit;
     }
     if (!$running) {
@@ -3064,13 +3193,32 @@ if ($action === 'playtime_stats') {
     // Bot Spielernamen freigibt (STATS_PUBLIC_PLAYERS); Admins sehen sie immer.
     $statsDetails = is_array($stats['details'] ?? null) ? $stats['details'] : null;
     $showPersons = $statsDetails !== null && (is_array($stats['players'] ?? null) || $statsIsAdmin);
-    $cleanMinutes = static fn(array $rows, string $nameKey, int $limit): array => array_map(
-        static fn(array $row): array => [
-            'name' => mb_substr((string) ($row[$nameKey] ?? ''), 0, 100, 'UTF-8'),
-            'minutes' => (int) ($row['minutes'] ?? 0),
-        ],
-        array_slice(array_values(array_filter($rows, 'is_array')), 0, $limit)
-    );
+    // Profilbilder: nur dort, wo auch Namen gezeigt werden. Gezeigt wird immer die heruntergeladene Kopie.
+    $avatarSources = [];
+    if ($showPersons) {
+        foreach (is_array($statsDetails['players'] ?? null) ? $statsDetails['players'] : [] as $person) {
+            $personId = (string) ($person['id'] ?? '');
+            if (validDiscordAvatarUrl($person['avatar'] ?? null) !== null) {
+                $avatarSources[$personId] = $person['avatar'];
+            }
+        }
+    }
+    $avatarIndex = discordAvatarIndex();
+    $avatarOf = static fn($id): ?string => $showPersons ? discordAvatarLocal((string) $id, $avatarIndex) : null;
+    $cleanMinutes = static function (array $rows, string $nameKey, int $limit) use ($avatarOf): array {
+        $result = [];
+        foreach (array_slice(array_values(array_filter($rows, 'is_array')), 0, $limit) as $row) {
+            $entry = [
+                'name' => mb_substr((string) ($row[$nameKey] ?? ''), 0, 100, 'UTF-8'),
+                'minutes' => (int) ($row['minutes'] ?? 0),
+            ];
+            if (isset($row['id'])) {
+                $entry['avatar'] = $avatarOf($row['id']); // nur bei Spielerzeilen, nicht bei Spielen
+            }
+            $result[] = $entry;
+        }
+        return $result;
+    };
     $iconIndex = gameIconIndex();
     foreach (array_slice($stats['games'], 0, 100) as $game) {
         $gameName = mb_substr((string) ($game['name'] ?? ''), 0, 100, 'UTF-8');
@@ -3095,6 +3243,7 @@ if ($action === 'playtime_stats') {
                 'minutes' => (int) ($player['minutes'] ?? 0),
                 'top_game' => $topGames[0]['name'] ?? null,
                 'top_games' => $topGames,
+                'avatar' => $avatarOf($player['id'] ?? ''),
             ];
         }
     } elseif (is_array($stats['players'] ?? null)) {
@@ -3125,7 +3274,11 @@ if ($action === 'playtime_stats') {
                 'name' => mb_substr((string) ($member['name'] ?? ''), 0, 60, 'UTF-8'),
                 'minutes' => (int) ($member['minutes'] ?? 0),
                 'excluded' => isset($excludedMap[$memberId]),
+                'avatar' => discordAvatarLocal($memberId, $avatarIndex),
             ];
+            if (!isset($excludedMap[$memberId]) && validDiscordAvatarUrl($member['avatar'] ?? null) !== null) {
+                $avatarSources[$memberId] ??= $member['avatar'];
+            }
         }
         // Ausgeblendete ohne Spielzeit im Zeitraum trotzdem anzeigen, damit man sie wieder einblenden kann.
         foreach ($excludedMap as $memberId => $memberName) {
@@ -3138,8 +3291,8 @@ if ($action === 'playtime_stats') {
     }
     // Fehlende Spiele-Symbole im Hintergrund suchen und herunterladen; die Antwort geht sofort raus.
     $gameNames = array_column($out['games'], 'name');
-    if (gameIconsMissing($gameNames)) {
-        gameIconsInBackground($gameNames, $out);
+    if (gameIconsMissing($gameNames) || discordAvatarsMissing($avatarSources)) {
+        gameIconsInBackground($gameNames, $out, $avatarSources);
     }
     respond($out);
 }

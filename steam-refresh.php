@@ -7,10 +7,11 @@ declare(strict_types=1);
 //
 // 1. Steam-Erfolge für das Widget „Steam-Erfolge“ holen (Zwischenspeicher in data/cache).
 // 2. Symbole der Spiele aus der Spiele-Seite suchen und nach assets/game-icons laden.
+// 3. Discord-Profilbilder der Spieler nach assets/avatars laden und einmal pro Woche prüfen.
 //
 // Ohne --force wird nur gearbeitet, wenn nötig (veraltet bzw. Symbole fehlen).
 // --force      Steam-Erfolge in jedem Fall neu holen und erfolglose Spiele-Symbole erneut suchen
-// --icons-only nur die Spiele-Symbole bearbeiten (so startet die Website es bei Bedarf selbst)
+// --icons-only nur Spiele-Symbole und Profilbilder bearbeiten (so startet die Website es bei Bedarf selbst)
 if (PHP_SAPI !== 'cli') {
     http_response_code(403);
     exit;
@@ -52,7 +53,7 @@ if (!$iconsOnly) {
     }
 }
 
-// ---- 2. Spiele-Symbole (alle jemals gespielten Spiele, ohne ausgeblendete Spieler)
+// ---- 2./3. Spiele-Symbole und Profilbilder (alle jemals gespielten Spiele bzw. Spieler, ohne ausgeblendete)
 if (!defined('BOT_STATS_URL') || BOT_STATS_URL === '') {
     echo "Spiele-Symbole: BOT_STATS_URL fehlt in config.php, übersprungen.\n";
     exit(0);
@@ -64,9 +65,18 @@ if ($names === []) {
     exit(0);
 }
 $before = count(array_filter(array_map(static fn(string $n): ?string => gameIconUrl(gameIconIndex()[gameIconKey($n)] ?? null), $names)));
-if (!gameIconsSyncLocked($names, 60, $force)) {
+$avatars = [];
+foreach (is_array($stats['details']['players'] ?? null) ? $stats['details']['players'] : [] as $person) {
+    if (validDiscordAvatarUrl($person['avatar'] ?? null) !== null) {
+        $avatars[(string) ($person['id'] ?? '')] = $person['avatar'];
+    }
+}
+$avatarsBefore = count(array_filter(array_map(static fn($id): ?string => discordAvatarLocal((string) $id, discordAvatarIndex()), array_keys($avatars))));
+if (!gameIconsSyncLocked($names, 60, $force, $avatars)) {
     echo "Spiele-Symbole: Es läuft bereits eine Suche.\n";
     exit(0);
 }
 $after = count(array_filter(array_map(static fn(string $n): ?string => gameIconUrl(gameIconIndex()[gameIconKey($n)] ?? null), $names)));
 printf("Spiele-Symbole: %d von %d Spielen haben ein Symbol (%+d neu).\n", $after, count($names), $after - $before);
+$avatarsAfter = count(array_filter(array_map(static fn($id): ?string => discordAvatarLocal((string) $id, discordAvatarIndex()), array_keys($avatars))));
+printf("Profilbilder: %d von %d Spielern haben ein Profilbild (%+d neu).\n", $avatarsAfter, count($avatars), $avatarsAfter - $avatarsBefore);

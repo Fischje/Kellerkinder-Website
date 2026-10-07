@@ -4,7 +4,7 @@
 date_default_timezone_set('Europe/Berlin');
 $appVersion = trim((string) @file_get_contents(dirname(__DIR__) . DIRECTORY_SEPARATOR . 'VERSION'));
 if ($appVersion === '') {
-    $appVersion = '2.17.0';
+    $appVersion = '2.18.0';
 }
 
 /**

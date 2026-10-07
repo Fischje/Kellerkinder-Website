@@ -136,7 +136,12 @@ require __DIR__ . '/includes/site-header.php';
             const time = document.createElement('span');
             time.className = 'stats-time';
             time.textContent = formatMinutes(row.minutes);
-            li.append(bar, rank, name, time);
+            if ('avatar' in row) {
+                li.classList.add('with-avatar');
+                li.append(bar, rank, avatarElement(row.avatar, row.name), name, time);
+            } else {
+                li.append(bar, rank, name, time);
+            }
             ol.appendChild(li);
         });
         box.append(heading, ol);
@@ -144,6 +149,25 @@ require __DIR__ . '/includes/site-header.php';
     }
 
     let detailSeq = 0;
+
+    // Profilbild eines Spielers (heruntergeladene Kopie) bzw. Anfangsbuchstabe als Platzhalter.
+    function avatarElement(src, name) {
+        const placeholder = () => {
+            const box = document.createElement('span');
+            box.className = 'stats-avatar placeholder';
+            box.setAttribute('aria-hidden', 'true');
+            box.textContent = (String(name || '?').trim()[0] || '?').toUpperCase();
+            return box;
+        };
+        if (!src) return placeholder();
+        const img = document.createElement('img');
+        img.className = 'stats-avatar';
+        img.src = src;
+        img.alt = '';
+        img.loading = 'lazy';
+        img.addEventListener('error', () => img.replaceWith(placeholder()));
+        return img;
+    }
 
     // Spiele-Symbol: das heruntergeladene Bild, sonst ein Platzhalter (auch wenn das Bild nicht lädt).
     function gameIcon(src) {
@@ -186,7 +210,7 @@ require __DIR__ . '/includes/site-header.php';
             const rank = document.createElement('span');
             rank.className = 'stats-rank';
             rank.textContent = `${index + 1}.`;
-            const icon = row.hasIcon ? gameIcon(row.icon) : null;
+            const icon = row.hasIcon ? gameIcon(row.icon) : (row.hasAvatar ? avatarElement(row.avatar, row.name) : null);
             const name = document.createElement('span');
             name.className = 'stats-name';
             name.textContent = row.name;
@@ -199,7 +223,7 @@ require __DIR__ . '/includes/site-header.php';
             time.className = 'stats-time';
             time.textContent = formatMinutes(row.minutes);
             if (icon) {
-                main.classList.add('with-icon');
+                main.classList.add(row.hasAvatar ? 'with-avatar' : 'with-icon');
                 main.append(bar, rank, icon, name, time);
             } else {
                 main.append(bar, rank, name, time);
@@ -267,7 +291,7 @@ require __DIR__ . '/includes/site-header.php';
             name.textContent = member.name;
             const time = document.createElement('small');
             time.textContent = member.minutes > 0 ? formatMinutes(member.minutes) : '–';
-            label.append(box, name, time);
+            label.append(box, avatarElement(member.avatar, member.name), name, time);
             container.appendChild(label);
         }
     }
@@ -338,6 +362,8 @@ require __DIR__ . '/includes/site-header.php';
                 minutes: player.minutes,
                 sub: player.top_game ? `am meisten ${player.top_game}` : '',
                 detail: Array.isArray(player.top_games) ? { title: 'Top-5-Spiele', rows: player.top_games } : null,
+                hasAvatar: true,
+                avatar: player.avatar || '',
             }))));
         }
         if (hasDetails || data.games.some(game => Array.isArray(game.top_players))) {

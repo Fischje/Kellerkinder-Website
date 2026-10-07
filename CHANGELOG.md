@@ -1,5 +1,20 @@
 # Änderungsprotokoll
 
+## 2.18.0 — Discord-Profilbilder neben den Spielern
+
+- Auf der Seite „Spiele“ steht neben jedem Spieler jetzt sein Discord-Profilbild: in der
+  Spielerliste, bei den Top-Spielern eines Spiels und in der Admin-Auswahl zum Ausblenden.
+  Wer kein eigenes Bild hat, bekommt einen Platzhalter mit dem Anfangsbuchstaben
+- Die Bild-Adresse liefert der Discord-Bot (ab Version 1.8.0). Die Website lädt das Bild nach
+  `assets/avatars` herunter; Besucher laden also nichts von Discord
+- **Einmal pro Woche** wird jedes Bild auf Änderung geprüft: Hat sich die Bild-Adresse geändert,
+  wird das neue Bild geholt und das alte gelöscht, sonst passiert nichts. Neue Spieler bekommen
+  ihr Bild sofort. Das Laden läuft im Hintergrund (wie bei den Spiele-Symbolen) und im Cron-Skript
+  `steam-refresh.php`
+- Profilbilder erscheinen nur dort, wo auch Namen gezeigt werden (öffentlich nur mit
+  `STATS_PUBLIC_PLAYERS=true`, Admins immer). Ausgeblendete Spieler bekommen kein Bild geladen
+- Benötigt Bot-Version 1.8.0; mit einem älteren Bot erscheinen nur die Platzhalter
+
 ## 2.17.0 — „Statistik“ heißt jetzt „Spiele“, Spiele-Symbole
 
 - Die alte, von Hand gepflegte Seite „Spiele“ (Bibliothek mit Suchfeld) ist weg, samt
