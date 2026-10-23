@@ -23,6 +23,7 @@ Mobiloptimierter PHP-Kalender zur Planung gemeinsamer Spielabende mit Benutzerko
 - Automatische Versionsanzeige im Footer
 - Passwortänderung ohne E-Mail-Funktion
 - Setzt ein Admin ein neues Passwort, wird die bestehende Sitzung ungültig und der Benutzer muss das vorläufige Passwort nach der nächsten Anmeldung erneut ändern
+- Seite „Netzje“: LAN-Party mit Termin, Ort (nur für Angemeldete), Mitbringliste, Teilnehmerliste, Stundenplan als Zeitleiste mit Anmeldung (Platzlimit und Warteliste), Spielvorschlägen und eingebettetem Twitch-/YouTube-Stream
 - Seite „Server“: Gameserver im Kartenraster mit Spiele-Logo, IP, Passwort (nur für Angemeldete lesbar, sonst Sternchen) und Online-/Offline-Status vom Discord-Bot; Admins pflegen die Server direkt auf der Seite
 - Discord-Abfrage über `/kalender`
 - Drei globale Styles: „Arena“ (Violett/Rot im Esports-Look) als Standard, Sommer mit Sonne/Wasser/Strand und Winter mit Schnee/Weihnachtsmotiven

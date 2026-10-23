@@ -1,5 +1,17 @@
 # Änderungsprotokoll
 
+## 2.21.0 — Neue Seite „Netzje“: LAN-Party mit Stundenplan
+
+- **Neue Seite `netzje.php`** (Menüpunkt „Netzje“, bisher „folgt“): genau eine LAN-Party mit Titel, Termin (Beginn/Ende), Beschreibung, Ort, Mitbringliste und Countdown („Noch 3 Tage“, „Läuft gerade“, „Vorbei“)
+- **Ort nur für Angemeldete:** Gäste sehen statt der Adresse einen Hinweis zur Anmeldung (die Seite liefert sie ihnen nicht aus)
+- **Teilnehmerliste:** Mit Account „Ich komme“ anklicken, die Liste ist öffentlich
+- **Stundenplan als Zeitleiste** über die ganze Party: freie Zeitfenster, parallele Spiele in eigenen Spuren, Tagesmarken und „Jetzt“-Linie (während der Party wird dorthin gescrollt). Auf dem Handy als Liste nach Tag
+- **Anmeldung zu Spielen** (nur mit Account) mit optionalem Platzlimit und **Warteliste**: Sagt jemand ab, rückt die Warteliste der Reihe nach automatisch nach. Überschneidungen werden bewusst nicht geprüft
+- **Vorschläge:** Angemeldete schlagen Spiele vor (höchstens 10 offene je Person), ein Admin übernimmt sie (Zeit und Plätze anpassbar) oder löscht sie; eigene Vorschläge lassen sich zurückziehen. Vorschläge sehen nur Angemeldete
+- **Live-Stream:** Twitch-Kanal oder YouTube-Link; der Player wird ab 2 Stunden vor Beginn bis zum Ende eingebettet, vorher steht ein Link. Dafür erlaubt die Content-Security-Policy jetzt `player.twitch.tv` und `www.youtube-nocookie.com` als Frame
+- **Admins** bearbeiten die Party und den Stundenplan direkt auf der Seite. „Neue Party“ leert Termin, Stundenplan, Anmeldungen und Teilnehmer; Titel, Texte und Stream bleiben als Vorlage
+- Neue API-Aktionen: `netzje` (lesen), `netzje_attend`, `netzje_signup`, `netzje_propose`, `netzje_withdraw`, `admin_netzje_save`, `admin_netzje_new`, `admin_netzje_slot_save`, `admin_netzje_slot_delete`
+
 ## 2.20.2 — Bilder, die PHP nicht lesen darf, werden ersetzt
 
 - **Ursache gefunden (Spiele ohne Symbol):** Läufe von `steam-refresh.php` als `root` hatten Symbole in `data/media` angelegt, die dem Benutzer `root` gehören (Rechte `rw-rw----`). Der Webserver (`www-data`) durfte sie weder ausliefern noch überschreiben: `media.php` lieferte nichts, der Download scheiterte still, und der Index meldete die Spiele trotzdem als „hat Symbol“

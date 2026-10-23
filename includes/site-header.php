@@ -2,7 +2,7 @@
 // Gemeinsamer Seitenkopf für Kalender, Blog, Spiele und Server: schmale Infoleiste,
 // Kopfband mit Logo und Navigation sowie der Seitentitel-Bereich.
 // Erwartet vor dem Einbinden:
-//   $activeNav     'calendar' | 'blog' | 'games' | 'servers'
+//   $activeNav     'calendar' | 'blog' | 'games' | 'servers' | 'netzje'
 //   $pageKicker    kleine Zeile über dem Titel (Brotkrumen)
 //   $pageTitle     großer Seitentitel
 //   $pageLead      optionaler Untertitel
@@ -14,6 +14,7 @@ $navItems = [
     'blog' => ['Blog', 'blog.php'],
     'games' => ['Spiele', 'games.php'],
     'servers' => ['Server', 'gameserver.php'],
+    'netzje' => ['Netzje', 'netzje.php'],
 ];
 $h = static fn(string $value): string => htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
 ?>
@@ -44,7 +45,6 @@ $h = static fn(string $value): string => htmlspecialchars($value, ENT_QUOTES, 'U
             <?php foreach ($navItems as $key => [$label, $href]): ?>
                 <a href="<?= $h($href) ?>" class="nav-link<?= $key === $activeNav ? ' active' : '' ?>"<?= $key === $activeNav ? ' aria-current="page"' : '' ?>><?= $h($label) ?></a>
             <?php endforeach; ?>
-            <span class="nav-link disabled">Netzje <small>(folgt)</small></span>
         </nav>
     </div>
 </header>

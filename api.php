@@ -53,6 +53,12 @@ const STATS_EXCLUDED_MAX = 200;
 // Gameserver (Seite „Server“): Liste im Store, Online-Status liefert der Discord-Bot
 // (abgeleitet aus BOT_STATS_URL: …/api/stats → …/api/gameservers).
 const GAMESERVER_MAX = 30;
+
+// Netzje (LAN-Party): genau eine Party mit Stundenplan; Zeiten als lokale Zeit „YYYY-MM-DDTHH:MM“ (Europe/Berlin).
+const NETZJE_SLOTS_MAX = 120;
+const NETZJE_PROPOSALS_PER_USER = 10;
+const NETZJE_TEXT_MAX = 2000;
+const NETZJE_STREAM_TYPES = ['none', 'twitch', 'youtube'];
 const GAMESERVER_QUERY_TYPES = ['a2s', 'minecraft', 'tcp'];
 const GAMESERVER_STATUS_TTL_SECONDS = 20;
 const GAMESERVER_STATUS_MAX_AGE_SECONDS = 300; // älter: Status gilt als unbekannt
@@ -1723,6 +1729,231 @@ function statsExcludedIds(array $store): array
     return array_map(static fn(array $entry): string => $entry['id'], $store['settings']['stats_excluded'] ?? []);
 }
 
+// ---------- Netzje (LAN-Party) ----------
+
+/** Lokale Zeit „YYYY-MM-DDTHH:MM“ (wie <input type="datetime-local">); sonst null. */
+function validNetzjeTime($value): ?string
+{
+    $text = substr(trim((string) $value), 0, 16);
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/', $text)) {
+        return null;
+    }
+    $date = DateTimeImmutable::createFromFormat('!Y-m-d\TH:i', $text, new DateTimeZone('Europe/Berlin'));
+    return $date !== false && $date->format('Y-m-d\TH:i') === $text ? $text : null;
+}
+
+function netzjeText($value, int $max): string
+{
+    $text = str_replace("\r\n", "\n", trim((string) $value));
+    return mb_substr($text, 0, $max, 'UTF-8');
+}
+
+/** Twitch: Kanalname; YouTube: Video-ID aus Link oder ID. Sonst ''. */
+function validNetzjeStream(string $type, $value): string
+{
+    $raw = trim((string) $value);
+    if ($type === 'twitch') {
+        if (preg_match('~twitch\.tv/([A-Za-z0-9_]{3,25})~', $raw, $match)) {
+            $raw = $match[1];
+        }
+        return preg_match('/^[A-Za-z0-9_]{3,25}$/', $raw) ? strtolower($raw) : '';
+    }
+    if ($type === 'youtube') {
+        if (preg_match('~(?:youtu\.be/|[?&]v=|/live/|/embed/)([A-Za-z0-9_-]{11})~', $raw, $match)) {
+            $raw = $match[1];
+        }
+        return preg_match('/^[A-Za-z0-9_-]{11}$/', $raw) ? $raw : '';
+    }
+    return '';
+}
+
+function normalizeNetzjeUserIds($value): array
+{
+    $ids = [];
+    foreach (is_array($value) ? $value : [] as $id) {
+        $id = (int) $id;
+        if ($id > 0 && !in_array($id, $ids, true)) {
+            $ids[] = $id;
+        }
+    }
+    return $ids;
+}
+
+/**
+ * Party: title, description, location (nur für Angemeldete), info (Mitbringliste), start, end,
+ * stream_type (none|twitch|youtube), stream, attendees (User-IDs, „ich komme“), slots, next_slot_id.
+ * Slot: id, game, start, end, max (0 = ohne Limit), note, status (planned|proposed), proposed_by,
+ * signups (User-IDs in Anmeldereihenfolge: die ersten `max` spielen mit, der Rest steht auf der Warteliste).
+ */
+function normalizeNetzje($value): array
+{
+    $value = is_array($value) ? $value : [];
+    $streamType = (string) ($value['stream_type'] ?? 'none');
+    $streamType = in_array($streamType, NETZJE_STREAM_TYPES, true) ? $streamType : 'none';
+    $party = [
+        'title' => mb_substr(trim((string) ($value['title'] ?? '')), 0, 80, 'UTF-8'),
+        'description' => netzjeText($value['description'] ?? '', NETZJE_TEXT_MAX),
+        'location' => netzjeText($value['location'] ?? '', 300),
+        'info' => netzjeText($value['info'] ?? '', NETZJE_TEXT_MAX),
+        'start' => validNetzjeTime($value['start'] ?? '') ?? '',
+        'end' => validNetzjeTime($value['end'] ?? '') ?? '',
+        'stream_type' => $streamType,
+        'stream' => validNetzjeStream($streamType, $value['stream'] ?? ''),
+        'attendees' => normalizeNetzjeUserIds($value['attendees'] ?? []),
+        'slots' => [],
+        'next_slot_id' => max(1, (int) ($value['next_slot_id'] ?? 1)),
+    ];
+    $seen = [];
+    foreach (is_array($value['slots'] ?? null) ? $value['slots'] : [] as $slot) {
+        if (!is_array($slot)) {
+            continue;
+        }
+        $id = (int) ($slot['id'] ?? 0);
+        $start = validNetzjeTime($slot['start'] ?? '');
+        $end = validNetzjeTime($slot['end'] ?? '');
+        $game = mb_substr(trim((string) ($slot['game'] ?? '')), 0, CURRENT_GAME_NAME_MAX, 'UTF-8');
+        if ($id <= 0 || isset($seen[$id]) || $start === null || $end === null || $end <= $start || $game === '') {
+            continue;
+        }
+        $seen[$id] = true;
+        $party['slots'][] = [
+            'id' => $id,
+            'game' => $game,
+            'start' => $start,
+            'end' => $end,
+            'max' => max(0, min(999, (int) ($slot['max'] ?? 0))),
+            'note' => mb_substr(trim((string) ($slot['note'] ?? '')), 0, 200, 'UTF-8'),
+            'status' => ($slot['status'] ?? 'planned') === 'proposed' ? 'proposed' : 'planned',
+            'proposed_by' => max(0, (int) ($slot['proposed_by'] ?? 0)),
+            'signups' => normalizeNetzjeUserIds($slot['signups'] ?? []),
+        ];
+        $party['next_slot_id'] = max($party['next_slot_id'], $id + 1);
+    }
+    usort($party['slots'], static fn(array $a, array $b): int => [$a['start'], $a['id']] <=> [$b['start'], $b['id']]);
+    $party['slots'] = array_slice($party['slots'], 0, NETZJE_SLOTS_MAX);
+    return $party;
+}
+
+/** Prüft ein Spiel aus dem Formular; gibt [Felder, Fehlertext|null] zurück. */
+function validateNetzjeSlotInput(array $payload, array $party): array
+{
+    $game = trim((string) ($payload['game'] ?? ''));
+    if ($game === '' || mb_strlen($game, 'UTF-8') > CURRENT_GAME_NAME_MAX) {
+        return [null, 'Bitte das Spiel angeben.'];
+    }
+    $start = validNetzjeTime($payload['start'] ?? '');
+    $end = validNetzjeTime($payload['end'] ?? '');
+    if ($start === null || $end === null) {
+        return [null, 'Bitte Beginn und Ende angeben.'];
+    }
+    if ($end <= $start) {
+        return [null, 'Das Ende muss nach dem Beginn liegen.'];
+    }
+    if ($party['start'] !== '' && $party['end'] !== '' && ($start < $party['start'] || $end > $party['end'])) {
+        return [null, 'Das Spiel muss innerhalb der Party liegen (' . netzjeTimeLabel($party['start']) . ' bis ' . netzjeTimeLabel($party['end']) . ').'];
+    }
+    $max = trim((string) ($payload['max'] ?? ''));
+    if ($max !== '' && (filter_var($max, FILTER_VALIDATE_INT) === false || (int) $max < 0 || (int) $max > 999)) {
+        return [null, 'Die Platzzahl muss leer (ohne Limit) oder eine Zahl bis 999 sein.'];
+    }
+    $note = trim((string) ($payload['note'] ?? ''));
+    if (mb_strlen($note, 'UTF-8') > 200) {
+        return [null, 'Der Hinweis darf höchstens 200 Zeichen lang sein.'];
+    }
+    return [['game' => $game, 'start' => $start, 'end' => $end, 'max' => (int) $max, 'note' => $note], null];
+}
+
+function netzjeTimeLabel(string $time): string
+{
+    $date = DateTimeImmutable::createFromFormat('!Y-m-d\TH:i', $time, new DateTimeZone('Europe/Berlin'));
+    return $date === false ? $time : $date->format('d.m. H:i');
+}
+
+function netzjeSlotIndex(array $party, int $id): ?int
+{
+    foreach ($party['slots'] as $index => $slot) {
+        if ($slot['id'] === $id) {
+            return $index;
+        }
+    }
+    return null;
+}
+
+/** Anzeigename eines Accounts: Spielername, sonst Benutzername. */
+function netzjeUserName(array $store, int $userId): string
+{
+    $index = findUserIndex($store['users'], $userId);
+    if ($index === null) {
+        return '';
+    }
+    $player = playerForUser($store, $store['users'][$index]);
+    return $player !== null ? (string) $player['name'] : (string) $store['users'][$index]['username'];
+}
+
+/** Antwort für die Seite „Netzje“. Ort nur für Angemeldete, Vorschläge sehen nur Angemeldete. */
+function netzjeResponse(array $store): array
+{
+    $userIndex = currentUserIndex($store);
+    $user = $userIndex === null ? null : $store['users'][$userIndex];
+    $loggedIn = $user !== null && empty($user['must_change_password']);
+    $userId = $loggedIn ? (int) $user['id'] : 0;
+    $isAdmin = $loggedIn && isAdminUser($store, $user);
+    $party = normalizeNetzje($store['netzje'] ?? []);
+    $names = static function (array $ids) use ($store): array {
+        $result = [];
+        foreach ($ids as $id) {
+            $name = netzjeUserName($store, $id);
+            if ($name !== '') {
+                $result[] = ['id' => $id, 'name' => $name];
+            }
+        }
+        return $result;
+    };
+    $slots = [];
+    foreach ($party['slots'] as $slot) {
+        if ($slot['status'] === 'proposed' && !$loggedIn) {
+            continue;
+        }
+        $people = $names($slot['signups']);
+        $limit = $slot['max'] > 0 ? $slot['max'] : count($people);
+        $slots[] = [
+            'id' => $slot['id'],
+            'game' => $slot['game'],
+            'start' => $slot['start'],
+            'end' => $slot['end'],
+            'max' => $slot['max'],
+            'note' => $slot['note'],
+            'status' => $slot['status'],
+            'proposed_by' => $slot['status'] === 'proposed' ? netzjeUserName($store, $slot['proposed_by']) : '',
+            'own_proposal' => $slot['status'] === 'proposed' && $userId > 0 && $slot['proposed_by'] === $userId,
+            'players' => array_slice($people, 0, $limit),
+            'waitlist' => array_slice($people, $limit),
+            'signed_up' => $userId > 0 && in_array($userId, $slot['signups'], true),
+        ];
+    }
+    return [
+        'ok' => true,
+        'csrf_token' => csrfToken(),
+        'logged_in' => $loggedIn,
+        'is_admin' => $isAdmin,
+        'now' => (new DateTimeImmutable('now', new DateTimeZone('Europe/Berlin')))->format('Y-m-d\TH:i'),
+        'party' => [
+            'title' => $party['title'],
+            'description' => $party['description'],
+            'has_location' => $party['location'] !== '',
+            'location' => $loggedIn ? $party['location'] : null,
+            'info' => $party['info'],
+            'start' => $party['start'],
+            'end' => $party['end'],
+            'stream_type' => $party['stream_type'],
+            'stream' => $party['stream'],
+            'attendees' => $names($party['attendees']),
+            'attending' => $userId > 0 && in_array($userId, $party['attendees'], true),
+        ],
+        'slots' => $slots,
+    ];
+}
+
 /** Host als IPv4/IPv6-Adresse oder Domainname; sonst null. */
 function validGameserverHost($value): ?string
 {
@@ -2117,6 +2348,7 @@ function defaultStore(): array
         'next_post_id' => 1,
         'gameservers' => [],
         'next_gameserver_id' => 1,
+        'netzje' => normalizeNetzje([]),
         'settings' => [
             'admin_player_names' => [],
             'theme' => 'default',
@@ -2202,6 +2434,7 @@ function normalizeStore(array $store): array
     $store['blog_posts'] = normalizeBlogPosts($store['blog_posts'] ?? []);
     $store['next_post_id'] = max(1, (int) ($store['next_post_id'] ?? 1));
     $store['gameservers'] = normalizeGameservers($store['gameservers'] ?? []);
+    $store['netzje'] = normalizeNetzje($store['netzje'] ?? []);
     $store['next_gameserver_id'] = max(
         1,
         (int) ($store['next_gameserver_id'] ?? 1),
@@ -3395,6 +3628,13 @@ if ($action === 'blog_posts') {
     respond(['ok' => true, 'posts' => $posts, 'tags' => $tags]);
 }
 
+if ($action === 'netzje') {
+    $netzjeStore = readStore();
+    $netzjeOut = netzjeResponse($netzjeStore);
+    session_write_close();
+    respond($netzjeOut);
+}
+
 if ($action === 'gameservers') {
     // Öffentlich lesbar. Das Passwort steht nur in der Antwort, wenn jemand angemeldet ist.
     $serverStore = readStore();
@@ -4242,6 +4482,146 @@ withWritableStore(function (array &$store) use ($action, $payload): array {
             }
             $refreshed = steamRefreshNow($store);
             return [['ok' => true, 'refreshed' => $refreshed], 200, false];
+
+        case 'admin_netzje_save':
+            requireAdmin($store);
+            $partyStart = validNetzjeTime($payload['start'] ?? '');
+            $partyEnd = validNetzjeTime($payload['end'] ?? '');
+            if ($partyStart === null || $partyEnd === null || $partyEnd <= $partyStart) {
+                return [['ok' => false, 'error' => 'Bitte Beginn und Ende der Party angeben (Ende nach Beginn).'], 422, false];
+            }
+            $title = trim((string) ($payload['title'] ?? ''));
+            if ($title === '' || mb_strlen($title, 'UTF-8') > 80) {
+                return [['ok' => false, 'error' => 'Bitte einen Titel mit höchstens 80 Zeichen eingeben.'], 422, false];
+            }
+            $streamType = (string) ($payload['stream_type'] ?? 'none');
+            if (!in_array($streamType, NETZJE_STREAM_TYPES, true)) {
+                return [['ok' => false, 'error' => 'Unbekannte Stream-Art.'], 422, false];
+            }
+            $stream = validNetzjeStream($streamType, $payload['stream'] ?? '');
+            if ($streamType !== 'none' && $stream === '') {
+                return [['ok' => false, 'error' => $streamType === 'twitch'
+                    ? 'Bitte einen gültigen Twitch-Kanal (Name oder Link) angeben.'
+                    : 'Bitte einen gültigen YouTube-Link oder eine Video-ID angeben.'], 422, false];
+            }
+            foreach ($store['netzje']['slots'] as $existingSlot) {
+                if ($existingSlot['start'] < $partyStart || $existingSlot['end'] > $partyEnd) {
+                    return [['ok' => false, 'error' => '„' . $existingSlot['game'] . '“ läge außerhalb der neuen Party-Zeit. Bitte zuerst das Spiel verschieben oder löschen.'], 422, false];
+                }
+            }
+            $store['netzje'] = normalizeNetzje(array_merge($store['netzje'], [
+                'title' => $title,
+                'description' => $payload['description'] ?? '',
+                'location' => $payload['location'] ?? '',
+                'info' => $payload['info'] ?? '',
+                'start' => $partyStart,
+                'end' => $partyEnd,
+                'stream_type' => $streamType,
+                'stream' => $stream,
+            ]));
+            return [netzjeResponse($store), 200, true];
+
+        case 'admin_netzje_new':
+            // „Neue Party“: Stundenplan und Teilnehmer leeren, Texte bleiben als Vorlage stehen.
+            requireAdmin($store);
+            $store['netzje']['slots'] = [];
+            $store['netzje']['attendees'] = [];
+            $store['netzje']['start'] = '';
+            $store['netzje']['end'] = '';
+            $store['netzje'] = normalizeNetzje($store['netzje']);
+            return [netzjeResponse($store), 200, true];
+
+        case 'netzje_attend':
+            [, $attendUser] = requireUser($store);
+            if ($store['netzje']['start'] === '') {
+                return [['ok' => false, 'error' => 'Es ist gerade keine Party geplant.'], 422, false];
+            }
+            $attendees = array_values(array_filter($store['netzje']['attendees'], static fn(int $id): bool => $id !== (int) $attendUser['id']));
+            if (!empty($payload['attend'])) {
+                $attendees[] = (int) $attendUser['id'];
+            }
+            $store['netzje']['attendees'] = $attendees;
+            return [netzjeResponse($store), 200, true];
+
+        case 'netzje_signup':
+            [, $signupUser] = requireUser($store);
+            $slotIndex = netzjeSlotIndex($store['netzje'], (int) ($payload['id'] ?? 0));
+            if ($slotIndex === null || $store['netzje']['slots'][$slotIndex]['status'] !== 'planned') {
+                return [['ok' => false, 'error' => 'Dieses Spiel gibt es nicht (mehr) im Stundenplan.'], 404, false];
+            }
+            // Austragen und wieder Eintragen stellt hinten an: Reihenfolge = Anmeldezeit, Warteliste rückt automatisch nach.
+            $signups = array_values(array_filter($store['netzje']['slots'][$slotIndex]['signups'], static fn(int $id): bool => $id !== (int) $signupUser['id']));
+            if (!empty($payload['join'])) {
+                $signups[] = (int) $signupUser['id'];
+            }
+            $store['netzje']['slots'][$slotIndex]['signups'] = $signups;
+            return [netzjeResponse($store), 200, true];
+
+        case 'netzje_propose':
+            [, $proposeUser] = requireUser($store);
+            if ($store['netzje']['start'] === '') {
+                return [['ok' => false, 'error' => 'Es ist gerade keine Party geplant.'], 422, false];
+            }
+            $ownProposals = count(array_filter($store['netzje']['slots'], static fn(array $slot): bool => $slot['status'] === 'proposed' && $slot['proposed_by'] === (int) $proposeUser['id']));
+            if ($ownProposals >= NETZJE_PROPOSALS_PER_USER) {
+                return [['ok' => false, 'error' => 'Du hast schon ' . NETZJE_PROPOSALS_PER_USER . ' offene Vorschläge.'], 422, false];
+            }
+            if (count($store['netzje']['slots']) >= NETZJE_SLOTS_MAX) {
+                return [['ok' => false, 'error' => 'Der Stundenplan ist voll.'], 422, false];
+            }
+            [$slotInput, $slotError] = validateNetzjeSlotInput($payload, $store['netzje']);
+            if ($slotError !== null) {
+                return [['ok' => false, 'error' => $slotError], 422, false];
+            }
+            $store['netzje']['slots'][] = ['id' => $store['netzje']['next_slot_id'], 'status' => 'proposed', 'proposed_by' => (int) $proposeUser['id'], 'signups' => []] + $slotInput;
+            $store['netzje'] = normalizeNetzje($store['netzje']);
+            return [netzjeResponse($store), 200, true];
+
+        case 'netzje_withdraw':
+            // Eigenen, noch nicht übernommenen Vorschlag zurückziehen.
+            [, $withdrawUser] = requireUser($store);
+            $slotIndex = netzjeSlotIndex($store['netzje'], (int) ($payload['id'] ?? 0));
+            $slot = $slotIndex === null ? null : $store['netzje']['slots'][$slotIndex];
+            if ($slot === null || $slot['status'] !== 'proposed' || $slot['proposed_by'] !== (int) $withdrawUser['id']) {
+                return [['ok' => false, 'error' => 'Diesen Vorschlag kannst du nicht zurückziehen.'], 403, false];
+            }
+            array_splice($store['netzje']['slots'], $slotIndex, 1);
+            return [netzjeResponse($store), 200, true];
+
+        case 'admin_netzje_slot_save':
+            // Neues Spiel, Spiel ändern oder Vorschlag übernehmen (übernommen = status planned).
+            requireAdmin($store);
+            if ($store['netzje']['start'] === '') {
+                return [['ok' => false, 'error' => 'Bitte zuerst Termin der Party speichern.'], 422, false];
+            }
+            [$slotInput, $slotError] = validateNetzjeSlotInput($payload, $store['netzje']);
+            if ($slotError !== null) {
+                return [['ok' => false, 'error' => $slotError], 422, false];
+            }
+            $slotId = (int) ($payload['id'] ?? 0);
+            $slotIndex = $slotId > 0 ? netzjeSlotIndex($store['netzje'], $slotId) : null;
+            if ($slotId > 0 && $slotIndex === null) {
+                return [['ok' => false, 'error' => 'Dieses Spiel gibt es nicht mehr.'], 404, false];
+            }
+            if ($slotIndex === null) {
+                if (count($store['netzje']['slots']) >= NETZJE_SLOTS_MAX) {
+                    return [['ok' => false, 'error' => 'Der Stundenplan ist voll.'], 422, false];
+                }
+                $store['netzje']['slots'][] = ['id' => $store['netzje']['next_slot_id'], 'status' => 'planned', 'proposed_by' => 0, 'signups' => []] + $slotInput;
+            } else {
+                $store['netzje']['slots'][$slotIndex] = array_merge($store['netzje']['slots'][$slotIndex], $slotInput, ['status' => 'planned']);
+            }
+            $store['netzje'] = normalizeNetzje($store['netzje']);
+            return [netzjeResponse($store), 200, true];
+
+        case 'admin_netzje_slot_delete':
+            requireAdmin($store);
+            $slotIndex = netzjeSlotIndex($store['netzje'], (int) ($payload['id'] ?? 0));
+            if ($slotIndex === null) {
+                return [['ok' => false, 'error' => 'Dieses Spiel gibt es nicht mehr.'], 404, false];
+            }
+            array_splice($store['netzje']['slots'], $slotIndex, 1);
+            return [netzjeResponse($store), 200, true];
 
         case 'admin_save_gameserver':
             requireAdmin($store);
