@@ -50,6 +50,13 @@ const BOT_STATS_TTL_SECONDS = 300;
 const BOT_STATS_ALLOWED_DAYS = [7, 30, 365, 0]; // 0 = gesamte Zeit (Immer)
 const STATS_EXCLUDED_MAX = 200;
 
+// Gameserver (Seite „Server“): Liste im Store, Online-Status liefert der Discord-Bot
+// (abgeleitet aus BOT_STATS_URL: …/api/stats → …/api/gameservers).
+const GAMESERVER_MAX = 30;
+const GAMESERVER_QUERY_TYPES = ['a2s', 'minecraft', 'tcp'];
+const GAMESERVER_STATUS_TTL_SECONDS = 20;
+const GAMESERVER_STATUS_MAX_AGE_SECONDS = 300; // älter: Status gilt als unbekannt
+
 // Steam-Erfolge: Schlüssel (nicht im Repository) in config.php, z. B.
 // const STEAM_API_KEY = '...'; — kostenlos unter steamcommunity.com/dev/apikey
 const STEAM_NAME_MAX = 64;
@@ -1705,6 +1712,188 @@ function statsExcludedIds(array $store): array
     return array_map(static fn(array $entry): string => $entry['id'], $store['settings']['stats_excluded'] ?? []);
 }
 
+/** Host als IPv4/IPv6-Adresse oder Domainname; sonst null. */
+function validGameserverHost($value): ?string
+{
+    $host = trim((string) $value);
+    if ($host === '' || strlen($host) > 100) {
+        return null;
+    }
+    if (filter_var($host, FILTER_VALIDATE_IP) !== false) {
+        return $host;
+    }
+    return preg_match('/^(?=.{1,100}$)[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?(\.[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?)*$/', $host) === 1 ? $host : null;
+}
+
+function validGameserverPort($value, bool $allowEmpty = false): ?int
+{
+    if ($allowEmpty && trim((string) $value) === '') {
+        return 0;
+    }
+    $port = filter_var($value, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1, 'max_range' => 65535]]);
+    return $port === false ? null : (int) $port;
+}
+
+/**
+ * Gameserver: [id, name, game (für das Logo), host, port, probe_host (interne Adresse für
+ * die Statusabfrage, optional), query_port (0 = wie port), query (a2s|minecraft|tcp),
+ * password (im Klartext, nur für Angemeldete sichtbar), note]
+ */
+function normalizeGameservers($value): array
+{
+    if (!is_array($value)) {
+        return [];
+    }
+    $result = [];
+    $seen = [];
+    foreach ($value as $entry) {
+        if (!is_array($entry)) {
+            continue;
+        }
+        $id = (int) ($entry['id'] ?? 0);
+        $host = validGameserverHost($entry['host'] ?? '');
+        $port = validGameserverPort($entry['port'] ?? 0);
+        $name = trim((string) ($entry['name'] ?? ''));
+        if ($id <= 0 || isset($seen[$id]) || $host === null || $port === null || $name === '') {
+            continue;
+        }
+        $seen[$id] = true;
+        $probeRaw = trim((string) ($entry['probe_host'] ?? ''));
+        $query = (string) ($entry['query'] ?? 'tcp');
+        $result[] = [
+            'id' => $id,
+            'name' => mb_substr($name, 0, 60, 'UTF-8'),
+            'game' => mb_substr(trim((string) ($entry['game'] ?? '')), 0, CURRENT_GAME_NAME_MAX, 'UTF-8'),
+            'host' => $host,
+            'port' => $port,
+            'probe_host' => $probeRaw === '' ? '' : (string) (validGameserverHost($probeRaw) ?? ''),
+            'query_port' => validGameserverPort($entry['query_port'] ?? 0, true) ?? 0,
+            'query' => in_array($query, GAMESERVER_QUERY_TYPES, true) ? $query : 'tcp',
+            'password' => mb_substr((string) ($entry['password'] ?? ''), 0, 100, 'UTF-8'),
+            'note' => mb_substr(trim((string) ($entry['note'] ?? '')), 0, 120, 'UTF-8'),
+        ];
+    }
+    return array_slice($result, 0, GAMESERVER_MAX);
+}
+
+/** Prüft die Eingabe aus dem Formular; gibt [Server, Fehlertext|null] zurück (id wird vom Aufrufer gesetzt). */
+function validateGameserverInput(array $payload): array
+{
+    $name = trim((string) ($payload['name'] ?? ''));
+    if ($name === '' || mb_strlen($name, 'UTF-8') > 60) {
+        return [null, 'Bitte einen Namen mit höchstens 60 Zeichen eingeben.'];
+    }
+    $game = trim((string) ($payload['game'] ?? ''));
+    if ($game === '' || mb_strlen($game, 'UTF-8') > CURRENT_GAME_NAME_MAX) {
+        return [null, 'Bitte das Spiel angeben (daraus entsteht das Logo).'];
+    }
+    $host = validGameserverHost($payload['host'] ?? '');
+    if ($host === null) {
+        return [null, 'Die IP-Adresse oder der Hostname ist ungültig.'];
+    }
+    $port = validGameserverPort($payload['port'] ?? '');
+    if ($port === null) {
+        return [null, 'Der Port muss zwischen 1 und 65535 liegen.'];
+    }
+    $probeRaw = trim((string) ($payload['probe_host'] ?? ''));
+    $probeHost = $probeRaw === '' ? '' : validGameserverHost($probeRaw);
+    if ($probeHost === null) {
+        return [null, 'Die interne Adresse für die Statusabfrage ist ungültig.'];
+    }
+    $queryPort = validGameserverPort($payload['query_port'] ?? '', true);
+    if ($queryPort === null) {
+        return [null, 'Der Abfrage-Port muss leer sein oder zwischen 1 und 65535 liegen.'];
+    }
+    $query = (string) ($payload['query'] ?? 'tcp');
+    if (!in_array($query, GAMESERVER_QUERY_TYPES, true)) {
+        return [null, 'Unbekannte Abfrageart.'];
+    }
+    $password = (string) ($payload['password'] ?? '');
+    if (mb_strlen($password, 'UTF-8') > 100) {
+        return [null, 'Das Passwort darf höchstens 100 Zeichen lang sein.'];
+    }
+    $note = trim((string) ($payload['note'] ?? ''));
+    if (mb_strlen($note, 'UTF-8') > 120) {
+        return [null, 'Der Hinweis darf höchstens 120 Zeichen lang sein.'];
+    }
+    return [[
+        'name' => $name,
+        'game' => $game,
+        'host' => $host,
+        'port' => $port,
+        'probe_host' => $probeHost,
+        'query_port' => $queryPort,
+        'query' => $query,
+        'password' => $password,
+        'note' => $note,
+    ], null];
+}
+
+/** Adresse der Gameserver-Abfrage des Bots, abgeleitet aus BOT_STATS_URL; null = Bot nicht eingerichtet. */
+function botGameserversUrl(): ?string
+{
+    if (!defined('BOT_STATS_URL') || BOT_STATS_URL === '') {
+        return null;
+    }
+    $url = (string) preg_replace('~/api/stats/?$~', '/api/gameservers', (string) BOT_STATS_URL);
+    return $url === (string) BOT_STATS_URL ? null : $url;
+}
+
+/**
+ * Online-Status der Gameserver vom Discord-Bot (20 Sekunden zwischengespeichert).
+ * Rückgabe: Status je Server-ID (state online|offline|unknown, players, max, names, checked_at)
+ * und 'bot' => ob der Bot erreichbar war.
+ */
+function gameserverStatuses(): array
+{
+    $url = botGameserversUrl();
+    if ($url === null) {
+        return ['bot' => false, 'servers' => []];
+    }
+    $file = 'gameservers-status.json';
+    $cached = achievementsCacheRead($file, GAMESERVER_STATUS_TTL_SECONDS);
+    $data = $cached;
+    if ($data === null) {
+        $context = stream_context_create(['http' => [
+            'timeout' => 3,
+            'ignore_errors' => true,
+            'header' => "User-Agent: Kellerkinder-Website/1.0\r\nAccept: application/json\r\n",
+        ]]);
+        $raw = @file_get_contents($url, false, $context);
+        $decoded = $raw === false ? null : json_decode($raw, true);
+        if (is_array($decoded) && ($decoded['ok'] ?? false) === true && is_array($decoded['servers'] ?? null)) {
+            $data = $decoded;
+            achievementsCacheWrite($file, $decoded);
+        } else {
+            $data = achievementsCacheRead($file, null); // letzter bekannter Stand
+        }
+    }
+    if ($data === null) {
+        return ['bot' => false, 'servers' => []];
+    }
+    $servers = [];
+    foreach ($data['servers'] as $row) {
+        if (!is_array($row) || !isset($row['id'])) {
+            continue;
+        }
+        $checked = strtotime((string) ($row['checkedAt'] ?? '')) ?: 0;
+        $fresh = $checked > 0 && (time() - $checked) < GAMESERVER_STATUS_MAX_AGE_SECONDS;
+        $state = (string) ($row['state'] ?? 'unknown');
+        $names = [];
+        foreach (is_array($row['players'] ?? null) ? $row['players'] : [] as $playerName) {
+            $names[] = mb_substr((string) $playerName, 0, 60, 'UTF-8');
+        }
+        $servers[(int) $row['id']] = [
+            'state' => $fresh && in_array($state, ['online', 'offline'], true) ? $state : 'unknown',
+            'players' => isset($row['playerCount']) ? max(0, (int) $row['playerCount']) : null,
+            'max' => isset($row['maxPlayers']) ? max(0, (int) $row['maxPlayers']) : null,
+            'names' => array_slice($names, 0, 50),
+            'checked_at' => (string) ($row['checkedAt'] ?? ''),
+        ];
+    }
+    return ['bot' => true, 'servers' => $servers];
+}
+
 /**
  * Spielzeit-Statistik des Discord-Bots (serverseitig abgerufen, 5 Minuten
  * zwischengespeichert). Ist der Bot nicht erreichbar, werden die letzten
@@ -1915,6 +2104,8 @@ function defaultStore(): array
         'remember_tokens' => [],
         'blog_posts' => [],
         'next_post_id' => 1,
+        'gameservers' => [],
+        'next_gameserver_id' => 1,
         'settings' => [
             'admin_player_names' => [],
             'theme' => 'default',
@@ -1999,6 +2190,12 @@ function normalizeStore(array $store): array
     $store['remember_tokens'] = pruneRememberTokens($store['remember_tokens'] ?? []);
     $store['blog_posts'] = normalizeBlogPosts($store['blog_posts'] ?? []);
     $store['next_post_id'] = max(1, (int) ($store['next_post_id'] ?? 1));
+    $store['gameservers'] = normalizeGameservers($store['gameservers'] ?? []);
+    $store['next_gameserver_id'] = max(
+        1,
+        (int) ($store['next_gameserver_id'] ?? 1),
+        1 + max([0, ...array_map(static fn(array $server): int => $server['id'], $store['gameservers'])])
+    );
     // Die frühere, von Hand gepflegte Spiele-Bibliothek gibt es nicht mehr; alte Einträge fallen beim nächsten Speichern weg.
     unset($store['current_games'], $store['next_game_id']);
     $store['settings'] = is_array($store['settings'] ?? null) ? $store['settings'] : $defaults['settings'];
@@ -3187,6 +3384,73 @@ if ($action === 'blog_posts') {
     respond(['ok' => true, 'posts' => $posts, 'tags' => $tags]);
 }
 
+if ($action === 'gameservers') {
+    // Öffentlich lesbar. Das Passwort steht nur in der Antwort, wenn jemand angemeldet ist.
+    $serverStore = readStore();
+    $serverUserIndex = currentUserIndex($serverStore);
+    $serverUser = $serverUserIndex === null ? null : $serverStore['users'][$serverUserIndex];
+    $serverLoggedIn = $serverUser !== null && empty($serverUser['must_change_password']);
+    $serverIsAdmin = $serverUser !== null && isAdminUser($serverStore, $serverUser);
+    $serverCsrf = csrfToken();
+    session_write_close();
+
+    $statuses = gameserverStatuses();
+    $iconIndex = gameIconIndex();
+    $gameNames = [];
+    $serverRows = [];
+    foreach ($serverStore['gameservers'] as $server) {
+        $status = $statuses['servers'][$server['id']] ?? ['state' => 'unknown', 'players' => null, 'max' => null, 'names' => []];
+        $gameNames[] = $server['game'];
+        $serverRows[] = [
+            'id' => $server['id'],
+            'name' => $server['name'],
+            'game' => $server['game'],
+            'icon' => gameIconUrl($iconIndex[gameIconKey($server['game'])] ?? null),
+            'host' => $server['host'],
+            'port' => $server['port'],
+            'note' => $server['note'],
+            'has_password' => $server['password'] !== '',
+            'password' => $serverLoggedIn ? $server['password'] : null,
+            'state' => $status['state'],
+            'players' => $status['players'],
+            'max_players' => $status['max'],
+            'player_names' => $serverLoggedIn ? $status['names'] : [],
+            'checked_at' => $status['checked_at'] ?? '',
+        ];
+    }
+    $out = [
+        'ok' => true,
+        'logged_in' => $serverLoggedIn,
+        'is_admin' => $serverIsAdmin,
+        'csrf_token' => $serverCsrf,
+        'status_configured' => botGameserversUrl() !== null,
+        'bot_reachable' => $statuses['bot'],
+        'servers' => $serverRows,
+    ];
+    if ($serverIsAdmin) {
+        // Für das Bearbeiten: alle Felder inkl. interner Adresse und Abfrageart.
+        $out['edit'] = array_map(static fn(array $server): array => $server, $serverStore['gameservers']);
+    }
+    if (gameIconsMissing($gameNames)) {
+        gameIconsInBackground($gameNames, $out);
+    }
+    respond($out);
+}
+
+if ($action === 'gameservers_config') {
+    // Wird vom Discord-Bot abgefragt: welche Server er prüfen soll. Ohne Passwörter.
+    session_write_close();
+    $configStore = readStore();
+    respond(['ok' => true, 'servers' => array_map(static fn(array $server): array => [
+        'id' => $server['id'],
+        'name' => $server['name'],
+        'game' => $server['game'],
+        'host' => $server['probe_host'] !== '' ? $server['probe_host'] : $server['host'],
+        'port' => $server['query_port'] > 0 ? $server['query_port'] : $server['port'],
+        'query' => $server['query'],
+    ], $configStore['gameservers'])]);
+}
+
 if ($action === 'stats_exclusions') {
     // Wird vom Discord-Bot abgefragt, damit /statistik dieselben Spieler ausblendet.
     session_write_close();
@@ -3967,6 +4231,50 @@ withWritableStore(function (array &$store) use ($action, $payload): array {
             }
             $refreshed = steamRefreshNow($store);
             return [['ok' => true, 'refreshed' => $refreshed], 200, false];
+
+        case 'admin_save_gameserver':
+            requireAdmin($store);
+            [$serverInput, $serverError] = validateGameserverInput($payload);
+            if ($serverError !== null) {
+                return [['ok' => false, 'error' => $serverError], 422, false];
+            }
+            $serverId = (int) ($payload['id'] ?? 0);
+            $serverPos = null;
+            foreach ($store['gameservers'] as $position => $existing) {
+                if ($existing['id'] === $serverId) {
+                    $serverPos = $position;
+                    break;
+                }
+            }
+            if ($serverId > 0 && $serverPos === null) {
+                return [['ok' => false, 'error' => 'Dieser Server existiert nicht mehr.'], 404, false];
+            }
+            if ($serverPos === null) {
+                if (count($store['gameservers']) >= GAMESERVER_MAX) {
+                    return [['ok' => false, 'error' => 'Es sind höchstens ' . GAMESERVER_MAX . ' Server möglich.'], 422, false];
+                }
+                $serverId = (int) $store['next_gameserver_id'];
+                $store['next_gameserver_id'] = $serverId + 1;
+                $store['gameservers'][] = ['id' => $serverId] + $serverInput;
+            } else {
+                // Leeres Passwortfeld beim Bearbeiten = Passwort bleibt; „Passwort entfernen“ löscht es.
+                if ($serverInput['password'] === '' && empty($payload['clear_password'])) {
+                    $serverInput['password'] = $store['gameservers'][$serverPos]['password'];
+                }
+                $store['gameservers'][$serverPos] = ['id' => $serverId] + $serverInput;
+            }
+            @unlink(achievementsCacheDirectory() . DIRECTORY_SEPARATOR . 'gameservers-status.json');
+            return [['ok' => true, 'id' => $serverId], 200, true];
+
+        case 'admin_delete_gameserver':
+            requireAdmin($store);
+            $deleteId = (int) ($payload['id'] ?? 0);
+            $remaining = array_values(array_filter($store['gameservers'], static fn(array $server): bool => $server['id'] !== $deleteId));
+            if (count($remaining) === count($store['gameservers'])) {
+                return [['ok' => false, 'error' => 'Dieser Server existiert nicht mehr.'], 404, false];
+            }
+            $store['gameservers'] = $remaining;
+            return [['ok' => true], 200, true];
 
         case 'admin_set_stats_exclusions':
             requireAdmin($store);

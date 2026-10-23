@@ -6,7 +6,7 @@ declare(strict_types=1);
 //   0 * * * * php /srv/kellerkinder-website/steam-refresh.php --force
 //
 // 1. Steam-Erfolge für das Widget „Steam-Erfolge“ holen (Zwischenspeicher in data/cache).
-// 2. Symbole der Spiele aus der Spiele-Seite suchen und nach data/media laden.
+// 2. Symbole der Spiele aus der Spiele-Seite und der Gameserver suchen und nach data/media laden.
 // 3. Discord-Profilbilder der Spieler nach data/media laden und einmal pro Woche prüfen.
 //
 // Ohne --force wird nur gearbeitet, wenn nötig (veraltet bzw. Symbole fehlen).
@@ -54,14 +54,14 @@ if (!$iconsOnly) {
 }
 
 // ---- 2./3. Spiele-Symbole und Profilbilder (alle jemals gespielten Spiele bzw. Spieler, ohne ausgeblendete)
-if (!defined('BOT_STATS_URL') || BOT_STATS_URL === '') {
-    echo "Spiele-Symbole: BOT_STATS_URL fehlt in config.php, übersprungen.\n";
-    exit(0);
-}
-$stats = botStatsData(0, statsExcludedIds($store));
+$stats = defined('BOT_STATS_URL') && BOT_STATS_URL !== '' ? botStatsData(0, statsExcludedIds($store)) : null;
 $names = is_array($stats['games'] ?? null) ? array_column($stats['games'], 'name') : [];
+// Auch die Spiele der Gameserver (Seite „Server“) brauchen ein Logo.
+foreach ($store['gameservers'] as $gameserver) {
+    $names[] = $gameserver['game'];
+}
 if ($names === []) {
-    echo "Spiele-Symbole: noch keine Spiele in der Statistik.\n";
+    echo "Spiele-Symbole: noch keine Spiele (Statistik oder Gameserver).\n";
     exit(0);
 }
 $before = count(array_filter(array_map(static fn(string $n): ?string => gameIconUrl(gameIconIndex()[gameIconKey($n)] ?? null), $names)));

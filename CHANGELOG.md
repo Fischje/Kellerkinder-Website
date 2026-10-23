@@ -1,5 +1,14 @@
 # Änderungsprotokoll
 
+## 2.20.0 — Neue Seite „Server“: Gameserver im Raster
+
+- **Neue Seite `gameserver.php`** (Menüpunkt „Server“): Die Gameserver der Kellerkinder als Kartenraster. Jede Karte zeigt das **Logo des Spiels**, Name, **IP:Port**, das **Passwort** und ob der Server **online** oder **offline** ist (bei Online mit Spielerzahl, z. B. 3/10)
+- **Passwort:** Gäste sehen nur Sternchen (die Seite liefert ihnen das Passwort gar nicht erst aus). Wer angemeldet ist, kann es per „Anzeigen“ aufdecken und kopieren
+- **Admins** legen Server direkt auf der Seite an, ändern und löschen sie („Server hinzufügen“, „Bearbeiten“). Leeres Passwortfeld beim Bearbeiten lässt das bisherige Passwort stehen. Die Passwörter liegen wie alle Daten in `data/store.php` (nicht im Repository)
+- **Status** liefert der Discord-Bot (ab Version 1.9.0, `BOT_STATS_URL` in `config.php` genügt): Abfrageart je Server `a2s` (Steam/Source, UDP), `minecraft` oder `tcp`; optional eigener Abfrage-Port und eine interne Adresse, falls der Bot den Server unter der öffentlichen Adresse nicht erreicht. Ohne Bot zeigt die Seite „Unbekannt“ und einen Hinweis. Bei angemeldeten Besuchern stehen zusätzlich die Namen der Spieler, die gerade online sind
+- Das Logo kommt aus derselben Quelle wie die Spiele-Symbole (RAWG/Steam, Name = Feld „Spiel“), wird einmal geladen und danach von der eigenen Seite ausgeliefert; ohne Treffer erscheint 🎮. `steam-refresh.php` berücksichtigt die Spiele der Server
+- Neue API-Aktionen: `gameservers` (lesen), `gameservers_config` (für den Bot, ohne Passwörter), `admin_save_gameserver`, `admin_delete_gameserver`
+
 ## 2.19.3 — Zwischenspeicher und Bilder funktionieren auch bei schreibgeschütztem `data`-Ordner
 
 - **Ursache gefunden:** Auf dem Server darf PHP nur die Datei `data/store.php` schreiben, aber keine Unterordner im
