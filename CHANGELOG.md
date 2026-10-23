@@ -1,5 +1,11 @@
 # Änderungsprotokoll
 
+## 2.24.0 — Netzje: Listen der eingetragenen und vorgeschlagenen Spiele
+
+- Unter der Zeitleiste stehen jetzt zwei Listen: **„Eingetragene Spiele (n)“** nach Tag mit Uhrzeit und belegten Plätzen und **„Vorgeschlagene Spiele (n)“** mit Tag, Uhrzeit und wer es vorgeschlagen hat. Ein Klick öffnet wie in der Zeitleiste die Details (Anmelden, Übernehmen, Zurückziehen)
+- Die Liste der eingetragenen Spiele gab es bisher nur auf dem Handy; jetzt auch am Rechner
+- Vorgeschlagene Spiele sind jetzt **für alle sichtbar** (nur lesend). Vorschlagen, Übernehmen und Zurückziehen bleibt Angemeldeten bzw. Admins vorbehalten
+
 ## 2.23.0 — Kalender: Netzje-Tage rot markiert
 
 - Ist eine LAN-Party geplant, erscheinen ihre Tage im Kalender immer als Spalte – auch wenn sonst kein Spieltag wäre. Der Spaltenkopf ist rot hinterlegt und trägt den Link **„🎉 Netzje“** zur Netzje-Seite, die Zellen darunter sind leicht rot getönt. Eintragen geht wie an jedem anderen Spieltag

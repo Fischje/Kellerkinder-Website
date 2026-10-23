@@ -79,10 +79,14 @@ require __DIR__ . '/includes/site-header.php';
         </div>
         <p class="netzje-note" id="timetableNote"></p>
         <div class="netzje-timeline-wrap" id="timelineWrap"><div class="netzje-timeline" id="timeline"></div></div>
-        <div class="netzje-list" id="timetableList"></div>
 
-        <div id="proposalsBox" hidden>
-            <h3 class="stats-section" style="margin-top:22px">Vorschläge</h3>
+        <div class="netzje-section" id="plannedBox" hidden>
+            <h3 class="stats-section" id="plannedTitle">Eingetragene Spiele</h3>
+            <div class="netzje-list" id="timetableList"></div>
+        </div>
+
+        <div class="netzje-section" id="proposalsBox">
+            <h3 class="stats-section" id="proposalsTitle">Vorgeschlagene Spiele</h3>
             <p class="netzje-note" id="proposalsNote"></p>
             <ul class="netzje-proposals" id="proposalsList"></ul>
         </div>
@@ -566,10 +570,16 @@ require __DIR__ . '/includes/site-header.php';
     function renderProposals() {
         const { logged_in: loggedIn, is_admin: isAdmin } = state.data;
         const proposals = state.data.slots.filter(slot => slot.status === 'proposed');
-        byId('proposalsBox').hidden = !loggedIn || proposals.length === 0;
-        byId('proposalsNote').textContent = isAdmin
-            ? 'Anklicken, um einen Vorschlag zu übernehmen (Zeit und Plätze kannst du dabei anpassen) oder zu löschen.'
-            : 'Ein Admin übernimmt Vorschläge in den Stundenplan. Deine eigenen kannst du zurückziehen.';
+        byId('proposalsTitle').textContent = `Vorgeschlagene Spiele (${proposals.length})`;
+        let note;
+        if (proposals.length === 0) {
+            note = loggedIn && !isAdmin ? 'Noch keine Vorschläge. Mit „Spiel vorschlagen“ bringst du eins ins Spiel.' : 'Noch keine Vorschläge.';
+        } else if (isAdmin) {
+            note = 'Anklicken, um einen Vorschlag zu übernehmen (Zeit und Plätze kannst du dabei anpassen) oder zu löschen.';
+        } else {
+            note = 'Noch nicht im Stundenplan – ein Admin übernimmt Vorschläge.' + (loggedIn ? ' Deine eigenen kannst du zurückziehen.' : '');
+        }
+        byId('proposalsNote').textContent = note;
         const list = byId('proposalsList');
         list.replaceChildren(...proposals.map(slot => {
             const li = el('li');
@@ -591,6 +601,8 @@ require __DIR__ . '/includes/site-header.php';
             ? (isAdmin ? 'Noch keine Spiele eingetragen. Mit „Spiel eintragen“ füllst du den Stundenplan.' : 'Noch keine Spiele im Stundenplan.')
             : 'Ein Spiel anklicken, um zu sehen, wer dabei ist, und dich anzumelden.' + (loggedIn ? '' : ' Anmelden geht nur mit Account.');
         byId('timelineWrap').hidden = count === 0;
+        byId('plannedBox').hidden = count === 0;
+        byId('plannedTitle').textContent = `Eingetragene Spiele (${count})`;
         renderTimeline();
         renderList();
         renderProposals();

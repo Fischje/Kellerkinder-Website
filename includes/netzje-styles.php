@@ -77,8 +77,8 @@
         .netzje-block strong { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: .9rem; }
         .netzje-block small { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; opacity: .85; font-size: .75rem; }
 
-        .netzje-list { display: none; }
-        .netzje-list h3 { margin: 16px 0 8px; color: #fff; font-family: var(--font-heading); font-size: .95rem; font-weight: 800; text-transform: uppercase; }
+        .netzje-section { margin-top: 24px; }
+        .netzje-list h3 { margin: 12px 0 8px; color: #fff; font-family: var(--font-heading); font-size: .95rem; font-weight: 800; text-transform: uppercase; }
         .netzje-list ol { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
         .netzje-row {
             display: grid;
@@ -103,7 +103,7 @@
 
         @media (max-width: 719px) {
             .netzje-timeline-wrap { display: none; }
-            .netzje-list { display: block; }
+            #plannedBox { margin-top: 8px; }
         }
 
         .netzje-proposals { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }

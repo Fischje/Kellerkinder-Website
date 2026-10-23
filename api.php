@@ -1894,7 +1894,7 @@ function netzjeUserName(array $store, int $userId): string
     return $player !== null ? (string) $player['name'] : (string) $store['users'][$index]['username'];
 }
 
-/** Antwort für die Seite „Netzje“. Ort nur für Angemeldete, Vorschläge sehen nur Angemeldete. */
+/** Antwort für die Seite „Netzje“. Ort nur für Angemeldete; Vorschläge sind (nur lesend) für alle sichtbar. */
 function netzjeResponse(array $store): array
 {
     $userIndex = currentUserIndex($store);
@@ -1915,9 +1915,6 @@ function netzjeResponse(array $store): array
     };
     $slots = [];
     foreach ($party['slots'] as $slot) {
-        if ($slot['status'] === 'proposed' && !$loggedIn) {
-            continue;
-        }
         $people = $names($slot['signups']);
         $limit = $slot['max'] > 0 ? $slot['max'] : count($people);
         $slots[] = [
