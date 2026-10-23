@@ -1033,7 +1033,8 @@ function searchGames(string $term): ?array
             }
             $image = (string) ($item['background_image'] ?? '');
             // Verkleinerte Variante verwenden (RAWG-Bild-Crop).
-            $image = str_replace('/media/games/', '/media/crop/600/400/games/', $image);
+            // Auch Screenshots (manche Spiele haben nur einen): die Originale sind oft größer als GAME_ICON_MAX_BYTES.
+            $image = str_replace(['/media/games/', '/media/screenshots/'], ['/media/crop/600/400/games/', '/media/crop/600/400/screenshots/'], $image);
             $results[] = [
                 'name' => mb_substr($name, 0, CURRENT_GAME_NAME_MAX, 'UTF-8'),
                 'image' => validGameImage($image),
@@ -1368,17 +1369,22 @@ function gameIconsSync(array $names, int $max = GAME_ICON_BATCH_MAX, bool $retry
     foreach (array_slice($todo, 0, $max, true) as $key => $name) {
         $known = $index[$key] ?? null;
         if ($known !== null && validGameImage($known['remote'] ?? null) !== null) {
-            // Bild schon gefunden, nur der Download fehlt noch: nicht erneut suchen.
+            // Bild schon gefunden, nur der Download fehlt noch: zuerst die gemerkte Adresse versuchen.
             $known['file'] = gameIconDownload($known['remote'], $key);
             $known['tried_at'] = time();
             $index[$key] = $known;
-            $added += $known['file'] !== null ? 1 : 0;
             gameIconIndexWrite($index);
-            continue;
+            if ($known['file'] !== null) {
+                $added++;
+                continue;
+            }
+            // Scheitert der Download, ist die Adresse beim Anbieter oft veraltet (Bild ersetzt oder entfernt): neu suchen.
         }
         $found = gameIconLookup($name);
         $entry = ['name' => mb_substr($name, 0, CURRENT_GAME_NAME_MAX, 'UTF-8'), 'tried_at' => time(), 'file' => null, 'remote' => null];
         if ($found === false) {
+            $entry = $known !== null ? $known : $entry; // Suchdienst gerade nicht erreichbar: bisherigen Eintrag behalten
+            $entry['tried_at'] = time();
             $entry['error'] = true;
         } elseif ($found !== null) {
             $entry['remote'] = validGameImage($found['image'] ?? null);

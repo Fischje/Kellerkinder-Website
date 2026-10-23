@@ -1,5 +1,11 @@
 # Änderungsprotokoll
 
+## 2.20.1 — Spiele-Symbole: veraltete Bild-Adressen und zu große Screenshots
+
+- **Fehler behoben:** Spiele, deren gemerktes Bild beim Anbieter (RAWG) ersetzt oder entfernt wurde, blieben ohne Symbol. Der Download der alten Adresse scheiterte bei jedem Lauf, und weil „Bild gefunden“ im Index stand, wurde nie neu gesucht. Jetzt wird nach einem fehlgeschlagenen Download neu gesucht und die neue Adresse genutzt (betraf z. B. Enshrouded)
+- **Fehler behoben:** Hat ein Spiel bei RAWG nur einen Screenshot statt eines Titelbilds, wurde das Originalbild geladen, das oft über der Größengrenze (1,5 MB) liegt. Screenshots werden jetzt wie Titelbilder auf 600 × 400 verkleinert angefordert (betraf z. B. Permafrost)
+- Ist der Suchdienst gerade nicht erreichbar, bleibt ein vorhandener Eintrag erhalten statt überschrieben zu werden
+
 ## 2.20.0 — Neue Seite „Server“: Gameserver im Raster
 
 - **Neue Seite `gameserver.php`** (Menüpunkt „Server“): Die Gameserver der Kellerkinder als Kartenraster. Jede Karte zeigt das **Logo des Spiels**, Name, **IP:Port**, das **Passwort** und ob der Server **online** oder **offline** ist (bei Online mit Spielerzahl, z. B. 3/10)
