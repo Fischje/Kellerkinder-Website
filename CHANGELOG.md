@@ -1,5 +1,11 @@
 # Änderungsprotokoll
 
+## 2.20.2 — Bilder, die PHP nicht lesen darf, werden ersetzt
+
+- **Ursache gefunden (Spiele ohne Symbol):** Läufe von `steam-refresh.php` als `root` hatten Symbole in `data/media` angelegt, die dem Benutzer `root` gehören (Rechte `rw-rw----`). Der Webserver (`www-data`) durfte sie weder ausliefern noch überschreiben: `media.php` lieferte nichts, der Download scheiterte still, und der Index meldete die Spiele trotzdem als „hat Symbol“
+- Eine Bilddatei, die PHP nicht lesen kann, gilt jetzt als nicht vorhanden. Beim nächsten Abruf wird sie im eigenen Ordner gelöscht und neu geschrieben; bis dahin zeigt die Seite die Adresse beim Anbieter
+- Dauerhaft hilft: `chown -R www-data:www-data data` und den Cron-Job `steam-refresh.php` als `www-data` laufen lassen, nicht als `root`
+
 ## 2.20.1 — Spiele-Symbole: veraltete Bild-Adressen und zu große Screenshots
 
 - **Fehler behoben:** Spiele, deren gemerktes Bild beim Anbieter (RAWG) ersetzt oder entfernt wurde, blieben ohne Symbol. Der Download der alten Adresse scheiterte bei jedem Lauf, und weil „Bild gefunden“ im Index stand, wurde nie neu gesucht. Jetzt wird nach einem fehlgeschlagenen Download neu gesucht und die neue Adresse genutzt (betraf z. B. Enshrouded)

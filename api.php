@@ -1088,7 +1088,7 @@ function mediaDirectoryEnsure(): bool
 function mediaFileExists(string $file): bool
 {
     return preg_match('/^[a-z0-9][a-z0-9._-]{0,120}\.(?:png|jpe?g|webp|gif)$/', $file) === 1
-        && is_file(mediaDirectory() . DIRECTORY_SEPARATOR . $file);
+        && is_readable(mediaDirectory() . DIRECTORY_SEPARATOR . $file); // is_readable: von root angelegte Dateien kann PHP evtl. nicht lesen
 }
 
 /**
@@ -1112,7 +1112,12 @@ function mediaStore(string $binary, string $file): ?string
     if (!mediaDirectoryEnsure()) {
         return null;
     }
-    return @file_put_contents(mediaDirectory() . DIRECTORY_SEPARATOR . $file, $binary) === false ? null : $file;
+    $path = mediaDirectory() . DIRECTORY_SEPARATOR . $file;
+    if (is_file($path) && (!is_readable($path) || !is_writable($path))) {
+        // Datei gehört einem anderen Benutzer (z. B. von einem Lauf als root): im eigenen Ordner löschen und neu schreiben.
+        @unlink($path);
+    }
+    return @file_put_contents($path, $binary) === false ? null : $file;
 }
 
 /** Löscht eine heruntergeladene Datei (nur neue Ablage, alte assets/-Pfade bleiben unangetastet). */
