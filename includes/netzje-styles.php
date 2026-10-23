@@ -109,6 +109,19 @@
         .netzje-proposals { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
         .netzje-proposals .netzje-row { cursor: pointer; }
 
+        /* Eigenes Hintergrundbild der Party: gleich abgetönt wie der normale Hintergrund */
+        body.netzje-has-bg {
+            background-image:
+                linear-gradient(rgba(20, 11, 27, .55), rgba(20, 11, 27, .55)),
+                radial-gradient(ellipse 90% 78% at 50% 30%, transparent 0%, rgb(20, 11, 27) 100%),
+                var(--netzje-bg) !important;
+            background-size: cover !important;
+            background-position: center !important;
+            background-attachment: fixed !important;
+        }
+        .netzje-bg-row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 6px; }
+        .netzje-bg-preview { width: 160px; height: 90px; object-fit: cover; border: 1px solid var(--line); border-radius: 10px; }
+
         .netzje-form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; }
         .netzje-dialog-meta { margin: 0; opacity: .8; }
         .form-error { margin: 0; color: var(--red); font-weight: 600; }

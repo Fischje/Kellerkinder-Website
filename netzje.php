@@ -120,6 +120,19 @@ require __DIR__ . '/includes/site-header.php';
             <label for="pInfo">Mitbringliste / Infos</label>
             <textarea id="pInfo" maxlength="2000" placeholder="Netzwerkkabel, Mehrfachstecker, Kosten, Essen …"></textarea>
         </div>
+        <div>
+            <label for="pBackgroundFile">Hintergrundbild dieser Party</label>
+            <div class="netzje-bg-row">
+                <img id="pBackgroundPreview" class="netzje-bg-preview" alt="" hidden>
+                <span class="netzje-muted" id="pBackgroundNone">Kein eigenes Bild – es gilt der normale Hintergrund.</span>
+                <div class="netzje-actions">
+                    <button class="secondary-button" id="pBackgroundPick" type="button">Bild wählen …</button>
+                    <button class="danger-button" id="pBackgroundRemove" type="button" hidden>Entfernen</button>
+                </div>
+            </div>
+            <input type="file" id="pBackgroundFile" accept="image/png,image/jpeg,image/webp" hidden>
+            <p class="netzje-muted">Wird sofort gespeichert und auf höchstens 1920 Pixel Breite verkleinert. „Neue Party“ entfernt das Bild wieder.</p>
+        </div>
         <div class="netzje-form-grid">
             <div>
                 <label for="pStreamType">Live-Stream</label>
@@ -265,6 +278,65 @@ require __DIR__ . '/includes/site-header.php';
         }
         return list;
     }
+
+    // ===== Hintergrundbild der Party =====
+    function renderBackground() {
+        const url = state.data.party.background;
+        document.body.classList.toggle('netzje-has-bg', Boolean(url));
+        if (url) document.body.style.setProperty('--netzje-bg', `url("${url}")`);
+        else document.body.style.removeProperty('--netzje-bg');
+        const preview = byId('pBackgroundPreview');
+        preview.hidden = !url;
+        if (url) preview.src = url;
+        byId('pBackgroundNone').hidden = Boolean(url);
+        byId('pBackgroundRemove').hidden = !url;
+    }
+
+    // Im Browser auf höchstens 1920 px verkleinern (spart Upload), als JPEG.
+    function shrinkImage(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onerror = () => reject(new Error('Die Datei konnte nicht gelesen werden.'));
+            reader.onload = () => {
+                const img = new Image();
+                img.onerror = () => reject(new Error('Die Datei ist kein gültiges Bild.'));
+                img.onload = () => {
+                    const scale = Math.min(1, 1920 / img.naturalWidth);
+                    const canvas = document.createElement('canvas');
+                    canvas.width = Math.round(img.naturalWidth * scale);
+                    canvas.height = Math.round(img.naturalHeight * scale);
+                    canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+                    resolve(canvas.toDataURL('image/jpeg', 0.85));
+                };
+                img.src = reader.result;
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+
+    byId('pBackgroundPick').addEventListener('click', () => byId('pBackgroundFile').click());
+    byId('pBackgroundFile').addEventListener('change', async event => {
+        const file = event.target.files[0];
+        event.target.value = '';
+        if (!file) return;
+        const pick = byId('pBackgroundPick');
+        pick.disabled = true;
+        pick.textContent = 'Wird hochgeladen …';
+        try {
+            const image = await shrinkImage(file);
+            await runAction('admin_netzje_background', { image }, byId('partyError'), 'Hintergrundbild gespeichert.');
+        } catch (error) {
+            byId('partyError').textContent = error.message;
+            byId('partyError').hidden = false;
+        } finally {
+            pick.disabled = false;
+            pick.textContent = 'Bild wählen …';
+        }
+    });
+    byId('pBackgroundRemove').addEventListener('click', async () => {
+        if (!confirm('Hintergrundbild dieser Party entfernen?')) return;
+        await runAction('admin_netzje_background', { image: '' }, byId('partyError'), 'Hintergrundbild entfernt.');
+    });
 
     // ===== Party =====
     function renderParty() {
@@ -677,7 +749,7 @@ require __DIR__ . '/includes/site-header.php';
     });
 
     byId('newPartyButton').addEventListener('click', async () => {
-        if (!confirm('Neue Party anlegen? Termin, Stundenplan, Anmeldungen und Teilnehmer werden gelöscht. Titel, Texte und Stream bleiben als Vorlage stehen.')) return;
+        if (!confirm('Neue Party anlegen? Termin, Stundenplan, Anmeldungen, Teilnehmer und Hintergrundbild werden gelöscht. Titel, Texte und Stream bleiben als Vorlage stehen.')) return;
         await runAction('admin_netzje_new', {}, null, 'Bereit für die nächste Party – jetzt den Termin eintragen.');
     });
 
@@ -693,6 +765,7 @@ require __DIR__ . '/includes/site-header.php';
     // ===== Laden =====
     let scrolledToNow = false;
     function renderAll() {
+        renderBackground();
         renderParty();
         renderStream();
         renderTimetable();

@@ -59,6 +59,8 @@ const NETZJE_SLOTS_MAX = 120;
 const NETZJE_PROPOSALS_PER_USER = 10;
 const NETZJE_TEXT_MAX = 2000;
 const NETZJE_STREAM_TYPES = ['none', 'twitch', 'youtube'];
+const NETZJE_BACKGROUND_MAX_WIDTH = 1920;
+const NETZJE_BACKGROUND_MAX_BYTES = 6000000;
 const GAMESERVER_QUERY_TYPES = ['a2s', 'minecraft', 'tcp'];
 const GAMESERVER_STATUS_TTL_SECONDS = 20;
 const GAMESERVER_STATUS_MAX_AGE_SECONDS = 300; // älter: Status gilt als unbekannt
@@ -1452,10 +1454,10 @@ function gameIconsInBackground(array $names, array $response, array $avatars = [
  * Verkleinert zu breite Bilder serverseitig auf BLOG_IMAGE_MAX_WIDTH.
  * Ohne GD-Erweiterung wird das Original unverändert zurückgegeben.
  */
-function downscaleBlogImage(string $binary, array $imageInfo): string
+function downscaleBlogImage(string $binary, array $imageInfo, int $maxWidth = BLOG_IMAGE_MAX_WIDTH): string
 {
     [$width, $height, $type] = $imageInfo;
-    if ($width <= BLOG_IMAGE_MAX_WIDTH || !function_exists('imagecreatefromstring')) {
+    if ($width <= $maxWidth || !function_exists('imagecreatefromstring')) {
         return $binary;
     }
     // Animierte GIFs würden beim Neuzeichnen ihre Animation verlieren.
@@ -1467,7 +1469,7 @@ function downscaleBlogImage(string $binary, array $imageInfo): string
     if ($source === false) {
         return $binary;
     }
-    $targetWidth = BLOG_IMAGE_MAX_WIDTH;
+    $targetWidth = $maxWidth;
     $targetHeight = (int) round($height * ($targetWidth / $width));
     $target = imagecreatetruecolor($targetWidth, $targetHeight);
     if ($type === IMAGETYPE_PNG || $type === IMAGETYPE_WEBP) {
@@ -1781,7 +1783,8 @@ function normalizeNetzjeUserIds($value): array
 
 /**
  * Party: title, description, location (nur für Angemeldete), info (Mitbringliste), start, end,
- * stream_type (none|twitch|youtube), stream, attendees (User-IDs, „ich komme“), slots, next_slot_id.
+ * stream_type (none|twitch|youtube), stream, attendees (User-IDs, „ich komme“), background (Datei in data/media),
+ * slots, next_slot_id.
  * Slot: id, game, start, end, max (0 = ohne Limit), note, status (planned|proposed), proposed_by,
  * signups (User-IDs in Anmeldereihenfolge: die ersten `max` spielen mit, der Rest steht auf der Warteliste).
  */
@@ -1800,6 +1803,7 @@ function normalizeNetzje($value): array
         'stream_type' => $streamType,
         'stream' => validNetzjeStream($streamType, $value['stream'] ?? ''),
         'attendees' => normalizeNetzjeUserIds($value['attendees'] ?? []),
+        'background' => preg_match('/^netzje-[a-f0-9]{16}\.(?:jpg|png|webp)$/', (string) ($value['background'] ?? '')) ? (string) $value['background'] : '',
         'slots' => [],
         'next_slot_id' => max(1, (int) ($value['next_slot_id'] ?? 1)),
     ];
@@ -1949,6 +1953,7 @@ function netzjeResponse(array $store): array
             'stream' => $party['stream'],
             'attendees' => $names($party['attendees']),
             'attending' => $userId > 0 && in_array($userId, $party['attendees'], true),
+            'background' => $party['background'] === '' ? null : mediaUrl($party['background']),
         ],
         'slots' => $slots,
     ];
@@ -4521,9 +4526,45 @@ withWritableStore(function (array &$store) use ($action, $payload): array {
             ]));
             return [netzjeResponse($store), 200, true];
 
-        case 'admin_netzje_new':
-            // „Neue Party“: Stundenplan und Teilnehmer leeren, Texte bleiben als Vorlage stehen.
+        case 'admin_netzje_background':
+            // Eigenes Hintergrundbild der Party hochladen (image = data-URL) oder entfernen (image leer).
             requireAdmin($store);
+            $oldBackground = $store['netzje']['background'];
+            $imageData = (string) ($payload['image'] ?? '');
+            if ($imageData === '') {
+                $store['netzje']['background'] = '';
+            } else {
+                if (!preg_match('#^data:image/(png|jpeg|webp);base64,([A-Za-z0-9+/=]+)$#', $imageData, $imageMatches)) {
+                    return [['ok' => false, 'error' => 'Es werden nur PNG-, JPEG- und WEBP-Bilder unterstützt.'], 422, false];
+                }
+                $binary = base64_decode($imageMatches[2], true);
+                if ($binary === false || $binary === '' || strlen($binary) > NETZJE_BACKGROUND_MAX_BYTES) {
+                    return [['ok' => false, 'error' => 'Das Bild ist ungültig oder zu groß (max. 6 MB).'], 422, false];
+                }
+                $imageInfo = @getimagesizefromstring($binary);
+                $extensionByType = [IMAGETYPE_PNG => 'png', IMAGETYPE_JPEG => 'jpg', IMAGETYPE_WEBP => 'webp'];
+                if ($imageInfo === false || !isset($extensionByType[$imageInfo[2]])) {
+                    return [['ok' => false, 'error' => 'Die Datei ist kein gültiges PNG-, JPEG- oder WEBP-Bild.'], 422, false];
+                }
+                $binary = downscaleBlogImage($binary, $imageInfo, NETZJE_BACKGROUND_MAX_WIDTH);
+                $stored = mediaStore($binary, 'netzje-' . bin2hex(random_bytes(8)) . '.' . $extensionByType[$imageInfo[2]]);
+                if ($stored === null) {
+                    return [['ok' => false, 'error' => 'Das Bild konnte nicht gespeichert werden (Schreibrechte für data/media?).'], 500, false];
+                }
+                $store['netzje']['background'] = $stored;
+            }
+            if ($oldBackground !== '' && $oldBackground !== $store['netzje']['background']) {
+                @unlink(mediaDirectory() . DIRECTORY_SEPARATOR . $oldBackground);
+            }
+            return [netzjeResponse($store), 200, true];
+
+        case 'admin_netzje_new':
+            // „Neue Party“: Termin, Stundenplan, Teilnehmer und Hintergrundbild leeren, Texte bleiben als Vorlage stehen.
+            requireAdmin($store);
+            if ($store['netzje']['background'] !== '') {
+                @unlink(mediaDirectory() . DIRECTORY_SEPARATOR . $store['netzje']['background']);
+                $store['netzje']['background'] = '';
+            }
             $store['netzje']['slots'] = [];
             $store['netzje']['attendees'] = [];
             $store['netzje']['start'] = '';

@@ -1,5 +1,11 @@
 # Änderungsprotokoll
 
+## 2.22.0 — Netzje: eigenes Hintergrundbild je Party
+
+- Im Dialog „Party bearbeiten“ lädt ein Admin ein **Hintergrundbild für die Party** hoch (PNG, JPEG, WEBP). Es wird im Browser auf höchstens 1920 Pixel Breite verkleinert, sofort gespeichert (`data/media`, Auslieferung über `media.php`) und auf der Seite „Netzje“ für alle Besucher hinter dem Inhalt gezeigt – abgetönt wie der normale Hintergrund, damit Text lesbar bleibt
+- Ein neues Bild ersetzt das alte (die alte Datei wird gelöscht), „Entfernen“ stellt den normalen Hintergrund wieder her, **„Neue Party“ entfernt das Bild** – jede Party hat so ihr eigenes
+- Neue API-Aktion `admin_netzje_background`; `downscaleBlogImage` nimmt dafür eine maximale Breite als Parameter
+
 ## 2.21.0 — Neue Seite „Netzje“: LAN-Party mit Stundenplan
 
 - **Neue Seite `netzje.php`** (Menüpunkt „Netzje“, bisher „folgt“): genau eine LAN-Party mit Titel, Termin (Beginn/Ende), Beschreibung, Ort, Mitbringliste und Countdown („Noch 3 Tage“, „Läuft gerade“, „Vorbei“)
