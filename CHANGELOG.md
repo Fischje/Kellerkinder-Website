@@ -1,5 +1,11 @@
 # Änderungsprotokoll
 
+## 2.23.0 — Kalender: Netzje-Tage rot markiert
+
+- Ist eine LAN-Party geplant, erscheinen ihre Tage im Kalender immer als Spalte – auch wenn sonst kein Spieltag wäre. Der Spaltenkopf ist rot hinterlegt und trägt den Link **„🎉 Netzje“** zur Netzje-Seite, die Zellen darunter sind leicht rot getönt. Eintragen geht wie an jedem anderen Spieltag
+- Endet die Party um Mitternacht, zählt der Folgetag nicht mehr dazu; höchstens 14 Tage werden markiert
+- `event_dates` im `bootstrap` liefert dafür je Tag `netzje` (`{ title }` oder `null`)
+
 ## 2.22.0 — Netzje: eigenes Hintergrundbild je Party
 
 - Im Dialog „Party bearbeiten“ lädt ein Admin ein **Hintergrundbild für die Party** hoch (PNG, JPEG, WEBP). Es wird im Browser auf höchstens 1920 Pixel Breite verkleinert, sofort gespeichert (`data/media`, Auslieferung über `media.php`) und auf der Seite „Netzje“ für alle Besucher hinter dem Inhalt gezeigt – abgetönt wie der normale Hintergrund, damit Text lesbar bleibt

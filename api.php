@@ -3211,6 +3211,12 @@ function buildEventDates(array $store): array
         }
     }
 
+    // Außerdem: Tage der LAN-Party (Netzje) erscheinen immer und werden im Kalender rot markiert.
+    $netzjeDays = netzjeCalendarDays($store);
+    foreach (array_keys($netzjeDays) as $netzjeDay) {
+        $automaticDates[$netzjeDay] = true;
+    }
+
     // 3. Von Hand angelegte Spieltage.
     $customMap = [];
     foreach ($store['custom_dates'] as $customDate) {
@@ -3270,9 +3276,28 @@ function buildEventDates(array $store): array
             'is_past' => $date < $todayIso,
             'is_today' => $date === $todayIso,
             'is_custom' => isset($customMap[$date]),
+            'netzje' => $netzjeDays[$date] ?? null,
         ];
     }
     return $events;
+}
+
+/** Kalendertage der geplanten Party: ['YYYY-MM-DD' => ['title' => …]], höchstens 14 Tage. */
+function netzjeCalendarDays(array $store): array
+{
+    $party = normalizeNetzje($store['netzje'] ?? []);
+    if ($party['start'] === '' || $party['end'] === '') {
+        return [];
+    }
+    $tz = new DateTimeZone('Europe/Berlin');
+    $day = new DateTimeImmutable(substr($party['start'], 0, 10), $tz);
+    // Endet die Party um Mitternacht, zählt der Folgetag nicht mehr dazu.
+    $last = (new DateTimeImmutable(str_replace('T', ' ', $party['end']), $tz))->modify('-1 minute')->format('Y-m-d');
+    $days = [];
+    for ($index = 0; $index < 14 && $day->format('Y-m-d') <= $last; $index++, $day = $day->modify('+1 day')) {
+        $days[$day->format('Y-m-d')] = ['title' => $party['title'] !== '' ? $party['title'] : 'Netzje'];
+    }
+    return $days;
 }
 
 function visibleDateMap(array $store): array

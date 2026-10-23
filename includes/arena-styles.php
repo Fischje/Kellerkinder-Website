@@ -536,6 +536,24 @@
         .date-value { font-family: var(--font-heading); font-weight: 600; letter-spacing: .04em; }
 
         thead th.is-today { background: rgba(var(--accent-rgb), .16); box-shadow: inset 0 3px 0 var(--accent); }
+        /* LAN-Party (Netzje): Tage rot markiert, mit Link zur Netzje-Seite */
+        thead th.is-netzje { background: rgba(255, 64, 88, .32); box-shadow: inset 0 3px 0 #ff4058, inset 1px 0 0 rgba(255, 64, 88, .6), inset -1px 0 0 rgba(255, 64, 88, .6); }
+        tbody tr td.is-netzje { background: rgba(255, 64, 88, .1); box-shadow: inset 1px 0 0 rgba(255, 64, 88, .35), inset -1px 0 0 rgba(255, 64, 88, .35); }
+        .netzje-tag {
+            display: inline-block;
+            margin-top: 4px;
+            padding: 2px 8px;
+            border-radius: 999px;
+            background: #ff4058;
+            color: #fff;
+            font-size: .7rem;
+            font-weight: 800;
+            letter-spacing: .03em;
+            text-decoration: none;
+            text-transform: uppercase;
+            white-space: nowrap;
+        }
+        .netzje-tag:hover, .netzje-tag:focus-visible { background: #ff6a7e; outline: none; }
         tbody tr td.is-today { background: rgba(var(--accent-rgb), .05); }
 
         .today-tag,

@@ -1595,6 +1595,17 @@ require __DIR__ . '/includes/site-header.php';
             today.textContent = 'Heute';
             heading.appendChild(today);
 
+            if (eventDate.netzje) {
+                // LAN-Party: Tag rot markiert, Link zur Seite „Netzje“.
+                heading.classList.add('is-netzje');
+                const netzje = document.createElement('a');
+                netzje.className = 'netzje-tag';
+                netzje.href = 'netzje.php';
+                netzje.textContent = '🎉 Netzje';
+                netzje.title = `${eventDate.netzje.title} – zur Netzje-Seite`;
+                heading.appendChild(netzje);
+            }
+
             if (eventDate.is_past) {
                 const past = document.createElement('span');
                 past.className = 'past-tag';
@@ -1673,6 +1684,7 @@ require __DIR__ . '/includes/site-header.php';
                 const cell = document.createElement('td');
                 cell.className = 'status-cell';
                 if (eventDate.is_today) cell.classList.add('is-today');
+                if (eventDate.netzje) cell.classList.add('is-netzje');
                 const entry = state.availability[`${player.id}:${date}`] || { status: '', note: '', game: '', source: '' };
                 const meta = STATUS_META[entry.status] || STATUS_META[''];
 
