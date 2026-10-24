@@ -20,22 +20,6 @@ require __DIR__ . '/includes/bootstrap.php';
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Montserrat:wght@500;600;700;800;900&family=Open+Sans:wght@400;600;700&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
-    <script src="https://cdn.tailwindcss.com" nonce="<?= htmlspecialchars($cspNonce, ENT_QUOTES, 'UTF-8') ?>"></script>
-    <script nonce="<?= htmlspecialchars($cspNonce, ENT_QUOTES, 'UTF-8') ?>">
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        bg: '#140b1b', panel: '#22152c', panel2: '#2a1a36',
-                        line: '#3c2c4f', muted: '#a59cb3',
-                        primary: '#6b54b6', primaryhi: '#7f68cc', accent: '#e21b40', gold: '#f2b544',
-                        positive: '#45d483', negative: '#ef5b6a',
-                    },
-                    borderRadius: { card: '4px', control: '2px' },
-                }
-            }
-        };
-    </script>
     <?php require __DIR__ . '/includes/styles.php'; ?>
     <?php require __DIR__ . '/includes/arena-styles.php'; ?>
     <?php require __DIR__ . '/includes/navi-styles.php'; ?>

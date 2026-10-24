@@ -1,5 +1,10 @@
 # Änderungsprotokoll
 
+## 2.31.1 — Tailwind-Skript entfernt
+
+- Der Kalender lud noch das Tailwind-Skript von `cdn.tailwindcss.com` samt alter Farbkonfiguration, obwohl das Design es nicht mehr nutzt (keine Tailwind-Klassen im Einsatz). Entfernt – die Seite lädt schneller und hängt nicht mehr von diesem externen Dienst ab. Das Aussehen bleibt gleich (Screenshot-Vergleich)
+- Die Content-Security-Policy erlaubt `cdn.tailwindcss.com` nicht mehr
+
 ## 2.31.0 — Konto-Leiste über dem Kalender entfernt
 
 - Die Leiste mit Name, „Mein Account“, „Adminbereich“, „Abmelden“ bzw. „Anmelden“/„Account anlegen“ über dem Kalender ist weg – das alles erledigt jetzt der Account-Knopf oben rechts
