@@ -1,5 +1,15 @@
 # Änderungsprotokoll
 
+## 2.25.0 — Neues Design im Stil von navi.gg
+
+- **Neue Stilschicht `includes/navi-styles.php`**, wird auf allen Seiten als letzte nach `arena-styles.php` geladen
+- Dunkles Graublau statt Violett, **helles Grün** (`#9ef06a`) als einzige Akzentfarbe (bei NAVI Gelb). Buttons, Markierungen und Tags in Grün mit dunkler Schrift
+- **Hintergrundbilder zu 20 % sichtbar:** Über dem Bild liegt eine graublaue Fläche mit 80 % Deckkraft, ohne dunklen Rand (gilt auch für das Hintergrundbild der Netzje-Party). Linien- und Gittermuster entfallen
+- Seitentitel als großes, abgerundetes Banner mit grünem Brotkrumen-Etikett, sehr großer fetter Versal-Überschrift und Logo als Wasserzeichen
+- Schrift **Inter** (fett, Versalien) für Überschriften, Navigation und Buttons; Abschnittstitel groß ohne Linien
+- Abgerundete Flächen und Karten mit feinem Rahmen statt abgeschnittener Ecken; Karten heben sich beim Überfahren grün umrandet an
+- Sommer- und Winter-Theme behalten ihre Farben, übernehmen aber die neuen Formen
+
 ## 2.24.0 — Netzje: Listen der eingetragenen und vorgeschlagenen Spiele
 
 - Unter der Zeitleiste stehen jetzt zwei Listen: **„Eingetragene Spiele (n)“** nach Tag mit Uhrzeit und belegten Plätzen und **„Vorgeschlagene Spiele (n)“** mit Tag, Uhrzeit und wer es vorgeschlagen hat. Ein Klick öffnet wie in der Zeitleiste die Details (Anmelden, Übernehmen, Zurückziehen)

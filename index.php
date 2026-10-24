@@ -19,7 +19,7 @@ require __DIR__ . '/includes/bootstrap.php';
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800;900&family=Open+Sans:wght@400;600;700&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Montserrat:wght@500;600;700;800;900&family=Open+Sans:wght@400;600;700&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com" nonce="<?= htmlspecialchars($cspNonce, ENT_QUOTES, 'UTF-8') ?>"></script>
     <script nonce="<?= htmlspecialchars($cspNonce, ENT_QUOTES, 'UTF-8') ?>">
         tailwind.config = {
@@ -38,6 +38,7 @@ require __DIR__ . '/includes/bootstrap.php';
     </script>
     <?php require __DIR__ . '/includes/styles.php'; ?>
     <?php require __DIR__ . '/includes/arena-styles.php'; ?>
+    <?php require __DIR__ . '/includes/navi-styles.php'; ?>
 </head>
 <body data-theme="default">
 <div id="pullRefresh" class="pull-refresh" aria-hidden="true">

@@ -22,11 +22,12 @@ require __DIR__ . '/bootstrap.php';
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800;900&family=Open+Sans:wght@400;600;700&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Montserrat:wght@500;600;700;800;900&family=Open+Sans:wght@400;600;700&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
     <?php require __DIR__ . '/styles.php'; ?>
     <?php require __DIR__ . '/blog-styles.php'; ?>
     <?php require __DIR__ . '/stats-styles.php'; ?>
     <?php require __DIR__ . '/arena-styles.php'; ?>
+    <?php require __DIR__ . '/navi-styles.php'; ?>
 </head>
 <body data-theme="default">
 <div class="season-scene" aria-hidden="true">

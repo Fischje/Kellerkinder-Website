@@ -26,7 +26,7 @@ Mobiloptimierter PHP-Kalender zur Planung gemeinsamer Spielabende mit Benutzerko
 - Seite „Netzje“: LAN-Party mit Termin, Ort (nur für Angemeldete), Mitbringliste, Teilnehmerliste, Stundenplan als Zeitleiste mit Anmeldung (Platzlimit und Warteliste), Spielvorschlägen und eingebettetem Twitch-/YouTube-Stream
 - Seite „Server“: Gameserver im Kartenraster mit Spiele-Logo, IP, Passwort (nur für Angemeldete lesbar, sonst Sternchen) und Online-/Offline-Status vom Discord-Bot; Admins pflegen die Server direkt auf der Seite
 - Discord-Abfrage über `/kalender`
-- Drei globale Styles: „Arena“ (Violett/Rot im Esports-Look) als Standard, Sommer mit Sonne/Wasser/Strand und Winter mit Schnee/Weihnachtsmotiven
+- Drei globale Styles: „NAVI“ (dunkles Graublau mit hellgrünem Akzent, angelehnt an navi.gg) als Standard, Sommer mit Sonne/Wasser/Strand und Winter mit Schnee/Weihnachtsmotiven
 - Keine externe Datenbank und keine externen Bibliotheken erforderlich
 
 ## Passwortregeln
@@ -207,6 +207,7 @@ Die Laufzeitdateien unter `data/store.php*` werden von Git ignoriert und dadurch
 │   ├── site-header.php (gemeinsamer Seitenkopf)
 │   ├── games-view.php  (gemeinsame Ansicht von games.php und alle-spiele.php)
 │   ├── arena-styles.php (Design „Arena“, über styles.php gelegt)
+│   ├── navi-styles.php (Design „NAVI“, letzte Schicht über arena-styles.php)
 │   ├── blog-styles.php
 │   └── stats-styles.php
 ├── .gitignore
