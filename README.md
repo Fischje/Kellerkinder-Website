@@ -26,7 +26,8 @@ Mobiloptimierter PHP-Kalender zur Planung gemeinsamer Spielabende mit Benutzerko
 - Seite „Netzje“: LAN-Party mit Termin, begrenzten Plätzen (Zusagen sind Anfragen, ein Admin bestätigt oder lehnt ab), Ort (nur für Angemeldete), Mitbringliste, Teilnehmerliste, Stundenplan als Zeitleiste mit Anmeldung (Platzlimit und Warteliste), Spielvorschlägen und eingebettetem Twitch-/YouTube-Stream
 - Seite „Server“: Gameserver im Kartenraster mit Spiele-Logo, IP, Passwort (nur für Angemeldete lesbar, sonst Sternchen) und Online-/Offline-Status vom Discord-Bot; Admins pflegen die Server direkt auf der Seite
 - Discord-Abfrage über `/kalender`
-- Zentrale Admin-Seite `admin.php`: Kästen der Seitenleiste an/aus und Reihenfolge, Seiten im Menü ein-/ausblenden, Teile der Startseite, Style für alle und offene Netzje-Anfragen (Menüpunkt „Admin“ nur für Admins, mit Zahl offener Anfragen)
+- Zentrale Admin-Seite `admin.php`: Kästen der Seitenleiste an/aus und Reihenfolge, Seiten im Menü ein-/ausblenden, Teile der Startseite, Style für alle, offene Netzje-Anfragen und Benutzerverwaltung (Konten, Admins). Menüpunkt „Admin“ nur für Admins, mit Zahl offener Anfragen
+- Account-Knopf oben rechts auf allen Seiten: Anmelden bzw. Menü mit „Mein Account“, „Adminbereich“ und „Abmelden“
 - Drei globale Styles: „NAVI“ (mittige Spalte mit hellem Inhaltsbereich, dunklem Kopf und grünem Akzent #76e36c, angelehnt an navi.gg) als Standard, Sommer mit Sonne/Wasser/Strand und Winter mit Schnee/Weihnachtsmotiven
 - Keine externe Datenbank und keine externen Bibliotheken erforderlich
 
@@ -225,7 +226,7 @@ Die Laufzeitdateien unter `data/store.php*` werden von Git ignoriert und dadurch
 ├── feed.php
 ├── check.php
 ├── index.php
-├── admin.php           (zentrale Admin-Seite: Schalter für Seitenleiste, Menü, Startseite)
+├── admin.php           (zentrale Admin-Seite: Schalter, Netzje-Anfragen, Benutzerverwaltung)
 ├── manifest.webmanifest
 ├── service-worker.js
 ├── CHANGELOG.md

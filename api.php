@@ -1906,18 +1906,25 @@ function netzjeUserName(array $store, int $userId): string
     return $player !== null ? (string) $player['name'] : (string) $store['users'][$index]['username'];
 }
 
-/** Antwort für die Admin-Seite: Schalter (für alle lesbar), Style, Anmeldestatus. */
+/** Schalter (für alle lesbar), Style und Anmeldestatus: für admin.php und den Account-Knopf in der Kopfleiste. */
 function siteSettingsResponse(array $store): array
 {
     $userIndex = currentUserIndex($store);
     $user = $userIndex === null ? null : $store['users'][$userIndex];
     $loggedIn = $user !== null && empty($user['must_change_password']);
     $isAdmin = $loggedIn && isAdminUser($store, $user);
+    $player = $user === null ? null : playerForUser($store, $user);
     return [
         'ok' => true,
         'csrf_token' => csrfToken(),
         'logged_in' => $loggedIn,
         'is_admin' => $isAdmin,
+        // Für den Account-Knopf in der Kopfleiste (auf allen Seiten)
+        'user' => $user === null ? null : [
+            'name' => $player !== null ? (string) $player['name'] : (string) $user['username'],
+            'avatar' => (string) ($user['avatar'] ?? ''),
+            'must_change_password' => !empty($user['must_change_password']),
+        ],
         // Offene Platz-Anfragen der Netzje (nur für Admins, für den Hinweis am Menüpunkt)
         'netzje_requests' => $isAdmin ? count(normalizeNetzje($store['netzje'] ?? [])['requests']) : 0,
         'features' => normalizeFeatures($store['settings']['features'] ?? []),

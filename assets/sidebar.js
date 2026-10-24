@@ -3,7 +3,11 @@
 // öffentlichen API-Aktionen. Welche Kästen es gibt, legt die Seite fest
 // (Schalter auf admin.php); Kästen ohne Daten bleiben versteckt, den Kasten
 // der aktuellen Seite (data-skip) laden wir gar nicht erst.
-// Blendet außerdem für Admins den Menüpunkt „Admin“ ein (mit Zahl offener Netzje-Anfragen).
+// Außerdem auf allen Seiten: Account-Knopf in der Kopfleiste (Anmelden bzw. Account-Menü
+// mit „Mein Account“, „Adminbereich“, „Abmelden“) und für Admins der Menüpunkt „Admin“
+// (mit Zahl offener Netzje-Anfragen). Die Dialoge für Anmelden und Account liegen im
+// Kalender (index.php); dort stellt index.php window.kkAccount bereit und öffnet sie direkt,
+// auf anderen Seiten führen die Links zu index.php#anmelden bzw. #account.
 // Texte werden nur per textContent eingesetzt, nie als HTML.
 (function () {
     'use strict';
@@ -170,24 +174,130 @@
         show('servers');
     }
 
-    // Menüpunkt „Admin“ nur für Admins; Zahl = offene Platz-Anfragen der Netzje
-    async function revealAdminLink() {
+    // ===== Account-Knopf & Menüpunkt „Admin“ =====
+    let accountCsrf = '';
+
+    // Auf dem Kalender öffnet index.php die Dialoge selbst, sonst zum Kalender springen.
+    function openAccountDialog(kind, event) {
+        if (window.kkAccount && typeof window.kkAccount.open === 'function' && window.kkAccount.open(kind)) {
+            if (event) event.preventDefault();
+            closeAccountMenu();
+        }
+    }
+
+    function closeAccountMenu() {
+        const toggle = document.getElementById('topbarAccountToggle');
+        const menu = document.getElementById('topbarAccountMenu');
+        if (toggle) toggle.setAttribute('aria-expanded', 'false');
+        if (menu) menu.hidden = true;
+    }
+
+    async function logout() {
+        try {
+            await fetch('api.php', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-Token': accountCsrf },
+                body: JSON.stringify({ action: 'logout' }),
+            });
+        } finally {
+            window.location.reload();
+        }
+    }
+
+    function renderAccount(data) {
+        const container = document.getElementById('topbarAccount');
+        if (!container) return;
+        container.replaceChildren();
+        const user = data && data.user;
+
+        if (!user) {
+            const login = el('a', 'topbar-account-button', 'Anmelden');
+            login.id = 'topbarLogin';
+            login.href = 'index.php#anmelden';
+            login.addEventListener('click', (event) => openAccountDialog('login', event));
+            container.appendChild(login);
+            return;
+        }
+
+        const toggle = el('button', 'topbar-account-button is-user');
+        toggle.type = 'button';
+        toggle.id = 'topbarAccountToggle';
+        toggle.setAttribute('aria-haspopup', 'true');
+        toggle.setAttribute('aria-expanded', 'false');
+        toggle.setAttribute('aria-controls', 'topbarAccountMenu');
+        if (user.avatar) {
+            const img = el('img', 'topbar-avatar');
+            img.src = user.avatar;
+            img.alt = '';
+            toggle.appendChild(img);
+        } else {
+            toggle.appendChild(el('span', 'topbar-avatar placeholder', (user.name || '?').slice(0, 1).toUpperCase()));
+        }
+        toggle.appendChild(el('span', 'topbar-account-name', user.name || 'Account'));
+        toggle.appendChild(el('span', 'topbar-caret', '▾'));
+
+        const menu = el('ul', 'topbar-menu');
+        menu.id = 'topbarAccountMenu';
+        menu.hidden = true;
+        const item = (label, href, onClick, badge) => {
+            const li = el('li');
+            const link = el(href ? 'a' : 'button', 'topbar-menu-item', label);
+            if (href) link.href = href; else link.type = 'button';
+            if (badge) link.appendChild(el('span', 'nav-badge', badge));
+            if (onClick) link.addEventListener('click', onClick);
+            li.appendChild(link);
+            menu.appendChild(li);
+        };
+        item(user.must_change_password ? 'Passwort ändern' : 'Mein Account', 'index.php#account', (event) => openAccountDialog('profile', event));
+        if (data.is_admin) item('Adminbereich', 'admin.php', null, Number(data.netzje_requests) || 0);
+        item('Abmelden', null, logout);
+
+        toggle.addEventListener('click', () => {
+            const open = menu.hidden;
+            menu.hidden = !open;
+            toggle.setAttribute('aria-expanded', String(open));
+        });
+        container.append(toggle, menu);
+    }
+
+    // Schließen bei Klick daneben oder Escape
+    document.addEventListener('click', (event) => {
+        const container = document.getElementById('topbarAccount');
+        if (container && !container.contains(event.target)) closeAccountMenu();
+    });
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') closeAccountMenu();
+    });
+
+    function renderAdminLink(data) {
         const link = document.getElementById('navAdminLink');
         if (!link) return;
-        const data = await getJson('site_settings');
-        if (!data || !data.is_admin) return;
-        link.hidden = false;
-        const open = Number(data.netzje_requests) || 0;
-        if (open > 0 && !link.querySelector('.nav-badge')) {
+        const isAdminPage = link.classList.contains('active');
+        link.hidden = !(data && data.is_admin) && !isAdminPage;
+        const old = link.querySelector('.nav-badge');
+        if (old) old.remove();
+        const open = data && data.is_admin ? Number(data.netzje_requests) || 0 : 0;
+        if (open > 0) {
             const badge = el('span', 'nav-badge', open);
             badge.title = `${open} offene Netzje-${open === 1 ? 'Anfrage' : 'Anfragen'}`;
             link.appendChild(badge);
         }
     }
 
+    async function loadAccount() {
+        const data = await getJson('site_settings');
+        if (data && data.csrf_token) accountCsrf = data.csrf_token;
+        renderAccount(data);
+        renderAdminLink(data);
+    }
+
+    // index.php ruft das nach Anmelden/Abmelden auf, damit die Kopfleiste stimmt
+    window.kkRefreshAccount = loadAccount;
+
     const loaders = { games: loadGames, netzje: loadNetzje, blog: loadBlog, servers: loadServers };
     for (const [name, loader] of Object.entries(loaders)) {
         if (name !== skip && box(name)) loader();
     }
-    revealAdminLink();
+    loadAccount();
 })();

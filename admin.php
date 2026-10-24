@@ -2,9 +2,11 @@
 declare(strict_types=1);
 // Zentrale Admin-Seite: steuert Seitenleiste (Kästen an/aus, Reihenfolge), Menü
 // (Seiten ein-/ausblenden), Startseite und den Style für alle. Außerdem die
-// offenen Platz-Anfragen der Netzje und der Sprung zur Benutzerverwaltung.
+// offenen Platz-Anfragen der Netzje und die Benutzerverwaltung (Konten, Admins) –
+// der frühere Adminbereich im Kalender ist seit 2.29.0 hier aufgegangen.
 // Daten: api.php?action=site_settings (lesen), admin_save_features (speichern),
-// netzje / admin_netzje_request (Anfragen). Nur Admins sehen die Einstellungen;
+// netzje / admin_netzje_request (Anfragen), bootstrap (Benutzerliste),
+// admin_create_user / admin_update_user / admin_delete_user / admin_save_settings. Nur Admins sehen die Einstellungen;
 // die API prüft die Rechte bei jedem Speichern selbst.
 require __DIR__ . '/includes/bootstrap.php';
 ?>
@@ -87,15 +89,70 @@ require __DIR__ . '/includes/site-header.php';
             </div>
         </form>
 
-        <section class="admin-panel">
-            <h2 class="section-title"><span class="accent">Benutzer</span> &amp; Admins</h2>
-            <p class="admin-help">Konten anlegen, Passwörter zurücksetzen und festlegen, wer Admin ist – das geht weiterhin im Kalender.</p>
-            <a class="secondary-button" href="index.php#benutzer">Benutzer verwalten</a>
+        <section class="admin-panel" id="usersPanel">
+            <div class="admin-panel-head">
+                <h2 class="section-title"><span class="accent">Benutzer</span> &amp; Admins</h2>
+                <button class="primary-button" id="createUserButton" type="button">＋ Benutzer anlegen</button>
+            </div>
+            <p class="admin-help">Konten anlegen, bearbeiten, Passwörter zurücksetzen und Autorenrechte vergeben.</p>
+            <div class="admin-user-list" id="adminUserList"><p class="widget-loading">Wird geladen …</p></div>
+
+            <form id="adminNamesForm" class="admin-names">
+                <label for="adminPlayerNames">Admins (Spielernamen)</label>
+                <p class="admin-help">Jeder Name muss zu einem Spieler mit Account gehören. Mehrere Namen mit Komma oder in einzelnen Zeilen.</p>
+                <textarea id="adminPlayerNames" required></textarea>
+                <div class="admin-names-actions">
+                    <button class="secondary-button" type="submit">Admins speichern</button>
+                </div>
+            </form>
         </section>
     </div>
 
 </main>
 <?php require __DIR__ . '/includes/site-footer.php'; ?>
+
+<dialog id="adminUserDialog">
+    <form class="modal-content form-stack" id="adminUserForm" method="dialog">
+        <div>
+            <h2 class="modal-title" id="adminUserDialogTitle">Benutzer anlegen</h2>
+            <p class="modal-subtitle" id="adminUserDialogSubtitle">Der Benutzer muss das vorläufige Passwort nach der ersten Anmeldung ändern.</p>
+        </div>
+        <input type="hidden" id="adminUserId">
+        <div>
+            <label for="adminUsername">Benutzername</label>
+            <input type="text" id="adminUsername" autocomplete="off" required>
+        </div>
+        <div>
+            <label for="adminUserPlayerName">Spielername</label>
+            <input type="text" id="adminUserPlayerName" maxlength="40" autocomplete="off" required>
+        </div>
+        <div id="adminUserSteamRow">
+            <label for="adminUserSteamName">Steam-Name (optional)</label>
+            <input type="text" id="adminUserSteamName" maxlength="120" autocomplete="off" placeholder="Profilname, SteamID oder Profil-Link">
+        </div>
+        <div class="form-row">
+            <div>
+                <label for="adminUserPassword" id="adminUserPasswordLabel">Vorläufiges Passwort</label>
+                <input type="password" id="adminUserPassword" minlength="8" autocomplete="new-password">
+            </div>
+            <div>
+                <label for="adminUserPasswordConfirmation">Passwort wiederholen</label>
+                <input type="password" id="adminUserPasswordConfirmation" minlength="8" autocomplete="new-password">
+            </div>
+        </div>
+        <p class="field-help" id="adminPasswordHelp"></p>
+        <label class="remember-row">
+            <input type="checkbox" id="adminUserIsAuthor">
+            <span>Autorenrecht — darf Blogbeiträge schreiben und bearbeiten</span>
+        </label>
+        <p class="form-error" id="adminUserError" role="alert" hidden></p>
+        <div class="modal-actions">
+            <button class="danger-button" id="deleteUserButton" type="button" hidden>Benutzer löschen</button>
+            <button class="secondary-button" type="button" id="cancelUserButton">Abbrechen</button>
+            <button class="primary-button" type="submit">Speichern</button>
+        </div>
+    </form>
+</dialog>
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
@@ -276,6 +333,147 @@ require __DIR__ . '/includes/site-header.php';
         box.append(list);
     }
 
+    // ===== Benutzer & Admins =====
+    const userDialog = byId('adminUserDialog');
+
+    // Gleiche Regeln wie beim Registrieren (index.php); der Server prüft ohnehin selbst.
+    function passwordValidationMessage(password, confirmation = null) {
+        const characters = [...password];
+        const hasLetter = characters.some((c) => /^\p{L}$/u.test(c));
+        const hasNumber = characters.some((c) => /^\p{N}$/u.test(c));
+        const hasSpecial = characters.some((c) => !/^\p{L}$/u.test(c) && !/^\p{N}$/u.test(c) && !/^\s$/u.test(c));
+        if (characters.length < 8) return 'Das Passwort muss mindestens 8 Zeichen lang sein.';
+        if (!hasLetter) return 'Das Passwort muss mindestens einen Buchstaben enthalten.';
+        if (!hasNumber) return 'Das Passwort muss mindestens eine Zahl enthalten.';
+        if (!hasSpecial) return 'Das Passwort muss mindestens ein Sonderzeichen wie !, ?, #, +, -, _, @ oder € enthalten. Umlaute gelten als Buchstaben.';
+        if (confirmation !== null && password !== confirmation) return 'Die beiden Passwörter stimmen nicht überein.';
+        return '';
+    }
+
+    function applyUsers(data) {
+        state.admin = data.admin || null;
+        if (!data.auth || !data.auth.is_admin) {
+            // Eigene Adminrechte entzogen: Seite neu laden zeigt „Nur für Admins“
+            window.location.reload();
+            return;
+        }
+        renderUsers();
+    }
+
+    function renderUsers() {
+        const list = byId('adminUserList');
+        list.replaceChildren();
+        const users = (state.admin && state.admin.users) || [];
+        if (users.length === 0) list.append(el('p', 'admin-help', 'Noch keine Benutzer.'));
+        for (const user of users) {
+            const card = el('div', 'admin-user-card');
+            const info = el('div');
+            const title = el('strong', '', user.username);
+            if (user.is_admin) title.append(el('span', 'account-badge admin', 'Admin'));
+            else if (user.is_author) title.append(el('span', 'account-badge', 'Autor'));
+            info.append(title, el('small', '', `Spieler: ${user.player_name || 'nicht zugeordnet'}${user.must_change_password ? ' · Passwortänderung offen' : ''}`));
+            const edit = el('button', 'secondary-button', 'Bearbeiten');
+            edit.type = 'button';
+            edit.addEventListener('click', () => openUserDialog(user));
+            card.append(info, edit);
+            list.append(card);
+        }
+        byId('adminPlayerNames').value = ((state.admin && state.admin.admin_player_names) || []).join('\n');
+    }
+
+    function openUserDialog(user = null) {
+        const editMode = Boolean(user);
+        byId('adminUserForm').reset();
+        byId('adminUserError').hidden = true;
+        byId('adminUserId').value = user ? user.id : '';
+        byId('adminUsername').value = user ? user.username : '';
+        byId('adminUserPlayerName').value = user ? user.player_name : '';
+        byId('adminUserIsAuthor').checked = Boolean(user && user.is_author);
+        byId('adminUserSteamName').value = user ? user.steam_profile || '' : '';
+        // Den Steam-Namen trägt beim Anlegen der Spieler selbst ein
+        byId('adminUserSteamRow').hidden = !editMode;
+        byId('adminUserDialogTitle').textContent = editMode ? 'Benutzer bearbeiten' : 'Benutzer anlegen';
+        byId('adminUserDialogSubtitle').textContent = editMode
+            ? 'Benutzername und Spielerzuordnung ändern oder ein vorläufiges neues Passwort setzen.'
+            : 'Der Benutzer muss das vorläufige Passwort nach der ersten Anmeldung ändern.';
+        byId('adminUserPasswordLabel').textContent = editMode ? 'Neues Passwort (optional)' : 'Vorläufiges Passwort';
+        byId('adminPasswordHelp').textContent = editMode
+            ? 'Bleibt das Passwortfeld leer, bleibt das bisherige Passwort. Beim Zurücksetzen gelten keine Komplexitätsregeln – der Benutzer muss beim nächsten Login ein eigenes, regelkonformes Passwort festlegen.'
+            : 'Mindestens 8 Zeichen mit Buchstabe, Zahl und Sonderzeichen (z. B. !, ?, #, +, -, _, @, €). Der Benutzer ändert es nach der ersten Anmeldung.';
+        for (const id of ['adminUserPassword', 'adminUserPasswordConfirmation']) {
+            byId(id).required = !editMode;
+            byId(id).minLength = editMode ? 0 : 8;
+        }
+        byId('deleteUserButton').hidden = !editMode;
+        userDialog.showModal();
+        requestAnimationFrame(() => byId('adminUsername').focus());
+    }
+
+    function userError(message) {
+        byId('adminUserError').textContent = message;
+        byId('adminUserError').hidden = false;
+    }
+
+    byId('createUserButton').addEventListener('click', () => openUserDialog());
+    byId('cancelUserButton').addEventListener('click', () => userDialog.close());
+
+    byId('adminUserForm').addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const editMode = Boolean(byId('adminUserId').value);
+        const password = byId('adminUserPassword').value;
+        const confirmation = byId('adminUserPasswordConfirmation').value;
+        if (!editMode) {
+            const problem = passwordValidationMessage(password, confirmation);
+            if (problem) return userError(problem);
+        } else if (password !== '' || confirmation !== '') {
+            if (password === '') return userError('Bitte ein Passwort festlegen.');
+            if (password !== confirmation) return userError('Die beiden Passwörter stimmen nicht überein.');
+        }
+        try {
+            const data = await api(editMode ? 'admin_update_user' : 'admin_create_user', {
+                user_id: byId('adminUserId').value || undefined,
+                username: byId('adminUsername').value,
+                player_name: byId('adminUserPlayerName').value,
+                is_author: byId('adminUserIsAuthor').checked,
+                steam_name: editMode ? byId('adminUserSteamName').value : undefined,
+                password,
+                password_confirmation: confirmation,
+            });
+            userDialog.close();
+            applyUsers(data);
+            showToast(editMode ? 'Benutzer wurde geändert.' : 'Benutzer wurde angelegt.');
+        } catch (failure) {
+            userError(failure.message);
+        }
+    });
+
+    byId('deleteUserButton').addEventListener('click', async () => {
+        const userId = Number(byId('adminUserId').value);
+        const user = ((state.admin && state.admin.users) || []).find((item) => Number(item.id) === userId);
+        if (!user || !confirm(`Benutzer „${user.username}“ wirklich löschen? Der Spieler und seine bisherigen Kalenderdaten bleiben erhalten.`)) return;
+        try {
+            const data = await api('admin_delete_user', { user_id: userId });
+            userDialog.close();
+            applyUsers(data);
+            showToast('Benutzer wurde gelöscht.');
+        } catch (failure) {
+            userError(failure.message);
+        }
+    });
+
+    byId('adminNamesForm').addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const names = byId('adminPlayerNames').value.split(/[,;\n]+/).map((name) => name.trim()).filter(Boolean);
+        try {
+            // Style unverändert lassen: admin_save_settings verlangt ihn mit
+            const data = await api('admin_save_settings', { admin_player_names: names, theme: state.settings.theme });
+            applyUsers(data);
+            showToast('Admins gespeichert.');
+        } catch (failure) {
+            showToast(failure.message);
+        }
+    });
+
     // ===== Laden =====
     async function load() {
         const gate = byId('adminGate');
@@ -308,6 +506,11 @@ require __DIR__ . '/includes/site-header.php';
             state.netzje = null;
         }
         renderNetzje();
+        try {
+            applyUsers(await api('bootstrap'));
+        } catch (failure) {
+            byId('adminUserList').replaceChildren(el('p', 'form-error', failure.message));
+        }
     }
 
     load();

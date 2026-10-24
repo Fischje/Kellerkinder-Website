@@ -188,6 +188,85 @@ if (!isset($backgroundImages) || !is_array($backgroundImages)) { $backgroundImag
         }
 
         .install-app-button img { filter: brightness(0); }
+
+        /* Kopfleiste rechts: App-Knopf (nur Kalender) und Account auf allen Seiten */
+        .topbar { position: relative; z-index: 30; }
+        .topbar-actions { display: flex; align-items: center; gap: 10px; margin-left: auto; }
+        .topbar-account { position: relative; }
+        .topbar-actions .install-app-button { order: 0; }
+        .topbar-actions .topbar-account { order: 1; }
+
+        .topbar-account-button {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            height: 28px;
+            padding: 0 12px;
+            border: 1px solid rgba(255, 255, 255, .28);
+            color: #fff;
+            background: transparent;
+            font-family: var(--font-ui);
+            font-size: .72rem;
+            font-weight: 800;
+            letter-spacing: .12em;
+            text-decoration: none;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: border-color .15s ease, color .15s ease;
+        }
+
+        .topbar-account-button:hover,
+        .topbar-account-button:focus-visible,
+        .topbar-account-button[aria-expanded="true"] { outline: none; border-color: var(--accent); color: var(--accent); }
+        .topbar-account-button.is-user { padding-left: 4px; }
+
+        .topbar-avatar { width: 20px; height: 20px; flex: none; object-fit: cover; }
+        .topbar-avatar.placeholder { display: grid; place-items: center; color: var(--accent-ink); background: var(--accent); font-size: .66rem; letter-spacing: 0; }
+        .topbar-account-name { max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; letter-spacing: .06em; }
+        .topbar-caret { font-size: .7rem; letter-spacing: 0; }
+
+        .topbar-menu {
+            position: absolute;
+            top: calc(100% + 6px);
+            right: 0;
+            z-index: 40;
+            min-width: 200px;
+            margin: 0;
+            padding: 6px 0;
+            list-style: none;
+            border-top: 3px solid var(--accent);
+            background: #fff;
+            box-shadow: 0 18px 40px rgba(0, 0, 0, .35);
+        }
+
+        .topbar-menu[hidden] { display: none; }
+
+        .topbar-menu-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            width: 100%;
+            padding: 11px 16px;
+            border: 0;
+            color: #1a1d23;
+            background: none;
+            font-family: var(--font-ui);
+            font-size: .78rem;
+            font-weight: 800;
+            letter-spacing: .08em;
+            text-align: left;
+            text-decoration: none;
+            text-transform: uppercase;
+            cursor: pointer;
+        }
+
+        .topbar-menu-item:hover,
+        .topbar-menu-item:focus-visible { outline: none; background: rgba(var(--accent-rgb), .18); }
+        .topbar-menu li + li { border-top: 1px solid #eceef1; }
+
+        /* „Adminbereich“ im Kalender ist jetzt ein Link zur Admin-Seite */
+        .account-actions a.compact-button { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; }
         .install-app-button:hover { background: var(--accent-hover); }
 
         /* ===== Kopfband (dunkel) ===== */
@@ -1067,6 +1146,17 @@ if (!isset($backgroundImages) || !is_array($backgroundImages)) { $backgroundImag
 
         .admin-request-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 
+        /* Benutzerverwaltung */
+        .admin-panel .admin-user-list { display: grid; gap: 8px; max-height: none; margin: 0 0 26px; padding: 0; overflow: visible; }
+        .page-shell .admin-user-card { align-items: center; padding: 12px 14px; background: var(--panel-strong); }
+        .page-shell .admin-user-card strong { display: inline-flex; align-items: center; gap: 2px; color: var(--text); }
+        .page-shell .admin-user-card small { color: var(--muted); }
+        .admin-names { padding-top: 22px; border-top: 1px solid var(--line); }
+        .page-shell label { color: var(--text); }
+        :is(.page-shell, dialog) textarea { font: inherit; }
+        .admin-names .admin-help { margin: 0 0 10px; }
+        .admin-names-actions { display: flex; justify-content: flex-end; margin-top: 10px; }
+
         /* Tablet & Handy: keine schmale Leiste – die Kästen rutschen als Karten unter den Inhalt.
            Tablet: nebeneinander, Handy: untereinander in voller Breite. */
         @media (max-width: 1023px) {
@@ -1140,6 +1230,8 @@ if (!isset($backgroundImages) || !is_array($backgroundImages)) { $backgroundImag
             .admin-request-actions > * { flex: 1 1 0; }
             .admin-savebar { margin-left: calc(-1 * var(--gutter)); margin-right: calc(-1 * var(--gutter)); border-left: 0; border-right: 0; }
             .admin-savebar .primary-button { flex: 1 1 100%; }
+            .topbar-account-name { max-width: 90px; }
+            .topbar-account-button { padding: 0 9px; letter-spacing: .08em; }
             .sidebar-row { min-height: 60px; padding: 10px 12px; }
         }
     </style>

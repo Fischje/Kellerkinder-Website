@@ -1,5 +1,15 @@
 # Änderungsprotokoll
 
+## 2.29.0 — Alter Adminbereich entfernt, Account-Knopf auf allen Seiten
+
+- **Alter Adminbereich im Kalender entfernt:** Die Benutzerverwaltung lebt jetzt auf der zentralen Admin-Seite `admin.php` – Konten anlegen, bearbeiten (Benutzername, Spieler, Steam-Name, Autorenrecht, Passwort zurücksetzen), löschen und die Admin-Spielernamen. Der Style wird nur noch dort gewählt (Abschnitt „Style für alle“)
+- Der Knopf „Adminbereich“ im Kalender führt jetzt zur Admin-Seite
+- **Account-Knopf oben rechts in der schwarzen Leiste, auf allen Seiten** (rechts neben dem App-Knopf):
+  - Nicht angemeldet: „Anmelden“
+  - Angemeldet: Profilbild und Name, öffnet ein Menü mit „Mein Account“, „Adminbereich“ (nur Admins, mit Zahl offener Netzje-Anfragen) und „Abmelden“
+  - Auf dem Kalender öffnen sich Anmelde- und Account-Dialog direkt, von anderen Seiten springt der Knopf zum Kalender und öffnet sie dort (`index.php#anmelden`, `index.php#account`)
+- `site_settings` liefert dafür zusätzlich `user` (Name, Profilbild)
+
 ## 2.28.1 — Grün etwas heller und weicher
 
 - Akzentfarbe von `#45e636` auf **`#76e36c`** (10 % heller, 10 % weniger Sättigung, Wunsch des Nutzers); Hover `#63d059`

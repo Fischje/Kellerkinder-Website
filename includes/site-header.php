@@ -28,12 +28,19 @@ $currentPageHidden = !featurePageEnabled($activeNav);
 <div class="topbar">
     <div class="topbar-inner">
         <span class="topbar-tagline subtitle">Online-Gaming mit <em class="shine">Freunden</em></span>
-        <?php if ($showInstall): ?>
-            <button class="install-app-button" id="installAppButton" type="button" title="Als App zum Home-Bildschirm hinzufügen" aria-label="Kellerkinder-Kalender als App zum Home-Bildschirm hinzufügen">
-                <img src="assets/smartphone-install.svg" alt="">
-                <span>App</span>
-            </button>
-        <?php endif; ?>
+        <div class="topbar-actions">
+            <?php if ($showInstall): ?>
+                <button class="install-app-button" id="installAppButton" type="button" title="Als App zum Home-Bildschirm hinzufügen" aria-label="Kellerkinder-Kalender als App zum Home-Bildschirm hinzufügen">
+                    <img src="assets/smartphone-install.svg" alt="">
+                    <span>App</span>
+                </button>
+            <?php endif; ?>
+            <?php /* Account-Knopf auf allen Seiten: assets/sidebar.js macht daraus „Account“ mit Menü,
+                     sobald jemand angemeldet ist. Ohne JavaScript bleibt der Link zur Anmeldung. */ ?>
+            <div class="topbar-account" id="topbarAccount">
+                <a class="topbar-account-button" id="topbarLogin" href="index.php#anmelden">Anmelden</a>
+            </div>
+        </div>
     </div>
 </div>
 
