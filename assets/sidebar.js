@@ -1,16 +1,17 @@
 // Seitenleiste „Kurz & knapp“ (includes/site-footer.php): füllt die Kästen
-// Meist gespielt, Nächste Netzje, Neu im Blog und Unsere Server über die
-// öffentlichen API-Aktionen. Kästen ohne Daten bleiben versteckt, den Kasten
+// Meist gespielt, Neu im Blog, Unsere Server und Nächste Netzje über die
+// öffentlichen API-Aktionen. Welche Kästen es gibt, legt die Seite fest
+// (Schalter auf admin.php); Kästen ohne Daten bleiben versteckt, den Kasten
 // der aktuellen Seite (data-skip) laden wir gar nicht erst.
+// Blendet außerdem für Admins den Menüpunkt „Admin“ ein (mit Zahl offener Netzje-Anfragen).
 // Texte werden nur per textContent eingesetzt, nie als HTML.
 (function () {
     'use strict';
 
     const sidebar = document.getElementById('siteSidebar');
-    if (!sidebar) return;
-    const skip = sidebar.dataset.skip || '';
+    const skip = sidebar ? sidebar.dataset.skip || '' : '';
 
-    const box = (name) => sidebar.querySelector(`[data-box="${name}"]`);
+    const box = (name) => (sidebar ? sidebar.querySelector(`[data-box="${name}"]`) : null);
 
     function el(tag, className, text) {
         const node = document.createElement(tag);
@@ -117,9 +118,18 @@
         section.querySelector('[data-title]').textContent = party.title || 'Netzje';
         section.querySelector('[data-when]').textContent = start.toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' })
             + ', ' + start.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) + ' Uhr';
-        const attendees = Array.isArray(party.attendees) ? party.attendees.length : 0;
+        const taken = Number(party.seats_taken) || 0;
+        const seats = Number(party.seats) || 0;
         const games = Array.isArray(data.slots) ? data.slots.filter((slot) => slot.status !== 'proposed').length : 0;
-        section.querySelector('[data-meta]').textContent = `${attendees} ${attendees === 1 ? 'Zusage' : 'Zusagen'} · ${games} ${games === 1 ? 'Spiel' : 'Spiele'} geplant`;
+        const seatText = seats > 0
+            ? (taken >= seats ? `Alle ${seats} Plätze vergeben` : `${taken} von ${seats} Plätzen vergeben`)
+            : `${taken} ${taken === 1 ? 'Zusage' : 'Zusagen'}`;
+        section.querySelector('[data-meta]').textContent = `${seatText} · ${games} ${games === 1 ? 'Spiel' : 'Spiele'} geplant`;
+        if (seats > 0) {
+            const bar = section.querySelector('[data-seatbar]');
+            bar.firstElementChild.style.width = `${Math.min(100, Math.round((taken / seats) * 100))}%`;
+            bar.hidden = false;
+        }
         show('netzje');
     }
 
@@ -160,8 +170,24 @@
         show('servers');
     }
 
+    // Menüpunkt „Admin“ nur für Admins; Zahl = offene Platz-Anfragen der Netzje
+    async function revealAdminLink() {
+        const link = document.getElementById('navAdminLink');
+        if (!link) return;
+        const data = await getJson('site_settings');
+        if (!data || !data.is_admin) return;
+        link.hidden = false;
+        const open = Number(data.netzje_requests) || 0;
+        if (open > 0 && !link.querySelector('.nav-badge')) {
+            const badge = el('span', 'nav-badge', open);
+            badge.title = `${open} offene Netzje-${open === 1 ? 'Anfrage' : 'Anfragen'}`;
+            link.appendChild(badge);
+        }
+    }
+
     const loaders = { games: loadGames, netzje: loadNetzje, blog: loadBlog, servers: loadServers };
     for (const [name, loader] of Object.entries(loaders)) {
-        if (name !== skip) loader();
+        if (name !== skip && box(name)) loader();
     }
+    revealAdminLink();
 })();

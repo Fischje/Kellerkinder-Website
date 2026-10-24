@@ -23,10 +23,11 @@ Mobiloptimierter PHP-Kalender zur Planung gemeinsamer Spielabende mit Benutzerko
 - Automatische Versionsanzeige im Footer
 - Passwortänderung ohne E-Mail-Funktion
 - Setzt ein Admin ein neues Passwort, wird die bestehende Sitzung ungültig und der Benutzer muss das vorläufige Passwort nach der nächsten Anmeldung erneut ändern
-- Seite „Netzje“: LAN-Party mit Termin, Ort (nur für Angemeldete), Mitbringliste, Teilnehmerliste, Stundenplan als Zeitleiste mit Anmeldung (Platzlimit und Warteliste), Spielvorschlägen und eingebettetem Twitch-/YouTube-Stream
+- Seite „Netzje“: LAN-Party mit Termin, begrenzten Plätzen (Zusagen sind Anfragen, ein Admin bestätigt oder lehnt ab), Ort (nur für Angemeldete), Mitbringliste, Teilnehmerliste, Stundenplan als Zeitleiste mit Anmeldung (Platzlimit und Warteliste), Spielvorschlägen und eingebettetem Twitch-/YouTube-Stream
 - Seite „Server“: Gameserver im Kartenraster mit Spiele-Logo, IP, Passwort (nur für Angemeldete lesbar, sonst Sternchen) und Online-/Offline-Status vom Discord-Bot; Admins pflegen die Server direkt auf der Seite
 - Discord-Abfrage über `/kalender`
-- Drei globale Styles: „NAVI“ (mittige Spalte mit hellem Inhaltsbereich, dunklem Kopf und hellgrünem Akzent, angelehnt an navi.gg) als Standard, Sommer mit Sonne/Wasser/Strand und Winter mit Schnee/Weihnachtsmotiven
+- Zentrale Admin-Seite `admin.php`: Kästen der Seitenleiste an/aus und Reihenfolge, Seiten im Menü ein-/ausblenden, Teile der Startseite, Style für alle und offene Netzje-Anfragen (Menüpunkt „Admin“ nur für Admins, mit Zahl offener Anfragen)
+- Drei globale Styles: „NAVI“ (mittige Spalte mit hellem Inhaltsbereich, dunklem Kopf und grünem Akzent #45e636, angelehnt an navi.gg) als Standard, Sommer mit Sonne/Wasser/Strand und Winter mit Schnee/Weihnachtsmotiven
 - Keine externe Datenbank und keine externen Bibliotheken erforderlich
 
 ## Passwortregeln
@@ -207,6 +208,7 @@ Die Laufzeitdateien unter `data/store.php*` werden von Git ignoriert und dadurch
 │   ├── styles.php      (gemeinsames Stylesheet für alle Seiten)
 │   ├── site-header.php (gemeinsamer Seitenkopf, öffnet den Seitenrahmen)
 │   ├── site-footer.php (Seitenleiste und Fußzeile, schließt den Seitenrahmen)
+│   ├── features.php    (Schalter der Admin-Seite: Standardwerte, Lesen für die Seiten)
 │   ├── games-view.php  (gemeinsame Ansicht von games.php und alle-spiele.php)
 │   ├── arena-styles.php (Design „Arena“, über styles.php gelegt)
 │   ├── navi-styles.php (Design „NAVI“, letzte Schicht über arena-styles.php)
@@ -223,6 +225,7 @@ Die Laufzeitdateien unter `data/store.php*` werden von Git ignoriert und dadurch
 ├── feed.php
 ├── check.php
 ├── index.php
+├── admin.php           (zentrale Admin-Seite: Schalter für Seitenleiste, Menü, Startseite)
 ├── manifest.webmanifest
 ├── service-worker.js
 ├── CHANGELOG.md

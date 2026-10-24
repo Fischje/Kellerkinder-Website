@@ -1,5 +1,24 @@
 # Änderungsprotokoll
 
+## 2.28.0 — Zentrale Admin-Seite, Netzje mit begrenzten Plätzen, kräftigeres Grün
+
+- **Grün kräftiger:** Akzentfarbe jetzt `#45e636` (Wunsch des Nutzers), Schrift in Grün auf Hell `#1c7a10`
+- **Kalender:** Statusfelder (Online, Später, Verhindert, Urlaub) kräftig eingefärbt; offene Felder grau mit gestricheltem Rand – so sind sie klar zu unterscheiden
+- **Netzje mit begrenzten Plätzen:**
+  - Im Dialog „Party bearbeiten“ ist die Anzahl der **Plätze** Pflicht (1–999). Weniger Plätze als bereits bestätigt geht nicht
+  - „Ich komme“ heißt jetzt **„Platz anfragen“**. Ein Admin **bestätigt** oder **lehnt ab**; Bestätigen geht nur, solange Plätze frei sind. Wer abgelehnt wurde, kann nicht erneut anfragen (ein Admin kann ihn aber noch bestätigen oder ganz entfernen)
+  - Die Seite zeigt „Dabei (x von y Plätzen)“ mit Balken und den eigenen Stand (angefragt / bestätigt / abgelehnt). Namen der Anfragenden sehen nur Admins, alle anderen nur die Anzahl
+  - Admins sehen unter der Party „Platz-Anfragen“, „Bestätigt“ und „Abgelehnt“ mit Knöpfen. „Neue Party“ leert Anfragen und Bestätigungen, die Platzzahl bleibt als Vorlage
+  - Bisherige Zusagen gelten als bestätigt. Neue API-Aktion `admin_netzje_request` (`approve` | `decline` | `remove`); `netzje` liefert `seats`, `seats_taken`, `my_status`, `requests_count` und für Admins `requests`/`declined`
+- **Neue zentrale Admin-Seite `admin.php`** (Menüpunkt „Admin“ nur für Admins, mit Zahl offener Netzje-Anfragen):
+  - Offene Netzje-Anfragen direkt bestätigen oder ablehnen
+  - **Seitenleiste:** jeden Kasten ein-/ausschalten und die Reihenfolge mit ↑/↓ ändern
+  - **Menü & Seiten:** Blog, Spiele, Server und Netzje im Menü ein-/ausblenden (dann fehlt auch ihr Kasten; per Link bleibt die Seite erreichbar und zeigt einen Hinweis)
+  - **Startseite:** „Neu im Blog“-Hinweis und „Unsere Erfolge“ ein-/ausschalten
+  - **Style für alle** und Sprung zur Benutzerverwaltung im Kalender (`index.php#benutzer` öffnet den Dialog)
+  - Gespeichert unter `settings.features`; neue API-Aktionen `site_settings` (lesen) und `admin_save_features` (speichern), Standardwerte in `includes/features.php`
+- **Seitenleiste:** Kasten „Mach mit!“ entfernt, „Nächste Netzje“ steht standardmäßig ganz unten und zeigt die belegten Plätze
+
 ## 2.27.0 — Seitenleiste wie bei navi.gg, eigene Anordnung fürs Handy
 
 - **Neue Seitenleiste „Kurz & knapp“** rechts über die volle Höhe (weiß, wie NAVIs „Our Channels“), auf allen Seiten:

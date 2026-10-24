@@ -4,7 +4,7 @@
 // hellgrauer Inhaltsbereich mit weißen, eckigen Karten und dunkler Schrift,
 // unten eine dunkle Fußzeile. Neben der Spalte ist der Hintergrund zu sehen:
 // dunkles Graublau mit 80 % Deckkraft über den eigenen Bildern (Bild zu 20 % sichtbar).
-// Akzentfarbe: helles Grün statt NAVI-Gelb (Flächen, Rahmen, Markierungen);
+// Akzentfarbe: kräftiges Grün #45e636 (Wunsch des Nutzers) statt NAVI-Gelb (Flächen, Rahmen, Markierungen);
 // für Schrift auf Hell ein dunkleres Grün, damit es lesbar bleibt.
 // Wird auf allen Seiten als LETZTE Stilschicht eingebunden (nach
 // includes/arena-styles.php). Sommer- und Winter-Theme behalten ihre Akzentfarbe.
@@ -32,13 +32,13 @@ if (!isset($backgroundImages) || !is_array($backgroundImages)) { $backgroundImag
 
         body[data-theme="default"] {
             --bg: #1b1f27;
-            --accent: #9ef06a;
-            --accent-hover: #b6fb8a;
-            --accent-rgb: 158, 240, 106;
-            --accent-text: #3a8a10;
-            --primary: #9ef06a;
-            --primary-hover: #b6fb8a;
-            --primary-rgb: 158, 240, 106;
+            --accent: #45e636;
+            --accent-hover: #38cc2a;
+            --accent-rgb: 69, 230, 54;
+            --accent-text: #1c7a10;
+            --primary: #45e636;
+            --primary-hover: #38cc2a;
+            --primary-rgb: 69, 230, 54;
             --band: #121419;
             --band-strong: #000;
             --sheen: none;
@@ -556,8 +556,14 @@ if (!isset($backgroundImages) || !is_array($backgroundImages)) { $backgroundImag
             .player-cell { width: 140px; min-width: 140px; }
         }
         .status-badge-main { font-family: var(--font-ui); font-size: .68rem; font-weight: 800; letter-spacing: 0; }
-        .status-button.vacation { color: var(--vacation); border-color: rgba(91, 69, 214, .4); background-color: rgba(91, 69, 214, .08); }
-        .status-button.open { background-color: #f4f5f7; }
+        /* Statusfelder kräftig getönt, damit sie sich klar von offenen Feldern abheben */
+        .page-shell .status-button.online { color: #0b5e2b; border-color: #4cbf6e; background-color: #bdeec8; }
+        .page-shell .status-button.late { color: #6b4300; border-color: #e3a42c; background-color: #ffe1a1; }
+        .page-shell .status-button.absent { color: #8c1325; border-color: #e0657a; background-color: #ffc8d0; }
+        .page-shell .status-button.vacation { color: #37239f; border-color: #8a74ef; background-color: #d8cfff; }
+        .page-shell .status-button.open { color: #8a929e; border: 1px dashed #c9ced6; background-color: #f6f7f9; }
+        .page-shell .status-button:not(.open) .status-badge-game,
+        .page-shell .status-button:not(.open) .status-badge-note { color: inherit; opacity: .8; }
         .status-button:disabled:hover,
         .player-button.readonly:hover { box-shadow: none; }
         .recurring-tag { color: var(--muted); background: #fff; border-color: var(--line-strong); }
@@ -927,8 +933,139 @@ if (!isset($backgroundImages) || !is_array($backgroundImages)) { $backgroundImag
         .sidebar-feature strong { color: #fff; font-family: var(--font-ui); font-size: 1.5rem; font-weight: 900; line-height: 1.1; text-transform: uppercase; }
         .sidebar-feature-meta { color: #8e95a1; font-size: .8rem; font-weight: 600; }
 
-        .sidebar-join p { margin: 0 0 18px; color: var(--muted); line-height: 1.6; }
-        .sidebar-join .primary-button { display: inline-flex; align-items: center; text-decoration: none; }
+        /* Belegung der Netzje-Plätze in der dunklen Karte */
+        .sidebar-seatbar { display: block; height: 6px; margin: 8px 0 2px; background: rgba(255, 255, 255, .12); }
+        .sidebar-seatbar[hidden] { display: none; }
+        .sidebar-seatbar span { display: block; height: 100%; background: var(--accent); }
+
+        .site-sidebar[hidden] { display: none; }
+        .page-frame:has(> .site-sidebar[hidden]) { grid-template-columns: minmax(0, 1fr); }
+
+        /* Von admin.php ausgeschaltete Teile der Startseite */
+        .feature-off { display: none !important; }
+
+        /* Menüpunkt „Admin“ mit Zahl offener Netzje-Anfragen */
+        .nav-admin[hidden] { display: none; }
+        .nav-badge {
+            display: inline-grid;
+            place-items: center;
+            min-width: 18px;
+            height: 18px;
+            margin-left: 6px;
+            padding: 0 5px;
+            color: var(--accent-ink);
+            background: var(--accent);
+            font-size: .62rem;
+            font-weight: 900;
+            letter-spacing: 0;
+        }
+
+        .page-hidden-note {
+            margin: 16px 0 0;
+            padding: 10px 14px;
+            border-left: 4px solid #e3a42c;
+            color: #5a3d00;
+            background: #fff6e2;
+            font-size: .9rem;
+        }
+
+        .page-hidden-note a { color: inherit; font-weight: 800; }
+
+        /* ===== Admin-Seite (admin.php) ===== */
+        .admin-panel {
+            margin: 0 0 22px;
+            padding: 24px;
+            border: 1px solid var(--line);
+            background: #fff;
+        }
+
+        .admin-panel[hidden] { display: none; }
+        .admin-panel .section-title { margin-bottom: 12px; }
+        .admin-panel-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+        .admin-panel-head .section-title { margin: 0; }
+        .admin-panel a.primary-button,
+        .admin-panel a.secondary-button { display: inline-flex; align-items: center; text-decoration: none; }
+        .admin-help { margin: 0 0 16px; color: var(--muted); line-height: 1.6; }
+        .admin-muted { color: var(--muted); font-size: .75rem; font-weight: 600; letter-spacing: 0; text-transform: none; }
+
+        .admin-order { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+        .admin-order-item {
+            display: grid;
+            grid-template-columns: 32px minmax(0, 1fr) auto;
+            align-items: center;
+            gap: 12px;
+            padding: 8px 10px;
+            border: 1px solid var(--line);
+            background: var(--panel-strong);
+        }
+
+        .admin-order-number {
+            display: grid;
+            place-items: center;
+            width: 32px;
+            height: 32px;
+            color: var(--accent-ink);
+            background: var(--accent);
+            font-weight: 900;
+        }
+
+        .admin-moves { display: flex; gap: 6px; }
+        .admin-move { min-height: 40px; min-width: 44px; padding: 6px 10px; font-size: 1rem; }
+        .admin-move:disabled { opacity: .35; cursor: default; }
+
+        .admin-switches { display: grid; gap: 8px; }
+
+        label.admin-switch {
+            display: grid;
+            grid-template-columns: 22px minmax(0, 1fr);
+            align-items: center;
+            gap: 2px 12px;
+            margin: 0;
+            color: var(--text);
+            font-size: .95rem;
+            font-weight: 700;
+            letter-spacing: 0;
+            text-transform: none;
+            cursor: pointer;
+        }
+
+        .admin-switches label.admin-switch { padding: 12px 14px; border: 1px solid var(--line); background: var(--panel-strong); }
+        .admin-switch input { width: 22px; height: 22px; margin: 0; accent-color: var(--accent-text); cursor: pointer; }
+        .admin-switch small { grid-column: 2; }
+
+        .admin-savebar {
+            position: sticky;
+            bottom: 0;
+            z-index: 5;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 12px;
+            margin: 0 0 22px;
+            padding: 14px 16px;
+            border: 1px solid var(--line);
+            background: rgba(255, 255, 255, .96);
+            box-shadow: 0 -8px 24px rgba(0, 0, 0, .06);
+        }
+
+        .admin-savebar .form-error { flex: 1 1 100%; }
+        .admin-dirty { color: #8a5a00; font-size: .85rem; font-weight: 700; }
+
+        .admin-netzje-summary { margin: 0 0 14px; }
+        .admin-request-list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+        .admin-request {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 10px 12px;
+            border: 1px solid var(--line);
+            background: var(--panel-strong);
+        }
+
+        .admin-request-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 
         /* Tablet & Handy: keine schmale Leiste – die Kästen rutschen als Karten unter den Inhalt.
            Tablet: nebeneinander, Handy: untereinander in voller Breite. */
@@ -995,6 +1132,14 @@ if (!isset($backgroundImages) || !is_array($backgroundImages)) { $backgroundImag
             .stats-periods > * { flex: none; white-space: nowrap; }
 
             .sidebar-section { padding: 18px 16px; }
+            .admin-panel { padding: 18px 14px; }
+            .admin-order-item { grid-template-columns: 28px minmax(0, 1fr); }
+            .admin-order-number { width: 28px; height: 28px; }
+            .admin-moves { grid-column: 1 / -1; justify-content: flex-end; }
+            .admin-request-actions { width: 100%; }
+            .admin-request-actions > * { flex: 1 1 0; }
+            .admin-savebar { margin-left: calc(-1 * var(--gutter)); margin-right: calc(-1 * var(--gutter)); border-left: 0; border-right: 0; }
+            .admin-savebar .primary-button { flex: 1 1 100%; }
             .sidebar-row { min-height: 60px; padding: 10px 12px; }
         }
     </style>

@@ -92,7 +92,8 @@ require __DIR__ . '/includes/site-header.php';
         Gib dem Ordner <code>data</code> Schreibrechte für den PHP-Webserver.
     </div>
 
-    <a class="blog-teaser" id="blogTeaser" href="blog.php" hidden>
+    <?php $homeFeatures = siteFeatures()['home']; /* Schalter von admin.php */ ?>
+    <a class="blog-teaser<?= $homeFeatures['blog_teaser'] && featurePageEnabled('blog') ? '' : ' feature-off' ?>" id="blogTeaser" href="blog.php" hidden>
         <span class="blog-teaser-label">Neu im Blog</span>
         <span class="blog-teaser-title" id="blogTeaserTitle"></span>
         <span class="blog-teaser-meta" id="blogTeaserMeta"></span>
@@ -133,7 +134,7 @@ require __DIR__ . '/includes/site-header.php';
         </div>
     </section>
 
-    <section class="achievements" aria-label="Erfolge der Kellerkinder">
+    <section class="achievements<?= $homeFeatures['achievements'] ? '' : ' feature-off' ?>" aria-label="Erfolge der Kellerkinder">
         <div class="achievements-head">
             <h2 class="section-title"><span class="accent">Unsere</span> Erfolge</h2>
             <div class="achievements-nav" id="achievementsNav" aria-label="Widget wechseln" hidden>
@@ -416,7 +417,7 @@ require __DIR__ . '/includes/site-header.php';
             <div>
                 <label for="adminTheme">Style auswählen</label>
                 <select id="adminTheme">
-                    <option value="default">Standard: Arena (Violett/Rot)</option>
+                    <option value="default">Standard: NAVI (Graublau / Grün)</option>
                     <option value="summer">Sommer: Sonne, Strand und Wasser</option>
                     <option value="winter">Winter: Schnee und Weihnachten</option>
                 </select>
@@ -1542,6 +1543,12 @@ require __DIR__ . '/includes/site-header.php';
         byId('logoutButton').hidden = !auth.logged_in;
         byId('addDateButton').hidden = !auth.can_write;
         byId('addPlayerButton').hidden = !auth.is_admin || auth.must_change_password;
+
+        // Sprung von der Admin-Seite (admin.php → „Benutzer verwalten“): Dialog einmal öffnen
+        if (window.location.hash === '#benutzer' && auth.is_admin && !auth.must_change_password && state.admin && !adminDialog.open) {
+            history.replaceState(null, '', window.location.pathname + window.location.search);
+            openAdminDialog();
+        }
 
         accountSummary.replaceChildren();
         const avatar = createAvatarElement(auth.user?.avatar || '', auth.user?.player_name || auth.user?.username || '', 'account-avatar');

@@ -4,7 +4,7 @@
 // Öffnet außerdem den Seitenrahmen (<div class="page-frame"><div class="page-main">),
 // den includes/site-footer.php wieder schließt – beide Dateien gehören zusammen.
 // Erwartet vor dem Einbinden:
-//   $activeNav     'calendar' | 'blog' | 'games' | 'servers' | 'netzje'
+//   $activeNav     'calendar' | 'blog' | 'games' | 'servers' | 'netzje' | 'admin'
 //   $pageKicker    kleine Zeile über dem Titel (Brotkrumen)
 //   $pageTitle     großer Seitentitel
 //   $pageLead      optionaler Untertitel
@@ -19,6 +19,11 @@ $navItems = [
     'netzje' => ['Netzje', 'netzje.php'],
 ];
 $h = static fn(string $value): string => htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
+
+// Seiten, die ein Admin auf admin.php ausgeblendet hat, fehlen im Menü (per Link bleiben sie erreichbar)
+require_once __DIR__ . '/features.php';
+$navItems = array_filter($navItems, static fn(string $key): bool => featurePageEnabled($key), ARRAY_FILTER_USE_KEY);
+$currentPageHidden = !featurePageEnabled($activeNav);
 ?>
 <div class="topbar">
     <div class="topbar-inner">
@@ -47,6 +52,8 @@ $h = static fn(string $value): string => htmlspecialchars($value, ENT_QUOTES, 'U
             <?php foreach ($navItems as $key => [$label, $href]): ?>
                 <a href="<?= $h($href) ?>" class="nav-link<?= $key === $activeNav ? ' active' : '' ?>"<?= $key === $activeNav ? ' aria-current="page"' : '' ?>><?= $h($label) ?></a>
             <?php endforeach; ?>
+            <?php /* Nur für Admins sichtbar; assets/sidebar.js blendet den Link ein */ ?>
+            <a href="admin.php" class="nav-link nav-admin<?= $activeNav === 'admin' ? ' active' : '' ?>" id="navAdminLink"<?= $activeNav === 'admin' ? ' aria-current="page"' : ' hidden' ?>>Admin</a>
         </nav>
     </div>
 </header>
@@ -60,6 +67,9 @@ $h = static fn(string $value): string => htmlspecialchars($value, ENT_QUOTES, 'U
         <h1 class="page-hero-title"><?= $h((string) $pageTitle) ?></h1>
         <?php if (!empty($pageLead)): ?>
             <p class="page-hero-lead"><?= $h((string) $pageLead) ?></p>
+        <?php endif; ?>
+        <?php if ($currentPageHidden): ?>
+            <p class="page-hidden-note">Diese Seite ist im Menü ausgeblendet und nur per Link erreichbar. Einschalten unter <a href="admin.php">Admin</a>.</p>
         <?php endif; ?>
     </div>
 </section>

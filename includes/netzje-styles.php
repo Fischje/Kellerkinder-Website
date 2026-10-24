@@ -122,6 +122,20 @@
         .netzje-bg-row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 6px; }
         .netzje-bg-preview { width: 160px; height: 90px; object-fit: cover; border: 1px solid var(--line); border-radius: 10px; }
 
+        /* Plätze: Belegungsbalken, eigener Status, Admin-Liste der Anfragen */
+        .netzje-seatbar { height: 8px; margin: 2px 0 12px; background: rgba(var(--accent-rgb, 226, 27, 64), .15); overflow: hidden; }
+        .netzje-seatbar span { display: block; height: 100%; background: var(--accent, #e11d48); }
+        .netzje-status { margin: 10px 0 0; padding: 8px 10px; border-left: 3px solid; font-size: .9rem; font-weight: 600; }
+        .netzje-status.pending { border-color: #e3a42c; background: rgba(227, 164, 44, .14); }
+        .netzje-status.approved { border-color: var(--accent, #45e636); background: rgba(var(--accent-rgb, 69, 230, 54), .14); }
+        .netzje-status.declined { border-color: #e0657a; background: rgba(224, 101, 122, .14); }
+        .netzje-requests { margin-top: 16px; }
+        .netzje-requests h3 + .netzje-request-list,
+        .netzje-requests h3 + .netzje-muted { margin-bottom: 16px; }
+        .netzje-request-list { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+        .netzje-request { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 10px; border: 1px solid var(--line); background: var(--panel, #fff); }
+        .netzje-request .netzje-actions button { min-height: 36px; padding: 6px 12px; }
+
         .netzje-form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; }
         .netzje-dialog-meta { margin: 0; opacity: .8; }
         .form-error { margin: 0; color: var(--red); font-weight: 600; }

@@ -17,6 +17,9 @@ if (is_file(__DIR__ . '/config.php')) {
     require_once __DIR__ . '/config.php';
 }
 
+// Schalter der zentralen Admin-Seite (Seitenleiste, Menü, Startseite)
+require_once __DIR__ . '/includes/features.php';
+
 const PLAYER_NAME_MAX = 40;
 const USERNAME_MAX = 50;
 const NOTE_MAX = 60;
@@ -61,6 +64,7 @@ const NETZJE_TEXT_MAX = 2000;
 const NETZJE_STREAM_TYPES = ['none', 'twitch', 'youtube'];
 const NETZJE_BACKGROUND_MAX_WIDTH = 1920;
 const NETZJE_BACKGROUND_MAX_BYTES = 6000000;
+const NETZJE_SEATS_MAX = 999;
 const GAMESERVER_QUERY_TYPES = ['a2s', 'minecraft', 'tcp'];
 const GAMESERVER_STATUS_TTL_SECONDS = 20;
 const GAMESERVER_STATUS_MAX_AGE_SECONDS = 300; // älter: Status gilt als unbekannt
@@ -1783,8 +1787,10 @@ function normalizeNetzjeUserIds($value): array
 
 /**
  * Party: title, description, location (nur für Angemeldete), info (Mitbringliste), start, end,
- * stream_type (none|twitch|youtube), stream, attendees (User-IDs, „ich komme“), background (Datei in data/media),
- * slots, next_slot_id.
+ * stream_type (none|twitch|youtube), stream, background (Datei in data/media), slots, next_slot_id.
+ * Plätze: seats (Anzahl Plätze, bei der Erstellung festgelegt; 0 = noch nicht festgelegt),
+ * requests (User-IDs mit offener Platz-Anfrage, in Reihenfolge der Anfrage),
+ * attendees (vom Admin bestätigte User-IDs), declined (abgelehnte User-IDs). Die drei Listen schließen sich aus.
  * Slot: id, game, start, end, max (0 = ohne Limit), note, status (planned|proposed), proposed_by,
  * signups (User-IDs in Anmeldereihenfolge: die ersten `max` spielen mit, der Rest steht auf der Warteliste).
  */
@@ -1802,7 +1808,10 @@ function normalizeNetzje($value): array
         'end' => validNetzjeTime($value['end'] ?? '') ?? '',
         'stream_type' => $streamType,
         'stream' => validNetzjeStream($streamType, $value['stream'] ?? ''),
+        'seats' => max(0, min(NETZJE_SEATS_MAX, (int) ($value['seats'] ?? 0))),
         'attendees' => normalizeNetzjeUserIds($value['attendees'] ?? []),
+        'requests' => [],
+        'declined' => [],
         'background' => preg_match('/^netzje-[a-f0-9]{16}\.(?:jpg|png|webp)$/', (string) ($value['background'] ?? '')) ? (string) $value['background'] : '',
         'slots' => [],
         'next_slot_id' => max(1, (int) ($value['next_slot_id'] ?? 1)),
@@ -1833,6 +1842,9 @@ function normalizeNetzje($value): array
         ];
         $party['next_slot_id'] = max($party['next_slot_id'], $id + 1);
     }
+    // Jede Person steht höchstens in einer der Listen: bestätigt vor angefragt vor abgelehnt
+    $party['requests'] = array_values(array_diff(normalizeNetzjeUserIds($value['requests'] ?? []), $party['attendees']));
+    $party['declined'] = array_values(array_diff(normalizeNetzjeUserIds($value['declined'] ?? []), $party['attendees'], $party['requests']));
     usort($party['slots'], static fn(array $a, array $b): int => [$a['start'], $a['id']] <=> [$b['start'], $b['id']]);
     $party['slots'] = array_slice($party['slots'], 0, NETZJE_SLOTS_MAX);
     return $party;
@@ -1894,6 +1906,26 @@ function netzjeUserName(array $store, int $userId): string
     return $player !== null ? (string) $player['name'] : (string) $store['users'][$index]['username'];
 }
 
+/** Antwort für die Admin-Seite: Schalter (für alle lesbar), Style, Anmeldestatus. */
+function siteSettingsResponse(array $store): array
+{
+    $userIndex = currentUserIndex($store);
+    $user = $userIndex === null ? null : $store['users'][$userIndex];
+    $loggedIn = $user !== null && empty($user['must_change_password']);
+    $isAdmin = $loggedIn && isAdminUser($store, $user);
+    return [
+        'ok' => true,
+        'csrf_token' => csrfToken(),
+        'logged_in' => $loggedIn,
+        'is_admin' => $isAdmin,
+        // Offene Platz-Anfragen der Netzje (nur für Admins, für den Hinweis am Menüpunkt)
+        'netzje_requests' => $isAdmin ? count(normalizeNetzje($store['netzje'] ?? [])['requests']) : 0,
+        'features' => normalizeFeatures($store['settings']['features'] ?? []),
+        'theme' => validateThemeValue($store['settings']['theme'] ?? 'default', 'default'),
+        'labels' => ['sidebar' => FEATURE_SIDEBAR_BOXES, 'pages' => FEATURE_PAGES, 'home' => FEATURE_HOME],
+    ];
+}
+
 /** Antwort für die Seite „Netzje“. Ort nur für Angemeldete; Vorschläge sind (nur lesend) für alle sichtbar. */
 function netzjeResponse(array $store): array
 {
@@ -1948,8 +1980,19 @@ function netzjeResponse(array $store): array
             'end' => $party['end'],
             'stream_type' => $party['stream_type'],
             'stream' => $party['stream'],
+            'seats' => $party['seats'],
+            'seats_taken' => count($party['attendees']),
             'attendees' => $names($party['attendees']),
             'attending' => $userId > 0 && in_array($userId, $party['attendees'], true),
+            // Eigener Stand: none | pending (angefragt) | approved (bestätigt) | declined (abgelehnt)
+            'my_status' => $userId <= 0 ? 'none'
+                : (in_array($userId, $party['attendees'], true) ? 'approved'
+                : (in_array($userId, $party['requests'], true) ? 'pending'
+                : (in_array($userId, $party['declined'], true) ? 'declined' : 'none'))),
+            'requests_count' => count($party['requests']),
+            // Namen der Anfragen und Absagen nur für Admins
+            'requests' => $isAdmin ? $names($party['requests']) : [],
+            'declined' => $isAdmin ? $names($party['declined']) : [],
             'background' => $party['background'] === '' ? null : mediaUrl($party['background']),
         ],
         'slots' => $slots,
@@ -2355,6 +2398,7 @@ function defaultStore(): array
             'admin_player_names' => [],
             'theme' => 'default',
             'stats_excluded' => [],
+            'features' => normalizeFeatures([]),
         ],
         'achievements_manual' => [
             'wow' => [
@@ -2450,6 +2494,7 @@ function normalizeStore(array $store): array
         : [];
     $store['settings']['theme'] = validateThemeValue($store['settings']['theme'] ?? 'default', 'default');
     $store['settings']['stats_excluded'] = normalizeStatsExcluded($store['settings']['stats_excluded'] ?? []);
+    $store['settings']['features'] = normalizeFeatures($store['settings']['features'] ?? []);
 
     $defaultAchievements = $defaults['achievements_manual'];
     $rawAchievements = is_array($store['achievements_manual'] ?? null) ? $store['achievements_manual'] : [];
@@ -3655,6 +3700,14 @@ if ($action === 'blog_posts') {
     respond(['ok' => true, 'posts' => $posts, 'tags' => $tags]);
 }
 
+if ($action === 'site_settings') {
+    // Für die Admin-Seite: Schalter, Style und wer angemeldet ist
+    $settingsStore = readStore();
+    $settingsOut = siteSettingsResponse($settingsStore);
+    session_write_close();
+    respond($settingsOut);
+}
+
 if ($action === 'netzje') {
     $netzjeStore = readStore();
     $netzjeOut = netzjeResponse($netzjeStore);
@@ -4531,6 +4584,15 @@ withWritableStore(function (array &$store) use ($action, $payload): array {
                     ? 'Bitte einen gültigen Twitch-Kanal (Name oder Link) angeben.'
                     : 'Bitte einen gültigen YouTube-Link oder eine Video-ID angeben.'], 422, false];
             }
+            $seatsRaw = trim((string) ($payload['seats'] ?? ''));
+            if (filter_var($seatsRaw, FILTER_VALIDATE_INT) === false || (int) $seatsRaw < 1 || (int) $seatsRaw > NETZJE_SEATS_MAX) {
+                return [['ok' => false, 'error' => 'Bitte die Anzahl der Plätze angeben (1 bis ' . NETZJE_SEATS_MAX . ').'], 422, false];
+            }
+            $seats = (int) $seatsRaw;
+            $confirmed = count($store['netzje']['attendees']);
+            if ($seats < $confirmed) {
+                return [['ok' => false, 'error' => 'Es sind schon ' . $confirmed . ' Plätze bestätigt. Bitte erst Teilnehmer entfernen oder mehr Plätze angeben.'], 422, false];
+            }
             foreach ($store['netzje']['slots'] as $existingSlot) {
                 if ($existingSlot['start'] < $partyStart || $existingSlot['end'] > $partyEnd) {
                     return [['ok' => false, 'error' => '„' . $existingSlot['game'] . '“ läge außerhalb der neuen Party-Zeit. Bitte zuerst das Spiel verschieben oder löschen.'], 422, false];
@@ -4545,6 +4607,7 @@ withWritableStore(function (array &$store) use ($action, $payload): array {
                 'end' => $partyEnd,
                 'stream_type' => $streamType,
                 'stream' => $stream,
+                'seats' => $seats,
             ]));
             return [netzjeResponse($store), 200, true];
 
@@ -4589,6 +4652,8 @@ withWritableStore(function (array &$store) use ($action, $payload): array {
             }
             $store['netzje']['slots'] = [];
             $store['netzje']['attendees'] = [];
+            $store['netzje']['requests'] = [];
+            $store['netzje']['declined'] = [];
             $store['netzje']['start'] = '';
             $store['netzje']['end'] = '';
             $store['netzje'] = normalizeNetzje($store['netzje']);
@@ -4599,11 +4664,58 @@ withWritableStore(function (array &$store) use ($action, $payload): array {
             if ($store['netzje']['start'] === '') {
                 return [['ok' => false, 'error' => 'Es ist gerade keine Party geplant.'], 422, false];
             }
-            $attendees = array_values(array_filter($store['netzje']['attendees'], static fn(int $id): bool => $id !== (int) $attendUser['id']));
+            // Zusagen sind Anfragen: Ein Admin bestätigt sie (admin_netzje_request).
+            $attendId = (int) $attendUser['id'];
+            $without = static fn(array $ids): array => array_values(array_filter($ids, static fn(int $id): bool => $id !== $attendId));
             if (!empty($payload['attend'])) {
-                $attendees[] = (int) $attendUser['id'];
+                if (in_array($attendId, $store['netzje']['attendees'], true) || in_array($attendId, $store['netzje']['requests'], true)) {
+                    return [netzjeResponse($store), 200, false];
+                }
+                if (in_array($attendId, $store['netzje']['declined'], true)) {
+                    return [['ok' => false, 'error' => 'Deine Anfrage wurde abgelehnt. Sprich bei Fragen einen Admin an.'], 409, false];
+                }
+                if ($store['netzje']['seats'] <= 0) {
+                    return [['ok' => false, 'error' => 'Für diese Party sind noch keine Plätze festgelegt.'], 422, false];
+                }
+                $store['netzje']['requests'][] = $attendId;
+            } else {
+                // Absagen bzw. Anfrage zurückziehen; eine Ablehnung bleibt bestehen
+                $store['netzje']['attendees'] = $without($store['netzje']['attendees']);
+                $store['netzje']['requests'] = $without($store['netzje']['requests']);
             }
-            $store['netzje']['attendees'] = $attendees;
+            $store['netzje'] = normalizeNetzje($store['netzje']);
+            return [netzjeResponse($store), 200, true];
+
+        case 'admin_netzje_request':
+            // Admin entscheidet über eine Platz-Anfrage: approve (bestätigen), decline (ablehnen), remove (ganz entfernen)
+            requireAdmin($store);
+            $targetId = (int) ($payload['user_id'] ?? 0);
+            $decision = (string) ($payload['decision'] ?? '');
+            if ($targetId <= 0 || findUserIndex($store['users'], $targetId) === null) {
+                return [['ok' => false, 'error' => 'Diese Person wurde nicht gefunden.'], 404, false];
+            }
+            if (!in_array($decision, ['approve', 'decline', 'remove'], true)) {
+                return [['ok' => false, 'error' => 'Unbekannte Entscheidung.'], 422, false];
+            }
+            $party = $store['netzje'];
+            $known = array_merge($party['attendees'], $party['requests'], $party['declined']);
+            if (!in_array($targetId, $known, true)) {
+                return [['ok' => false, 'error' => 'Diese Person hat keinen Platz angefragt.'], 404, false];
+            }
+            $without = static fn(array $ids): array => array_values(array_filter($ids, static fn(int $id): bool => $id !== $targetId));
+            $alreadyIn = in_array($targetId, $party['attendees'], true);
+            $party['attendees'] = $without($party['attendees']);
+            $party['requests'] = $without($party['requests']);
+            $party['declined'] = $without($party['declined']);
+            if ($decision === 'approve') {
+                if (!$alreadyIn && count($party['attendees']) >= $party['seats']) {
+                    return [['ok' => false, 'error' => 'Alle ' . $party['seats'] . ' Plätze sind vergeben. Erhöhe die Platzzahl unter „Party bearbeiten“ oder entferne jemanden.'], 409, false];
+                }
+                $party['attendees'][] = $targetId;
+            } elseif ($decision === 'decline') {
+                $party['declined'][] = $targetId;
+            }
+            $store['netzje'] = normalizeNetzje($party);
             return [netzjeResponse($store), 200, true];
 
         case 'netzje_signup':
@@ -4737,6 +4849,18 @@ withWritableStore(function (array &$store) use ($action, $payload): array {
             }
             $store['settings']['stats_excluded'] = normalizeStatsExcluded($payload['players']);
             return [['ok' => true, 'excluded' => $store['settings']['stats_excluded']], 200, true];
+
+        case 'admin_save_features':
+            // Zentrale Admin-Seite: Seitenleiste, Menü, Startseite und Style für alle
+            requireAdmin($store);
+            if (!is_array($payload['features'] ?? null)) {
+                return [['ok' => false, 'error' => 'Die Einstellungen fehlen.'], 422, false];
+            }
+            $store['settings']['features'] = normalizeFeatures($payload['features']);
+            if (isset($payload['theme'])) {
+                $store['settings']['theme'] = validateThemeValue($payload['theme']);
+            }
+            return [siteSettingsResponse($store), 200, true];
 
         case 'admin_save_settings':
             requireAdmin($store);

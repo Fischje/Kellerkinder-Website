@@ -112,7 +112,12 @@ require __DIR__ . '/includes/site-header.php';
                 <label for="pEnd">Ende</label>
                 <input type="datetime-local" id="pEnd">
             </div>
+            <div>
+                <label for="pSeats">Plätze</label>
+                <input type="number" id="pSeats" min="1" max="999" step="1" inputmode="numeric" placeholder="z. B. 12">
+            </div>
         </div>
+        <p class="netzje-muted">Plätze sind begrenzt: Wer zusagt, fragt einen Platz an. Ein Admin bestätigt oder lehnt die Anfrage ab.</p>
         <div>
             <label for="pDescription">Beschreibung</label>
             <textarea id="pDescription" maxlength="2000" placeholder="Worum geht es, wer ist eingeladen …"></textarea>
@@ -351,9 +356,15 @@ require __DIR__ . '/includes/site-header.php';
         byId('editPartyButton').hidden = !isAdmin;
         byId('newPartyButton').hidden = !isAdmin || !planned;
         const attend = byId('attendButton');
-        attend.hidden = !loggedIn || !planned;
-        attend.textContent = party.attending ? 'Ich komme doch nicht' : 'Ich komme';
-        attend.className = party.attending ? 'secondary-button' : 'primary-button';
+        const status = party.my_status || 'none';
+        const full = party.seats > 0 && party.seats_taken >= party.seats;
+        attend.hidden = !loggedIn || !planned || status === 'declined' || party.seats <= 0;
+        attend.textContent = {
+            none: full ? 'Platz anfragen (alle vergeben)' : 'Platz anfragen',
+            pending: 'Anfrage zurückziehen',
+            approved: 'Ich komme doch nicht',
+        }[status] || 'Platz anfragen';
+        attend.className = status === 'none' ? 'primary-button' : 'secondary-button';
 
         const title = byId('partyTitle');
         title.replaceChildren();
@@ -392,10 +403,23 @@ require __DIR__ . '/includes/site-header.php';
 
         const grid = el('div', 'netzje-grid');
         const people = el('div', 'netzje-box');
-        people.append(el('h3', '', `Wer kommt (${party.attendees.length})`));
+        people.append(el('h3', '', party.seats > 0 ? `Dabei (${party.seats_taken} von ${party.seats} Plätzen)` : `Dabei (${party.attendees.length})`));
+        if (party.seats > 0) {
+            const bar = el('div', 'netzje-seatbar');
+            const fill = el('span');
+            fill.style.width = `${Math.min(100, Math.round((party.seats_taken / party.seats) * 100))}%`;
+            bar.append(fill);
+            people.append(bar);
+        }
         if (party.attendees.length > 0) people.append(chips(party.attendees));
-        else people.append(el('p', 'netzje-muted', 'Noch niemand eingetragen.'));
-        if (!loggedIn) people.append(loginHint('Zum Zusagen bitte anmelden.'));
+        else people.append(el('p', 'netzje-muted', 'Noch niemand bestätigt.'));
+        const myStatus = party.my_status || 'none';
+        if (myStatus === 'pending') people.append(el('p', 'netzje-status pending', 'Du hast einen Platz angefragt – ein Admin muss noch bestätigen.'));
+        if (myStatus === 'approved') people.append(el('p', 'netzje-status approved', 'Dein Platz ist bestätigt. Bis bald!'));
+        if (myStatus === 'declined') people.append(el('p', 'netzje-status declined', 'Deine Anfrage wurde leider abgelehnt.'));
+        if (party.seats <= 0) people.append(el('p', 'netzje-muted', 'Die Plätze werden noch festgelegt.'));
+        else if (!isAdmin && party.requests_count > 0) people.append(el('p', 'netzje-muted', `${party.requests_count} ${party.requests_count === 1 ? 'Anfrage wartet' : 'Anfragen warten'} auf Bestätigung.`));
+        if (!loggedIn) people.append(loginHint('Zum Platz-Anfragen bitte anmelden.'));
         grid.append(people);
 
         if (party.has_location) {
@@ -410,7 +434,48 @@ require __DIR__ . '/includes/site-header.php';
             grid.append(info);
         }
         nodes.push(grid);
+        if (isAdmin) nodes.push(renderRequestAdmin(party));
         body.replaceChildren(...nodes);
+    }
+
+    // Admin: offene Anfragen bestätigen/ablehnen, Bestätigte entfernen, Abgelehnte doch bestätigen
+    function renderRequestAdmin(party) {
+        const box = el('div', 'netzje-box netzje-requests');
+        box.append(el('h3', '', `Platz-Anfragen (${party.requests.length})`));
+        const decide = (person, decision, message) => runAction('admin_netzje_request', { user_id: person.id, decision }, null, message);
+        const list = (people, actions) => {
+            const ul = el('ul', 'netzje-request-list');
+            for (const person of people) {
+                const li = el('li', 'netzje-request');
+                li.append(el('strong', '', person.name));
+                const buttons = el('div', 'netzje-actions');
+                for (const [label, className, decision, message] of actions) {
+                    buttons.append(button(label, className, () => decide(person, decision, message(person))));
+                }
+                li.append(buttons);
+                ul.append(li);
+            }
+            return ul;
+        };
+        if (party.requests.length === 0) box.append(el('p', 'netzje-muted', 'Keine offenen Anfragen.'));
+        else box.append(list(party.requests, [
+            ['Bestätigen', 'primary-button', 'approve', (p) => `${p.name} ist bestätigt.`],
+            ['Ablehnen', 'danger-button', 'decline', (p) => `Anfrage von ${p.name} abgelehnt.`],
+        ]));
+        if (party.attendees.length > 0) {
+            box.append(el('h3', '', `Bestätigt (${party.attendees.length})`));
+            box.append(list(party.attendees, [
+                ['Entfernen', 'secondary-button', 'remove', (p) => `${p.name} wurde entfernt.`],
+            ]));
+        }
+        if (party.declined.length > 0) {
+            box.append(el('h3', '', `Abgelehnt (${party.declined.length})`));
+            box.append(list(party.declined, [
+                ['Doch bestätigen', 'secondary-button', 'approve', (p) => `${p.name} ist bestätigt.`],
+                ['Entfernen', 'secondary-button', 'remove', (p) => `${p.name} wurde entfernt.`],
+            ]));
+        }
+        return box;
     }
 
     function loginHint(text) {
@@ -734,6 +799,7 @@ require __DIR__ . '/includes/site-header.php';
         byId('pTitle').value = party.title;
         byId('pStart').value = party.start;
         byId('pEnd').value = party.end;
+        byId('pSeats').value = party.seats > 0 ? party.seats : '';
         byId('pDescription').value = party.description;
         byId('pLocation').value = party.location || '';
         byId('pInfo').value = party.info;
@@ -751,6 +817,7 @@ require __DIR__ . '/includes/site-header.php';
             title: byId('pTitle').value,
             start: byId('pStart').value,
             end: byId('pEnd').value,
+            seats: byId('pSeats').value,
             description: byId('pDescription').value,
             location: byId('pLocation').value,
             info: byId('pInfo').value,
@@ -762,13 +829,18 @@ require __DIR__ . '/includes/site-header.php';
     });
 
     byId('newPartyButton').addEventListener('click', async () => {
-        if (!confirm('Neue Party anlegen? Termin, Stundenplan, Anmeldungen, Teilnehmer und Hintergrundbild werden gelöscht. Titel, Texte und Stream bleiben als Vorlage stehen.')) return;
+        if (!confirm('Neue Party anlegen? Termin, Stundenplan, Anmeldungen, Platz-Anfragen, Teilnehmer und Hintergrundbild werden gelöscht. Titel, Texte, Plätze und Stream bleiben als Vorlage stehen.')) return;
         await runAction('admin_netzje_new', {}, null, 'Bereit für die nächste Party – jetzt den Termin eintragen.');
     });
 
     byId('attendButton').addEventListener('click', async () => {
-        const attend = !state.data.party.attending;
-        await runAction('netzje_attend', { attend }, null, attend ? 'Schön, dass du kommst!' : 'Zusage zurückgenommen.');
+        const status = state.data.party.my_status || 'none';
+        const attend = status === 'none';
+        await runAction('netzje_attend', { attend }, null, {
+            none: 'Platz angefragt – ein Admin bestätigt ihn.',
+            pending: 'Anfrage zurückgezogen.',
+            approved: 'Zusage zurückgenommen.',
+        }[status]);
     });
 
     for (const close of document.querySelectorAll('[data-close-dialog]')) {

@@ -6,9 +6,13 @@
 // Die Seitenleiste ist hier nur ein Gerüst; die Inhalte lädt assets/sidebar.js
 // über die vorhandenen öffentlichen API-Aktionen. Kästen ohne Daten bleiben
 // unsichtbar. Den Kasten zur aktuellen Seite zeigen wir nicht (data-skip).
+// Welche Kästen in welcher Reihenfolge erscheinen, stellt ein Admin auf
+// admin.php ein (settings.features.sidebar, siehe includes/features.php).
+// Ist eine Seite im Menü ausgeblendet, fehlt auch ihr Kasten.
 // Am Computer steht die Leiste rechts (weiß, volle Höhe, wie bei navi.gg),
 // auf Tablet und Handy rutscht sie als Karten unter den Inhalt.
 // Erwartet: $activeNav (aus site-header.php) und $appVersion (aus bootstrap.php).
+require_once __DIR__ . '/features.php';
 $sidebarSkip = [
     'calendar' => 'blog',      // Der Kalender hat schon den Hinweis „Neu im Blog“
     'blog' => 'blog',
@@ -17,10 +21,19 @@ $sidebarSkip = [
     'netzje' => 'netzje',
 ][$activeNav ?? ''] ?? '';
 $footerVersion = htmlspecialchars((string) ($appVersion ?? ''), ENT_QUOTES, 'UTF-8');
+
+$sidebarBoxes = [];
+foreach (siteFeatures()['sidebar'] as $entry) {
+    if ($entry['enabled'] && featurePageEnabled($entry['box'])) {
+        $sidebarBoxes[] = $entry['box'];
+    }
+}
 ?>
 </div><!-- /.page-main -->
 
-<aside class="site-sidebar" id="siteSidebar" data-skip="<?= htmlspecialchars($sidebarSkip, ENT_QUOTES, 'UTF-8') ?>" aria-label="Kurz & knapp">
+<aside class="site-sidebar" id="siteSidebar" data-skip="<?= htmlspecialchars($sidebarSkip, ENT_QUOTES, 'UTF-8') ?>" aria-label="Kurz & knapp"<?= $sidebarBoxes === [] ? ' hidden' : '' ?>>
+<?php foreach ($sidebarBoxes as $sidebarBox): ?>
+<?php if ($sidebarBox === 'games'): ?>
     <section class="sidebar-section" data-box="games" hidden>
         <h2 class="sidebar-title">Meist gespielt</h2>
         <ul class="sidebar-list" data-list></ul>
@@ -30,38 +43,31 @@ $footerVersion = htmlspecialchars((string) ($appVersion ?? ''), ENT_QUOTES, 'UTF
         </div>
         <a class="sidebar-more" href="games.php">Alle Spiele</a>
     </section>
-
+<?php elseif ($sidebarBox === 'blog'): ?>
+    <section class="sidebar-section" data-box="blog" hidden>
+        <h2 class="sidebar-title">Neu im Blog</h2>
+        <ul class="sidebar-list" data-list></ul>
+        <a class="sidebar-more" href="blog.php">Zum Blog</a>
+    </section>
+<?php elseif ($sidebarBox === 'servers'): ?>
+    <section class="sidebar-section" data-box="servers" hidden>
+        <h2 class="sidebar-title">Unsere Server</h2>
+        <ul class="sidebar-list" data-list></ul>
+        <a class="sidebar-more" href="gameserver.php">Alle Server</a>
+    </section>
+<?php elseif ($sidebarBox === 'netzje'): ?>
     <section class="sidebar-section" data-box="netzje" hidden>
         <h2 class="sidebar-title">Nächste Netzje</h2>
         <a class="sidebar-feature" href="netzje.php">
             <span class="sidebar-feature-tag" data-countdown></span>
             <strong data-title></strong>
             <span data-when></span>
+            <span class="sidebar-seatbar" data-seatbar hidden><span></span></span>
             <span class="sidebar-feature-meta" data-meta></span>
         </a>
     </section>
-
-    <section class="sidebar-section" data-box="blog" hidden>
-        <h2 class="sidebar-title">Neu im Blog</h2>
-        <ul class="sidebar-list" data-list></ul>
-        <a class="sidebar-more" href="blog.php">Zum Blog</a>
-    </section>
-
-    <section class="sidebar-section" data-box="servers" hidden>
-        <h2 class="sidebar-title">Unsere Server</h2>
-        <ul class="sidebar-list" data-list></ul>
-        <a class="sidebar-more" href="gameserver.php">Alle Server</a>
-    </section>
-
-    <section class="sidebar-section sidebar-join">
-        <h2 class="sidebar-title">Mach mit!</h2>
-        <p>Online-Gaming mit Freunden: Trag im Kalender ein, wann du zockst, und sag zur nächsten Netzje zu.</p>
-        <?php if (($activeNav ?? '') !== 'calendar'): ?>
-            <a class="primary-button" href="index.php">Zum Kalender</a>
-        <?php else: ?>
-            <a class="primary-button" href="netzje.php">Zur Netzje</a>
-        <?php endif; ?>
-    </section>
+<?php endif; ?>
+<?php endforeach; ?>
 </aside>
 </div><!-- /.page-frame -->
 
