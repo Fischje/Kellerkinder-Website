@@ -199,6 +199,7 @@ Die Laufzeitdateien unter `data/store.php*` werden von Git ignoriert und dadurch
 │   │   ├── summer/     (genau ein Bild, wird immer verwendet)
 │   │   └── winter/     (genau ein Bild, wird immer verwendet)
 │   ├── kellerkinder-logo.svg
+│   ├── logo/          (Logo als PNG 300 × 300: eckig, rund, transparent)
 │   ├── sidebar.js      (füllt die Seitenleiste „Kurz & knapp“)
 │   └── smartphone-install.svg
 ├── data/

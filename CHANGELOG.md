@@ -1,5 +1,13 @@
 # Änderungsprotokoll
 
+## 2.30.0 — Logo im neuen Farbschema, aufgeräumter Seitentitel
+
+- **Logo umgefärbt** auf das Design der Seite: Rand, Kellerbogen und Treppe in Grün (`#76e36c` mit helleren/dunkleren Abstufungen), Fläche Graublau, Monogramm „K“ weiß + „K“ grün (wie „KELLER“ + „KINDER“). Form und Motiv sind gleich geblieben; das alte Logo ist in der Git-Historie
+- **Neue PNG-Varianten** in `assets/logo/` (je 300 × 300 px): `kellerkinder-logo-eckig-300.png` (Graublau, eckig), `kellerkinder-logo-rund-300.png` (Graublau, rund, Ecken transparent), `kellerkinder-logo-transparent-300.png` (ohne Hintergrund)
+- **App-Icons** (`app-icon-180/192/512.png`) neu im gleichen Stil; Manifest und Browser-Leiste nutzen jetzt Graublau `#1b1f27` statt Violett
+- **Logo im Kopfband** größer (60 px, auf dem Handy 44 px), mit transparentem Hintergrund
+- **Seitentitel:** kleines Logo und „Kellerkinder /“ vor der Brotkrumen-Zeile entfernt (nur noch z. B. „Online-Kalender“), Überschrift eine Stufe kleiner, engere Abstände zur Zeile darüber und darunter
+
 ## 2.29.0 — Alter Adminbereich entfernt, Account-Knopf auf allen Seiten
 
 - **Alter Adminbereich im Kalender entfernt:** Die Benutzerverwaltung lebt jetzt auf der zentralen Admin-Seite `admin.php` – Konten anlegen, bearbeiten (Benutzername, Spieler, Steam-Name, Autorenrecht, Passwort zurücksetzen), löschen und die Admin-Spielernamen. Der Style wird nur noch dort gewählt (Abschnitt „Style für alle“)

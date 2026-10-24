@@ -70,7 +70,7 @@ $currentPageHidden = !featurePageEnabled($activeNav);
 <?php if (!empty($pageTitle)): ?>
 <section class="page-hero">
     <div class="page-hero-inner">
-        <p class="page-hero-crumb">Kellerkinder <span aria-hidden="true">/</span> <?= $h((string) ($pageKicker ?? $pageTitle)) ?></p>
+        <p class="page-hero-crumb"><?= $h((string) ($pageKicker ?? $pageTitle)) ?></p>
         <h1 class="page-hero-title"><?= $h((string) $pageTitle) ?></h1>
         <?php if (!empty($pageLead)): ?>
             <p class="page-hero-lead"><?= $h((string) $pageLead) ?></p>

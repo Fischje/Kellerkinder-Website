@@ -286,7 +286,7 @@ if (!isset($backgroundImages) || !is_array($backgroundImages)) { $backgroundImag
 
         .masthead-row { min-height: 84px; }
 
-        .brand-logo { width: 46px; height: 46px; filter: none; }
+        .brand-logo { width: 60px; height: 60px; filter: none; }
 
         .brand-name {
             font-family: var(--font-ui);
@@ -351,7 +351,7 @@ if (!isset($backgroundImages) || !is_array($backgroundImages)) { $backgroundImag
             display: flex;
             align-items: center;
             gap: 10px;
-            margin-bottom: 14px;
+            margin-bottom: 6px;
             padding: 0;
             color: var(--text);
             background: none;
@@ -361,21 +361,12 @@ if (!isset($backgroundImages) || !is_array($backgroundImages)) { $backgroundImag
             letter-spacing: .14em;
         }
 
-        .page-hero-crumb::before {
-            content: "";
-            width: 22px;
-            height: 22px;
-            flex: none;
-            background: var(--accent) url("assets/kellerkinder-logo.svg") center / 16px no-repeat;
-        }
-
-        .page-hero-crumb span { margin: 0 2px; color: var(--muted); opacity: 1; }
 
         .page-hero-title {
             max-width: none;
             color: var(--text);
             font-family: var(--font-ui);
-            font-size: clamp(2rem, 5vw, 3.4rem);
+            font-size: clamp(1.75rem, 4.3vw, 2.9rem);
             font-weight: 900;
             line-height: 1.02;
             letter-spacing: -.01em;
@@ -384,9 +375,10 @@ if (!isset($backgroundImages) || !is_array($backgroundImages)) { $backgroundImag
 
         .page-hero-lead {
             max-width: 640px;
-            margin-top: 12px;
+            margin-top: 6px;
             color: var(--muted);
             font-size: 1.02rem;
+            line-height: 1.45;
         }
 
         .page-shell {
@@ -1189,6 +1181,7 @@ if (!isset($backgroundImages) || !is_array($backgroundImages)) { $backgroundImag
             :root { --gutter: 12px; }
             .topbar-tagline.subtitle { font-size: .64rem; letter-spacing: .1em; }
             .masthead-row { min-height: 0; padding-top: 10px; }
+            .brand-logo { width: 44px; height: 44px; }
             .main-nav { gap: 20px; }
             .nav-link { font-size: .74rem; }
             .nav-link::after { bottom: 0; height: 3px; }
