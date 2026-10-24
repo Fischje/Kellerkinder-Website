@@ -265,8 +265,22 @@ if (!isset($backgroundImages) || !is_array($backgroundImages)) { $backgroundImag
         .topbar-menu-item:focus-visible { outline: none; background: rgba(var(--accent-rgb), .18); }
         .topbar-menu li + li { border-top: 1px solid #eceef1; }
 
-        /* „Adminbereich“ im Kalender ist jetzt ein Link zur Admin-Seite */
-        .account-actions a.compact-button { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; }
+        /* Anmelde-Dialog: Weg zum Registrieren (die Konto-Leiste über dem Kalender gibt es nicht mehr) */
+        .login-register-hint { margin: 0; color: var(--muted); font-size: .92rem; }
+        .text-button {
+            padding: 0;
+            border: 0;
+            color: var(--accent-text);
+            background: none;
+            font: inherit;
+            font-weight: 800;
+            text-decoration: underline;
+            text-underline-offset: 3px;
+            cursor: pointer;
+        }
+
+        .text-button:hover { color: var(--text); }
+        .setup-callout-button { display: flex; margin-top: 12px; }
         .install-app-button:hover { background: var(--accent-hover); }
 
         /* ===== Kopfband (dunkel) ===== */

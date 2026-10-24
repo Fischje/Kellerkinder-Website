@@ -65,22 +65,9 @@ require __DIR__ . '/includes/site-header.php';
 
 <main class="page-shell">
 
-    <section class="account-strip" aria-label="Benutzerkonto">
-        <div class="account-summary" id="accountSummary">
-            <strong>Wird geladen …</strong>
-            <small>Die Übersicht ist öffentlich sichtbar. Änderungen erfordern ein Benutzerkonto.</small>
-        </div>
-        <div class="account-actions">
-            <button class="compact-button" id="loginButton" type="button">Anmelden</button>
-            <button class="compact-button" id="registerButton" type="button">Account anlegen</button>
-            <button class="compact-button" id="profileButton" type="button" hidden>Mein Account</button>
-            <a class="compact-button" id="adminButton" href="admin.php" hidden>Adminbereich</a>
-            <button class="compact-button" id="logoutButton" type="button" hidden>Abmelden</button>
-        </div>
-    </section>
-
     <div id="setupCallout" class="setup-callout" hidden>
         <strong>Ersteinrichtung:</strong> Es existiert noch kein Benutzerkonto. Der erste registrierte Account wird automatisch als Administrator eingetragen.
+        <button class="primary-button setup-callout-button" id="setupRegisterButton" type="button">Ersten Account anlegen</button>
     </div>
 
     <div id="passwordCallout" class="password-callout" hidden>
@@ -244,6 +231,7 @@ require __DIR__ . '/includes/site-header.php';
             <input type="checkbox" id="loginRemember">
             <span>Angemeldet bleiben auf diesem Gerät</span>
         </label>
+        <p class="login-register-hint">Noch keinen Account? <button class="text-button" id="loginToRegisterButton" type="button">Account anlegen</button></p>
         <div class="modal-actions">
             <button class="secondary-button" type="button" data-close-dialog="loginDialog">Abbrechen</button>
             <button class="primary-button" type="submit">Anmelden</button>
@@ -494,7 +482,6 @@ require __DIR__ . '/includes/site-header.php';
     const storageWarning = byId('storageWarning');
     const setupCallout = byId('setupCallout');
     const passwordCallout = byId('passwordCallout');
-    const accountSummary = byId('accountSummary');
 
     const installDialog = byId('installDialog');
     const infoDialog = byId('infoDialog');
@@ -1448,39 +1435,8 @@ require __DIR__ . '/includes/site-header.php';
         setupCallout.hidden = !auth.setup_required;
         passwordCallout.hidden = !auth.must_change_password;
 
-        byId('loginButton').hidden = auth.logged_in;
-        byId('registerButton').hidden = auth.logged_in;
-        byId('profileButton').hidden = !auth.logged_in || auth.must_change_password;
-        byId('adminButton').hidden = !auth.is_admin || auth.must_change_password;
-        byId('logoutButton').hidden = !auth.logged_in;
         byId('addDateButton').hidden = !auth.can_write;
         byId('addPlayerButton').hidden = !auth.is_admin || auth.must_change_password;
-
-
-        accountSummary.replaceChildren();
-        const avatar = createAvatarElement(auth.user?.avatar || '', auth.user?.player_name || auth.user?.username || '', 'account-avatar');
-        const text = document.createElement('div');
-        text.className = 'account-summary-text';
-        const strong = document.createElement('strong');
-        const small = document.createElement('small');
-
-        if (!auth.logged_in) {
-            strong.textContent = auth.setup_required ? 'Noch kein Administrator eingerichtet' : 'Nur-Lese-Ansicht';
-            small.textContent = auth.setup_required
-                ? 'Lege den ersten Account an. Dieser wird automatisch Administrator.'
-                : 'Melde dich an oder registriere dich, um deinen eigenen Spieler zu bearbeiten.';
-        } else {
-            strong.textContent = auth.user?.player_name || 'Spielername noch nicht eingerichtet';
-            if (auth.is_admin) {
-                const badge = document.createElement('span');
-                badge.className = 'account-badge admin';
-                badge.textContent = 'Admin';
-                strong.appendChild(badge);
-            }
-            small.textContent = `Angemeldet als ${auth.user?.username || ''}${auth.must_change_password ? ' · Passwortänderung erforderlich' : ''}`;
-        }
-        text.append(strong, small);
-        accountSummary.append(avatar, text);
 
         if (auth.must_change_password && !passwordDialog.open) {
             setTimeout(() => openPasswordDialog(true), 50);
@@ -1704,6 +1660,11 @@ require __DIR__ . '/includes/site-header.php';
             openLoginDialog();
             return true;
         }
+        if (kind === 'register') {
+            if (state.auth.logged_in) return false;
+            openRegisterDialog();
+            return true;
+        }
         if (kind === 'profile') {
             if (!state.auth.logged_in) { openLoginDialog(); return true; }
             if (state.auth.must_change_password) openPasswordDialog(true); else openProfileDialog();
@@ -1715,7 +1676,7 @@ require __DIR__ . '/includes/site-header.php';
     window.kkAccount = { open: openAccountKind };
 
     function openDialogFromHash() {
-        const kind = { '#anmelden': 'login', '#account': 'profile' }[window.location.hash];
+        const kind = { '#anmelden': 'login', '#registrieren': 'register', '#account': 'profile' }[window.location.hash];
         if (!kind || document.querySelector('dialog[open]')) return;
         history.replaceState(null, '', window.location.pathname + window.location.search);
         openAccountKind(kind);
@@ -1777,8 +1738,12 @@ require __DIR__ . '/includes/site-header.php';
 
     byId('installAppButton').addEventListener('click', installApp);
     byId('infoButton').addEventListener('click', () => infoDialog.showModal());
-    byId('loginButton').addEventListener('click', openLoginDialog);
-    byId('registerButton').addEventListener('click', openRegisterDialog);
+    // Anmelden/Abmelden/Account laufen über den Account-Knopf in der Kopfleiste (assets/sidebar.js)
+    byId('setupRegisterButton').addEventListener('click', openRegisterDialog);
+    byId('loginToRegisterButton').addEventListener('click', () => {
+        loginDialog.close();
+        openRegisterDialog();
+    });
     byId('registerPassword').addEventListener('input', () => {
         const rules = updatePasswordChecklist('register');
         if (rules.length && rules.letter && rules.number && rules.special) {
@@ -1789,7 +1754,6 @@ require __DIR__ . '/includes/site-header.php';
         const rules = updatePasswordChecklist('register');
         if (rules.match) byId('registerPasswordConfirmation').classList.remove('field-invalid');
     });
-    byId('profileButton').addEventListener('click', openProfileDialog);
     byId('addDateButton').addEventListener('click', openDateDialog);
     byId('addPlayerButton').addEventListener('click', () => openPlayerDialog());
     async function submitVacationRange(remove) {
@@ -1856,15 +1820,6 @@ require __DIR__ . '/includes/site-header.php';
     });
     byId('profilePlayerName').addEventListener('input', () => {
         if (!profileAvatarData) setAvatarPreview('', byId('profilePlayerName').value);
-    });
-
-    byId('logoutButton').addEventListener('click', async () => {
-        try {
-            await api('logout', {});
-            [installDialog, infoDialog, achievementEditDialog, profileDialog, passwordDialog, playerDialog, dateDialog, statusDialog].forEach(dialog => dialog.open && dialog.close());
-            await loadPlan();
-            showToast('Du wurdest abgemeldet.');
-        } catch (error) { handleApiError(error); }
     });
 
     document.querySelectorAll('[data-close-dialog]').forEach(button => {

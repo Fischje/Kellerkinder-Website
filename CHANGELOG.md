@@ -1,5 +1,11 @@
 # Änderungsprotokoll
 
+## 2.31.0 — Konto-Leiste über dem Kalender entfernt
+
+- Die Leiste mit Name, „Mein Account“, „Adminbereich“, „Abmelden“ bzw. „Anmelden“/„Account anlegen“ über dem Kalender ist weg – das alles erledigt jetzt der Account-Knopf oben rechts
+- **Account anlegen** geht über den Anmelde-Dialog („Noch keinen Account? Account anlegen“) oder direkt per `index.php#registrieren`
+- Bei der Ersteinrichtung (noch kein Konto) hat der Hinweis „Ersteinrichtung“ einen eigenen Knopf „Ersten Account anlegen“
+
 ## 2.30.0 — Logo im neuen Farbschema, aufgeräumter Seitentitel
 
 - **Logo umgefärbt** auf das Design der Seite: Rand, Kellerbogen und Treppe in Grün (`#76e36c` mit helleren/dunkleren Abstufungen), Fläche Graublau, Monogramm „K“ weiß + „K“ grün (wie „KELLER“ + „KINDER“). Form und Motiv sind gleich geblieben; das alte Logo ist in der Git-Historie
