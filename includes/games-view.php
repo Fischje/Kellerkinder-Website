@@ -92,8 +92,8 @@ require __DIR__ . '/site-header.php';
     </section>
     <?php endif; ?>
 
-    <footer class="site-footer">Created by Fischje with <span class="heart" aria-label="Love">♥</span> · Made with AI · Version <?= htmlspecialchars($appVersion, ENT_QUOTES, 'UTF-8') ?></footer>
 </main>
+<?php require __DIR__ . '/site-footer.php'; ?>
 
 <script nonce="<?= htmlspecialchars($cspNonce, ENT_QUOTES, 'UTF-8') ?>">
     const body = document.getElementById('statsBody');

@@ -61,24 +61,19 @@ require __DIR__ . '/includes/site-header.php';
                 </div>
             </div>
 
+            <div class="filter-row post-tags" id="tagFilter" aria-label="Nach Thema filtern">
+                <span class="widget-loading">Wird geladen …</span>
+            </div>
+
             <p id="activeFilter" class="post-meta" hidden></p>
             <div id="postList" class="post-list">
                 <p class="widget-loading">Wird geladen …</p>
             </div>
         </section>
-
-        <aside class="blog-sidebar">
-            <div class="sidebar-box">
-                <h2 class="card-title">Themen</h2>
-                <div class="post-tags" id="tagFilter">
-                    <span class="widget-loading">Wird geladen …</span>
-                </div>
-            </div>
-        </aside>
     </div>
 
-    <footer class="site-footer">Created by Fischje with <span class="heart" aria-label="Love">♥</span> · Made with AI · Version <?= htmlspecialchars($appVersion, ENT_QUOTES, 'UTF-8') ?></footer>
 </main>
+<?php require __DIR__ . '/includes/site-footer.php'; ?>
 
 <dialog id="editorDialog" class="wide">
     <div class="modal-content form-stack">
@@ -186,13 +181,9 @@ require __DIR__ . '/includes/site-header.php';
     function renderTags() {
         const container = byId('tagFilter');
         container.replaceChildren();
-        if (state.tags.length === 0) {
-            const empty = document.createElement('span');
-            empty.className = 'widget-empty';
-            empty.textContent = 'Noch keine Themen vorhanden.';
-            container.appendChild(empty);
-            return;
-        }
+        // Ohne Themen bleibt die Filterreihe ganz weg
+        container.hidden = state.tags.length === 0;
+        if (state.tags.length === 0) return;
 
         const all = document.createElement('button');
         all.type = 'button';
@@ -240,6 +231,7 @@ require __DIR__ . '/includes/site-header.php';
         for (const post of state.posts) {
             const card = document.createElement('article');
             card.className = 'post-card';
+            card.id = `post-${post.id}`;
 
             const heading = document.createElement('h2');
             heading.textContent = post.title;
@@ -291,6 +283,12 @@ require __DIR__ . '/includes/site-header.php';
             }
 
             list.appendChild(card);
+        }
+
+        // Sprungmarke aus der Seitenleiste („Neu im Blog“): erst nach dem Laden vorhanden
+        if (window.location.hash.startsWith('#post-')) {
+            const target = document.getElementById(window.location.hash.slice(1));
+            if (target) target.scrollIntoView({ block: 'start' });
         }
     }
 

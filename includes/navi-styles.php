@@ -19,8 +19,9 @@ if (!isset($backgroundImages) || !is_array($backgroundImages)) { $backgroundImag
             --radius-lg: 0;
             --radius-md: 0;
             --radius-sm: 0;
-            --column: 1180px;
-            --gutter: 24px;
+            --column: 1250px;
+            --gutter: 27px;
+            --sidebar: 380px;
             /* Schrift auf Akzentflächen */
             --accent-ink: #0b1406;
             /* Graublau der Fläche über dem Hintergrundbild */
@@ -71,7 +72,7 @@ if (!isset($backgroundImages) || !is_array($backgroundImages)) { $backgroundImag
         body[data-theme="default"]::after { display: none; }
 
         /* ===== Heller Inhaltsbereich: Farben für Hell ===== */
-        .page-shell, .page-hero, dialog {
+        .page-shell, .page-hero, .site-sidebar, dialog {
             --text: #1a1d23;
             --muted: #6a7280;
             --panel: #ffffff;
@@ -114,14 +115,31 @@ if (!isset($backgroundImages) || !is_array($backgroundImages)) { $backgroundImag
         .page-shell .empty-state strong,
         dialog .section-heading { color: var(--accent-text); }
 
-        /* ===== Spalte: Infoleiste, Kopfband, Titel, Inhalt, Fußzeile ===== */
+        /* ===== Spalte: Infoleiste, Kopfband, Rahmen (Inhalt + Seitenleiste), Fußzeile ===== */
         .topbar,
         .masthead,
-        .page-hero,
-        .page-shell {
+        .page-frame,
+        .site-footer {
             width: min(var(--column), 100%);
             margin-left: auto;
             margin-right: auto;
+        }
+
+        /* Rahmen: links der hellgraue Inhalt, rechts die weiße Seitenleiste über die volle Höhe */
+        .page-frame {
+            position: relative;
+            z-index: 1;
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) var(--sidebar);
+            background: var(--surface);
+        }
+
+        .page-main { min-width: 0; }
+
+        .page-hero,
+        .page-shell {
+            width: auto;
+            margin: 0;
         }
 
         .topbar-inner,
@@ -293,7 +311,7 @@ if (!isset($backgroundImages) || !is_array($backgroundImages)) { $backgroundImag
         }
 
         .page-shell {
-            padding: 26px var(--gutter) 0;
+            padding: 26px var(--gutter) 64px;
             background: var(--surface);
         }
 
@@ -528,8 +546,16 @@ if (!isset($backgroundImages) || !is_array($backgroundImages)) { $backgroundImag
 
         .player-button:hover { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
 
-        .status-button { border-radius: 0; }
-        .status-badge-main { font-family: var(--font-ui); font-size: .72rem; font-weight: 800; letter-spacing: .04em; }
+        .status-button { border-radius: 0; padding: 5px 3px; }
+        .status-cell { padding: 2px; }
+
+        /* Neben der Seitenleiste ist der Kalender schmaler: Spielerspalte etwas enger */
+        @media (min-width: 681px) {
+            thead th.player-heading,
+            .player-heading,
+            .player-cell { width: 140px; min-width: 140px; }
+        }
+        .status-badge-main { font-family: var(--font-ui); font-size: .68rem; font-weight: 800; letter-spacing: 0; }
         .status-button.vacation { color: var(--vacation); border-color: rgba(91, 69, 214, .4); background-color: rgba(91, 69, 214, .08); }
         .status-button.open { background-color: #f4f5f7; }
         .status-button:disabled:hover,
@@ -634,7 +660,10 @@ if (!isset($backgroundImages) || !is_array($backgroundImages)) { $backgroundImag
 
         /* ===== Fußzeile: dunkles Band über die Breite der Spalte ===== */
         .site-footer {
-            margin: 56px calc(-1 * var(--gutter)) 0;
+            position: relative;
+            z-index: 1;
+            margin-top: 0;
+            margin-bottom: 0;
             color: #8e95a1;
             background: #121419;
             box-shadow: none;
@@ -662,7 +691,12 @@ if (!isset($backgroundImages) || !is_array($backgroundImages)) { $backgroundImag
         .site-footer .heart { color: var(--accent); }
 
         /* ===== Blog ===== */
-        .blog-layout { gap: 24px; }
+        .blog-layout { grid-template-columns: minmax(0, 1fr); gap: 24px; }
+
+        /* Filterreihe (Blog-Themen) wie NAVIs Spiele-Filter oben im Inhalt */
+        .filter-row { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 24px; }
+        .filter-row[hidden] { display: none; }
+        .filter-row .tag-chip { min-height: 40px; padding: 8px 14px; }
 
         .post-card { padding: 24px; }
         .post-card h2 { font-size: 1.45rem; text-transform: none; letter-spacing: -.005em; line-height: 1.2; }
@@ -762,6 +796,167 @@ if (!isset($backgroundImages) || !is_array($backgroundImages)) { $backgroundImag
         .netzje-block:hover, .netzje-block:focus-visible { outline-color: var(--text); }
         .netzje-block.full { background: #e3e6eb; }
 
+        /* ===== Seitenleiste „Kurz & knapp“ (includes/site-footer.php, Daten: assets/sidebar.js) ===== */
+        .site-sidebar {
+            min-width: 0;
+            padding: 46px 25px 48px;
+            color: var(--text);
+            background: #fff;
+        }
+
+        .sidebar-section { margin: 0 0 44px; }
+        .sidebar-section[hidden] { display: none; }
+        .sidebar-section:last-child { margin-bottom: 0; }
+
+        .sidebar-title {
+            margin: 0 0 18px;
+            color: var(--text);
+            font-family: var(--font-ui);
+            font-size: 1.3rem;
+            font-weight: 800;
+            letter-spacing: .04em;
+            line-height: 1.15;
+            text-transform: uppercase;
+        }
+
+        /* Liste wie NAVIs „Our Channels“: Bild, Name, kleine Zeile */
+        .sidebar-list { margin: 0; padding: 0; list-style: none; border: 1px solid var(--line); }
+        .sidebar-list li + li { border-top: 1px solid var(--line); }
+
+        .sidebar-row {
+            display: grid;
+            grid-template-columns: 44px minmax(0, 1fr);
+            align-items: center;
+            gap: 12px;
+            min-height: 66px;
+            padding: 11px 14px;
+            color: var(--text);
+            text-decoration: none;
+            transition: background-color .15s ease, box-shadow .15s ease;
+        }
+
+        a.sidebar-row:hover,
+        a.sidebar-row:focus-visible { outline: none; background: var(--panel-strong); box-shadow: inset 3px 0 0 var(--accent); }
+
+        .sidebar-row-media {
+            width: 44px;
+            height: 44px;
+            object-fit: cover;
+            background: var(--panel-soft);
+        }
+
+        .sidebar-row-media.placeholder { display: grid; place-items: center; font-size: 1.2rem; }
+
+        .sidebar-list li:not(:has(.sidebar-row-media)) .sidebar-row { grid-template-columns: minmax(0, 1fr); }
+
+        .sidebar-row-text { display: grid; min-width: 0; }
+
+        .sidebar-row-text strong {
+            overflow: hidden;
+            font-size: .92rem;
+            font-weight: 800;
+            line-height: 1.3;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .sidebar-row-text small {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: var(--muted);
+            font-size: .78rem;
+        }
+
+        .sidebar-dot { width: 8px; height: 8px; flex: none; background: var(--open); }
+        .sidebar-dot.online { background: var(--online); }
+        .sidebar-dot.offline { background: var(--absent); }
+
+        /* Große Zahl wie „2,571,220 Subscribers around the world“ */
+        .sidebar-stat { display: grid; gap: 4px; margin: 26px 0 0; }
+        .sidebar-stat[hidden] { display: none; }
+        .sidebar-stat strong { color: var(--text); font-family: var(--font-ui); font-size: 2.6rem; font-weight: 900; letter-spacing: -.02em; line-height: 1; }
+        .sidebar-stat span { color: var(--muted); font-family: var(--font-ui); font-size: .72rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+
+        .sidebar-more {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 18px;
+            color: var(--text);
+            font-family: var(--font-ui);
+            font-size: .72rem;
+            font-weight: 800;
+            letter-spacing: .12em;
+            text-decoration: none;
+            text-transform: uppercase;
+            box-shadow: inset 0 -3px 0 var(--accent);
+        }
+
+        .sidebar-more::after { content: "→"; }
+        .sidebar-more:hover { color: var(--accent-text); }
+
+        /* Hervorgehobener Kasten (nächste Netzje): dunkel, wie NAVIs Werbefläche */
+        .sidebar-feature {
+            display: grid;
+            gap: 6px;
+            padding: 22px 20px;
+            color: #c9ced8;
+            background: #1c1f25;
+            text-decoration: none;
+            box-shadow: inset 0 -4px 0 var(--accent);
+            transition: box-shadow .15s ease;
+        }
+
+        .sidebar-feature:hover,
+        .sidebar-feature:focus-visible { outline: none; box-shadow: inset 0 0 0 3px var(--accent); }
+
+        .sidebar-feature-tag {
+            justify-self: start;
+            margin-bottom: 6px;
+            padding: 4px 10px;
+            color: var(--accent-ink);
+            background: var(--accent);
+            font-family: var(--font-ui);
+            font-size: .66rem;
+            font-weight: 800;
+            letter-spacing: .12em;
+            text-transform: uppercase;
+        }
+
+        .sidebar-feature strong { color: #fff; font-family: var(--font-ui); font-size: 1.5rem; font-weight: 900; line-height: 1.1; text-transform: uppercase; }
+        .sidebar-feature-meta { color: #8e95a1; font-size: .8rem; font-weight: 600; }
+
+        .sidebar-join p { margin: 0 0 18px; color: var(--muted); line-height: 1.6; }
+        .sidebar-join .primary-button { display: inline-flex; align-items: center; text-decoration: none; }
+
+        /* Tablet & Handy: keine schmale Leiste – die Kästen rutschen als Karten unter den Inhalt.
+           Tablet: nebeneinander, Handy: untereinander in voller Breite. */
+        @media (max-width: 1023px) {
+            .page-frame { display: block; }
+
+            .site-sidebar {
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
+                align-items: start;
+                gap: 16px;
+                padding: 0 var(--gutter) 56px;
+                background: var(--surface);
+            }
+
+            .page-shell { padding-bottom: 40px; }
+
+            .sidebar-section {
+                margin: 0;
+                padding: 20px;
+                border: 1px solid var(--line);
+                background: #fff;
+            }
+
+            .sidebar-title { font-size: 1.1rem; margin-bottom: 14px; }
+            .sidebar-stat strong { font-size: 2.2rem; }
+        }
+
         /* ===== Mobil ===== */
         @media (max-width: 680px) {
             :root { --gutter: 12px; }
@@ -776,9 +971,30 @@ if (!isset($backgroundImages) || !is_array($backgroundImages)) { $backgroundImag
             .page-shell { padding-top: 18px; }
             .achievements { margin-top: 34px; }
             .post-card { padding: 16px; }
+            .blog-head-actions { align-self: flex-start; }
             .netzje-panel { padding: 16px 12px; }
             .status-badge-main { font-size: .7rem; letter-spacing: 0; }
             .primary-button, .secondary-button, .danger-button { font-size: .74rem; }
-            .site-footer { margin-top: 40px; }
+
+            /* Filter- und Zeitraum-Reihen: waagerecht wischen statt umbrechen */
+            .filter-row,
+            .stats-periods {
+                flex-wrap: nowrap;
+                overflow-x: auto;
+                margin-left: calc(-1 * var(--gutter));
+                margin-right: calc(-1 * var(--gutter));
+                padding: 0 var(--gutter) 2px;
+                scrollbar-width: none;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            .filter-row::-webkit-scrollbar,
+            .stats-periods::-webkit-scrollbar { display: none; }
+
+            .filter-row > *,
+            .stats-periods > * { flex: none; white-space: nowrap; }
+
+            .sidebar-section { padding: 18px 16px; }
+            .sidebar-row { min-height: 60px; padding: 10px 12px; }
         }
     </style>

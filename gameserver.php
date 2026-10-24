@@ -58,8 +58,8 @@ require __DIR__ . '/includes/site-header.php';
         <div id="serverGrid" class="server-grid"><p class="widget-loading">Wird geladen …</p></div>
     </section>
 
-    <footer class="site-footer">Created by Fischje with <span class="heart" aria-label="Love">♥</span> · Made with AI · Version <?= htmlspecialchars($appVersion, ENT_QUOTES, 'UTF-8') ?></footer>
 </main>
+<?php require __DIR__ . '/includes/site-footer.php'; ?>
 
 <dialog id="serverDialog" class="wide">
     <div class="modal-content form-stack">

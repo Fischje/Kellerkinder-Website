@@ -1,6 +1,8 @@
 <?php
 // Gemeinsamer Seitenkopf für Kalender, Blog, Spiele und Server: schmale Infoleiste,
 // Kopfband mit Logo und Navigation sowie der Seitentitel-Bereich.
+// Öffnet außerdem den Seitenrahmen (<div class="page-frame"><div class="page-main">),
+// den includes/site-footer.php wieder schließt – beide Dateien gehören zusammen.
 // Erwartet vor dem Einbinden:
 //   $activeNav     'calendar' | 'blog' | 'games' | 'servers' | 'netzje'
 //   $pageKicker    kleine Zeile über dem Titel (Brotkrumen)
@@ -49,6 +51,8 @@ $h = static fn(string $value): string => htmlspecialchars($value, ENT_QUOTES, 'U
     </div>
 </header>
 
+<div class="page-frame">
+<div class="page-main">
 <?php if (!empty($pageTitle)): ?>
 <section class="page-hero">
     <div class="page-hero-inner">

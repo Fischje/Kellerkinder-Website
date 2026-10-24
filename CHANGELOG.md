@@ -1,5 +1,19 @@
 # Änderungsprotokoll
 
+## 2.27.0 — Seitenleiste wie bei navi.gg, eigene Anordnung fürs Handy
+
+- **Neue Seitenleiste „Kurz & knapp“** rechts über die volle Höhe (weiß, wie NAVIs „Our Channels“), auf allen Seiten:
+  - **Meist gespielt:** Top 5 der letzten 30 Tage mit Symbol und Stunden, darunter groß die gemeinsam gezockten Stunden
+  - **Nächste Netzje:** dunkle Karte mit Countdown, Termin, Zusagen und geplanten Spielen
+  - **Neu im Blog:** die drei neuesten Beiträge, ein Klick springt direkt zum Beitrag (Beiträge haben jetzt Sprungmarken `#post-<id>`)
+  - **Unsere Server:** bis zu fünf Gameserver mit Online-Status
+  - **Mach mit!:** fester Kasten mit Link zum Kalender bzw. zur Netzje
+  - Kästen ohne Daten bleiben unsichtbar; der Kasten zur aktuellen Seite fehlt dort (auf dem Kalender fehlt der Blog-Kasten, weil es oben schon „Neu im Blog“ gibt)
+- **Tablet und Handy:** keine schmale Leiste. Unter 1024 px rutschen die Kästen als weiße Karten unter den Inhalt – auf dem Tablet nebeneinander, auf dem Handy untereinander in voller Breite
+- **Blog:** Die Themen stehen jetzt als Filterreihe über den Beiträgen (wie NAVIs Spiele-Filter) statt in einer eigenen schmalen Spalte. Auf dem Handy lassen sich Themen- und Zeitraum-Reihen waagerecht wischen
+- Spalte 1250 px breit wie bei NAVI. Kalender: Spielerspalte 140 px und knappere Statusfelder, damit „Verhindert“ neben der Seitenleiste nicht abgeschnitten wird
+- Neues gemeinsames Seitenende `includes/site-footer.php` (Seitenleiste + Fußzeile); `includes/site-header.php` öffnet dafür den Seitenrahmen. Daten lädt `assets/sidebar.js` über die vorhandenen API-Aktionen
+
 ## 2.26.0 — NAVI-Design näher am Original: heller Inhaltsbereich
 
 - Nach Screenshot von navi.gg/en/publications umgebaut: Die Seite ist jetzt eine **mittige Spalte** aus schwarzer Infoleiste, dunklem Kopfband, **hellgrauem Inhaltsbereich** (`#eceef1`) und dunkler Fußzeile. Links und rechts bleibt der abgetönte Hintergrund (Bild zu 20 % sichtbar) zu sehen

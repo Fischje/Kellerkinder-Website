@@ -197,6 +197,7 @@ Die Laufzeitdateien unter `data/store.php*` werden von Git ignoriert und dadurch
 │   │   ├── summer/     (genau ein Bild, wird immer verwendet)
 │   │   └── winter/     (genau ein Bild, wird immer verwendet)
 │   ├── kellerkinder-logo.svg
+│   ├── sidebar.js      (füllt die Seitenleiste „Kurz & knapp“)
 │   └── smartphone-install.svg
 ├── data/
 │   ├── .htaccess
@@ -204,7 +205,8 @@ Die Laufzeitdateien unter `data/store.php*` werden von Git ignoriert und dadurch
 ├── includes/
 │   ├── bootstrap.php   (Version, Hintergrundbilder, Sicherheits-Header)
 │   ├── styles.php      (gemeinsames Stylesheet für alle Seiten)
-│   ├── site-header.php (gemeinsamer Seitenkopf)
+│   ├── site-header.php (gemeinsamer Seitenkopf, öffnet den Seitenrahmen)
+│   ├── site-footer.php (Seitenleiste und Fußzeile, schließt den Seitenrahmen)
 │   ├── games-view.php  (gemeinsame Ansicht von games.php und alle-spiele.php)
 │   ├── arena-styles.php (Design „Arena“, über styles.php gelegt)
 │   ├── navi-styles.php (Design „NAVI“, letzte Schicht über arena-styles.php)
@@ -367,7 +369,7 @@ einem Zufallsnamen in `assets/blog/` abgelegt. Beiträge lassen sich als
 Entwurf speichern, dann sind sie noch nicht öffentlich sichtbar.
 
 **Tags:** Bis zu acht Schlagworte je Beitrag, kommagetrennt. Über das
-Themen-Widget lässt sich die Liste filtern; der Filter steht in der
+Themen-Reihe über den Beiträgen lässt sich die Liste filtern (auf dem Handy wischbar); der Filter steht in der
 Adresszeile und ist damit teilbar.
 
 **RSS:** Der Feed liegt unter `feed.php` und ist im Blog verlinkt sowie im
