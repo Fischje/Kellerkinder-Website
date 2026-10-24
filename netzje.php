@@ -16,8 +16,8 @@ $streamParent = preg_replace('/:\d+$/', '', (string) ($_SERVER['HTTP_HOST'] ?? '
     <meta name="apple-mobile-web-app-title" content="Kellerkinder">
     <title>Netzje — Kellerkinder</title>
     <meta name="description" content="Netzje, die LAN-Party der Kellerkinder: Termin, Stundenplan, Anmeldung und Live-Stream.">
-    <link rel="icon" href="assets/kellerkinder-logo.svg" type="image/svg+xml">
-    <link rel="apple-touch-icon" href="assets/app-icon-180.png">
+    <link rel="icon" href="assets/kellerkinder-logo.svg?v=<?= htmlspecialchars($appVersion, ENT_QUOTES, 'UTF-8') ?>" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="assets/app-icon-180.png?v=<?= htmlspecialchars($appVersion, ENT_QUOTES, 'UTF-8') ?>">
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

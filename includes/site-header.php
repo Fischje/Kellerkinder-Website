@@ -27,7 +27,7 @@ $currentPageHidden = !featurePageEnabled($activeNav);
 ?>
 <div class="topbar">
     <div class="topbar-inner">
-        <span class="topbar-tagline subtitle">Online-Gaming mit <em class="shine">Freunden</em></span>
+        <span class="topbar-tagline subtitle">Online-Gaming mit <em class="shine">Freu(n)den</em></span>
         <div class="topbar-actions">
             <?php if ($showInstall): ?>
                 <button class="install-app-button" id="installAppButton" type="button" title="Als App zum Home-Bildschirm hinzufügen" aria-label="Kellerkinder-Kalender als App zum Home-Bildschirm hinzufügen">
@@ -47,7 +47,8 @@ $currentPageHidden = !featurePageEnabled($activeNav);
 <header class="masthead">
     <div class="masthead-row">
         <a class="brand" href="index.php">
-            <img src="assets/kellerkinder-logo.svg" alt="" class="brand-logo">
+            <?php /* ?v=Version: neue Logos kommen sofort an, trotz Cloudflare- und App-Cache */ ?>
+            <img src="assets/kellerkinder-logo.svg?v=<?= $h((string) ($appVersion ?? '')) ?>" alt="" class="brand-logo">
             <span class="brand-text">
                 <span class="brand-name-row">
                     <span class="brand-name">Keller<span class="brand-accent">kinder</span></span>

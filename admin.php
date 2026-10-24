@@ -18,8 +18,8 @@ require __DIR__ . '/includes/bootstrap.php';
     <meta name="theme-color" content="#1c1f25">
     <meta name="robots" content="noindex">
     <title>Admin — Kellerkinder</title>
-    <link rel="icon" href="assets/kellerkinder-logo.svg" type="image/svg+xml">
-    <link rel="apple-touch-icon" href="assets/app-icon-180.png">
+    <link rel="icon" href="assets/kellerkinder-logo.svg?v=<?= htmlspecialchars($appVersion, ENT_QUOTES, 'UTF-8') ?>" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="assets/app-icon-180.png?v=<?= htmlspecialchars($appVersion, ENT_QUOTES, 'UTF-8') ?>">
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
