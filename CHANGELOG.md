@@ -1,5 +1,14 @@
 # Änderungsprotokoll
 
+## 2.26.0 — NAVI-Design näher am Original: heller Inhaltsbereich
+
+- Nach Screenshot von navi.gg/en/publications umgebaut: Die Seite ist jetzt eine **mittige Spalte** aus schwarzer Infoleiste, dunklem Kopfband, **hellgrauem Inhaltsbereich** (`#eceef1`) und dunkler Fußzeile. Links und rechts bleibt der abgetönte Hintergrund (Bild zu 20 % sichtbar) zu sehen
+- Inhalt in **dunkler Schrift auf Hell**: weiße, eckige Karten mit feinem Rahmen; beim Überfahren ein grüner Rahmen (bei NAVI gelb)
+- **Keine Rundungen** mehr: Buttons, Karten, Etiketten und Eingabefelder sind eckig
+- Seitentitel ohne Banner direkt auf Hell, mit Brotkrumen-Zeile und grünem Balken darunter; Abschnittstitel mit grünem Marker unter dem ersten Wort
+- Kalender, Blog, Spiele, Server, Netzje und alle Dialoge auf Hell umgestellt. Statusfarben (Online, Später, Verhindert, Urlaub) sind dafür dunkler, Schrift in Grün nutzt ein dunkleres Grün (`--accent-text`)
+- Zeitraum- und Themen-Auswahl als eckige Kacheln, die aktive in Grün
+
 ## 2.25.0 — Neues Design im Stil von navi.gg
 
 - **Neue Stilschicht `includes/navi-styles.php`**, wird auf allen Seiten als letzte nach `arena-styles.php` geladen

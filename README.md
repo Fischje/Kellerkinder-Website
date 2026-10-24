@@ -26,7 +26,7 @@ Mobiloptimierter PHP-Kalender zur Planung gemeinsamer Spielabende mit Benutzerko
 - Seite „Netzje“: LAN-Party mit Termin, Ort (nur für Angemeldete), Mitbringliste, Teilnehmerliste, Stundenplan als Zeitleiste mit Anmeldung (Platzlimit und Warteliste), Spielvorschlägen und eingebettetem Twitch-/YouTube-Stream
 - Seite „Server“: Gameserver im Kartenraster mit Spiele-Logo, IP, Passwort (nur für Angemeldete lesbar, sonst Sternchen) und Online-/Offline-Status vom Discord-Bot; Admins pflegen die Server direkt auf der Seite
 - Discord-Abfrage über `/kalender`
-- Drei globale Styles: „NAVI“ (dunkles Graublau mit hellgrünem Akzent, angelehnt an navi.gg) als Standard, Sommer mit Sonne/Wasser/Strand und Winter mit Schnee/Weihnachtsmotiven
+- Drei globale Styles: „NAVI“ (mittige Spalte mit hellem Inhaltsbereich, dunklem Kopf und hellgrünem Akzent, angelehnt an navi.gg) als Standard, Sommer mit Sonne/Wasser/Strand und Winter mit Schnee/Weihnachtsmotiven
 - Keine externe Datenbank und keine externen Bibliotheken erforderlich
 
 ## Passwortregeln

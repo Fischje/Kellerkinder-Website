@@ -1,4 +1,4 @@
-const CACHE_NAME = 'kellerkinder-static-v2.25.0';
+const CACHE_NAME = 'kellerkinder-static-v2.26.0';
 const STATIC_ASSETS = [
   './manifest.webmanifest',
   './assets/kellerkinder-logo.svg',
