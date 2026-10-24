@@ -4,7 +4,7 @@
 // hellgrauer Inhaltsbereich mit weißen, eckigen Karten und dunkler Schrift,
 // unten eine dunkle Fußzeile. Neben der Spalte ist der Hintergrund zu sehen:
 // dunkles Graublau mit 80 % Deckkraft über den eigenen Bildern (Bild zu 20 % sichtbar).
-// Akzentfarbe: kräftiges Grün #45e636 (Wunsch des Nutzers) statt NAVI-Gelb (Flächen, Rahmen, Markierungen);
+// Akzentfarbe: Grün #76e36c (Wunsch des Nutzers: #45e636, 10 % heller, 10 % weniger Sättigung) statt NAVI-Gelb (Flächen, Rahmen, Markierungen);
 // für Schrift auf Hell ein dunkleres Grün, damit es lesbar bleibt.
 // Wird auf allen Seiten als LETZTE Stilschicht eingebunden (nach
 // includes/arena-styles.php). Sommer- und Winter-Theme behalten ihre Akzentfarbe.
@@ -32,13 +32,13 @@ if (!isset($backgroundImages) || !is_array($backgroundImages)) { $backgroundImag
 
         body[data-theme="default"] {
             --bg: #1b1f27;
-            --accent: #45e636;
-            --accent-hover: #38cc2a;
-            --accent-rgb: 69, 230, 54;
-            --accent-text: #1c7a10;
-            --primary: #45e636;
-            --primary-hover: #38cc2a;
-            --primary-rgb: 69, 230, 54;
+            --accent: #76e36c;
+            --accent-hover: #63d059;
+            --accent-rgb: 118, 227, 108;
+            --accent-text: #217317;
+            --primary: #76e36c;
+            --primary-hover: #63d059;
+            --primary-rgb: 118, 227, 108;
             --band: #121419;
             --band-strong: #000;
             --sheen: none;

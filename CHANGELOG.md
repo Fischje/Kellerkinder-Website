@@ -1,5 +1,10 @@
 # Änderungsprotokoll
 
+## 2.28.1 — Grün etwas heller und weicher
+
+- Akzentfarbe von `#45e636` auf **`#76e36c`** (10 % heller, 10 % weniger Sättigung, Wunsch des Nutzers); Hover `#63d059`
+- Grün als Schrift auf Hell ebenfalls 10 % weniger gesättigt (`#217317`), aber nicht heller, damit es gut lesbar bleibt
+
 ## 2.28.0 — Zentrale Admin-Seite, Netzje mit begrenzten Plätzen, kräftigeres Grün
 
 - **Grün kräftiger:** Akzentfarbe jetzt `#45e636` (Wunsch des Nutzers), Schrift in Grün auf Hell `#1c7a10`

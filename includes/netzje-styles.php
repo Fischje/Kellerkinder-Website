@@ -127,7 +127,7 @@
         .netzje-seatbar span { display: block; height: 100%; background: var(--accent, #e11d48); }
         .netzje-status { margin: 10px 0 0; padding: 8px 10px; border-left: 3px solid; font-size: .9rem; font-weight: 600; }
         .netzje-status.pending { border-color: #e3a42c; background: rgba(227, 164, 44, .14); }
-        .netzje-status.approved { border-color: var(--accent, #45e636); background: rgba(var(--accent-rgb, 69, 230, 54), .14); }
+        .netzje-status.approved { border-color: var(--accent, #76e36c); background: rgba(var(--accent-rgb, 118, 227, 108), .14); }
         .netzje-status.declined { border-color: #e0657a; background: rgba(224, 101, 122, .14); }
         .netzje-requests { margin-top: 16px; }
         .netzje-requests h3 + .netzje-request-list,

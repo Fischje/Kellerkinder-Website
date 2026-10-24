@@ -27,7 +27,7 @@ Mobiloptimierter PHP-Kalender zur Planung gemeinsamer Spielabende mit Benutzerko
 - Seite „Server“: Gameserver im Kartenraster mit Spiele-Logo, IP, Passwort (nur für Angemeldete lesbar, sonst Sternchen) und Online-/Offline-Status vom Discord-Bot; Admins pflegen die Server direkt auf der Seite
 - Discord-Abfrage über `/kalender`
 - Zentrale Admin-Seite `admin.php`: Kästen der Seitenleiste an/aus und Reihenfolge, Seiten im Menü ein-/ausblenden, Teile der Startseite, Style für alle und offene Netzje-Anfragen (Menüpunkt „Admin“ nur für Admins, mit Zahl offener Anfragen)
-- Drei globale Styles: „NAVI“ (mittige Spalte mit hellem Inhaltsbereich, dunklem Kopf und grünem Akzent #45e636, angelehnt an navi.gg) als Standard, Sommer mit Sonne/Wasser/Strand und Winter mit Schnee/Weihnachtsmotiven
+- Drei globale Styles: „NAVI“ (mittige Spalte mit hellem Inhaltsbereich, dunklem Kopf und grünem Akzent #76e36c, angelehnt an navi.gg) als Standard, Sommer mit Sonne/Wasser/Strand und Winter mit Schnee/Weihnachtsmotiven
 - Keine externe Datenbank und keine externen Bibliotheken erforderlich
 
 ## Passwortregeln
