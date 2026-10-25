@@ -201,6 +201,7 @@ Die Laufzeitdateien unter `data/store.php*` werden von Git ignoriert und dadurch
 │   ├── kellerkinder-logo.svg
 │   ├── logo/          (Logo als PNG 300 × 300: eckig, rund, transparent)
 │   ├── sidebar.js      (füllt die Seitenleiste „Kurz & knapp“)
+│   ├── pull-refresh.js (Herunterziehen zum Neuladen in der installierten App, alle Seiten)
 │   └── smartphone-install.svg
 ├── data/
 │   ├── .htaccess

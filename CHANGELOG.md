@@ -1,5 +1,12 @@
 # Änderungsprotokoll
 
+## 2.32.0 — Herunterziehen zum Neuladen auf allen Seiten
+
+- In der installierten App (Startbildschirm) funktioniert das Herunterziehen zum Neuladen jetzt auf **jeder** Seite, nicht nur im Kalender
+- Der Kalender lädt dabei wie bisher nur seine Daten neu (schnell, ohne Flackern), alle anderen Seiten laden komplett neu
+- Der Code liegt jetzt gemeinsam in `assets/pull-refresh.js` (eingebunden über `includes/site-footer.php`); eine Seite kann mit `window.kkPullRefresh` eine eigene Neulade-Funktion bereitstellen. Bei offenem Dialog wird nicht neu geladen
+- Im normalen Browser bleibt es aus – dort übernimmt das der Browser selbst
+
 ## 2.31.3 — Netzje ohne Seitenleiste
 
 - Auf der Seite „Netzje“ gibt es keine Widgets mehr (Wunsch des Nutzers): Party und Stundenplan nutzen die volle Breite, auch auf dem Handy erscheinen keine Kästen darunter

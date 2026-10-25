@@ -25,9 +25,6 @@ require __DIR__ . '/includes/bootstrap.php';
     <?php require __DIR__ . '/includes/navi-styles.php'; ?>
 </head>
 <body data-theme="default">
-<div id="pullRefresh" class="pull-refresh" aria-hidden="true">
-    <span class="pull-refresh-badge"><span class="pull-refresh-arrow">↓</span></span>
-</div>
 <div class="season-scene" aria-hidden="true">
     <div class="summer-sun"></div>
     <div class="summer-bubbles"></div>
@@ -1992,65 +1989,8 @@ require __DIR__ . '/includes/site-header.php';
         });
     }
 
-    (function setupPullToRefresh() {
-        if (!isInstalledApp() || !('ontouchstart' in window)) return;
-
-        const container = byId('pullRefresh');
-        const arrow = container.querySelector('.pull-refresh-arrow');
-        const THRESHOLD = 72;
-        const MAX_PULL = 130;
-        let startY = 0;
-        let pulling = false;
-        let ready = false;
-        let refreshing = false;
-
-        document.documentElement.style.overscrollBehaviorY = 'contain';
-
-        const pageScrollTop = () => window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
-
-        function reset() {
-            pulling = false;
-            ready = false;
-            container.classList.remove('pull-refresh-visible', 'pull-refresh-ready');
-            arrow.style.transform = 'rotate(0deg)';
-        }
-
-        window.addEventListener('touchstart', event => {
-            if (refreshing || pageScrollTop() > 0 || event.touches.length !== 1) return;
-            startY = event.touches[0].clientY;
-            pulling = true;
-        }, { passive: true });
-
-        window.addEventListener('touchmove', event => {
-            if (!pulling || refreshing) return;
-            const distance = event.touches[0].clientY - startY;
-            if (distance <= 0 || pageScrollTop() > 0) { reset(); return; }
-            event.preventDefault();
-            const pull = Math.min(MAX_PULL, distance * 0.5);
-            ready = pull >= THRESHOLD;
-            container.classList.add('pull-refresh-visible');
-            container.classList.toggle('pull-refresh-ready', ready);
-            arrow.style.transform = `rotate(${Math.min(180, (pull / THRESHOLD) * 180)}deg)`;
-        }, { passive: false });
-
-        window.addEventListener('touchend', () => {
-            if (!pulling || refreshing) { pulling = false; return; }
-            pulling = false;
-            if (!ready) { reset(); return; }
-            refreshing = true;
-            container.classList.add('pull-refresh-loading');
-            loadPlan().finally(() => {
-                refreshing = false;
-                container.classList.remove('pull-refresh-loading');
-                reset();
-            });
-        });
-
-        window.addEventListener('touchcancel', () => {
-            refreshing = false;
-            reset();
-        });
-    })();
+    // Herunterziehen zum Neuladen (assets/pull-refresh.js): im Kalender nur die Daten neu laden
+    window.kkPullRefresh = () => loadPlan();
 
     byId('achievementsPrev').addEventListener('click', () => {
         showAchievementPage(achievementPageIndex - 1);
