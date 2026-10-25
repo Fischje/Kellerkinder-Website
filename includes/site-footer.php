@@ -12,6 +12,8 @@
 // Am Computer steht die Leiste rechts (weiß, volle Höhe, wie bei navi.gg),
 // auf Tablet und Handy rutscht sie als Karten unter den Inhalt.
 // Erwartet: $activeNav (aus site-header.php) und $appVersion (aus bootstrap.php).
+// Optional: $showSidebar = false vor dem Einbinden blendet die Seitenleiste ganz aus
+// (der Inhalt nutzt dann die volle Breite), z. B. auf der Netzje-Seite.
 require_once __DIR__ . '/features.php';
 $sidebarSkip = [
     'calendar' => 'blog',      // Der Kalender hat schon den Hinweis „Neu im Blog“
@@ -23,7 +25,7 @@ $sidebarSkip = [
 $footerVersion = htmlspecialchars((string) ($appVersion ?? ''), ENT_QUOTES, 'UTF-8');
 
 $sidebarBoxes = [];
-foreach (siteFeatures()['sidebar'] as $entry) {
+foreach (($showSidebar ?? true) ? siteFeatures()['sidebar'] : [] as $entry) {
     if ($entry['enabled'] && featurePageEnabled($entry['box'])) {
         $sidebarBoxes[] = $entry['box'];
     }

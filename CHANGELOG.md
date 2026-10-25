@@ -1,5 +1,10 @@
 # Änderungsprotokoll
 
+## 2.31.3 — Netzje ohne Seitenleiste
+
+- Auf der Seite „Netzje“ gibt es keine Widgets mehr (Wunsch des Nutzers): Party und Stundenplan nutzen die volle Breite, auch auf dem Handy erscheinen keine Kästen darunter
+- Neue Möglichkeit für Seiten: `$showSidebar = false;` vor dem Einbinden des Seitenkopfs blendet die Seitenleiste ganz aus
+
 ## 2.31.2 — Neues Logo kommt sicher an, Slogan „Freu(n)den“
 
 - **Ursache, warum das neue Logo nicht erschien:** Cloudflare speichert Bilder bis zu 4 Stunden (`max-age=14400`) unter derselben Adresse, und der Service-Worker der App liefert Logo und Icons „Cache zuerst“ – hatte er beim Update noch die alte Kopie bekommen, blieb sie hängen. STRG+F5 hilft dagegen nicht zuverlässig

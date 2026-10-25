@@ -46,6 +46,7 @@ $pageKicker = 'Netzje';
 $pageTitle = 'Netzje';
 $pageLead = 'Unsere LAN-Party: Termin, Stundenplan, Anmeldung und Live-Stream.';
 $showInstall = false;
+$showSidebar = false; // Wunsch: keine Widgets auf der Netzje-Seite, volle Breite für Party und Stundenplan
 require __DIR__ . '/includes/site-header.php';
 ?>
 
