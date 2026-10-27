@@ -1,5 +1,11 @@
 # Änderungsprotokoll
 
+## 2.33.2 — Sitzplan leichter anlegen
+
+- **Fehler behoben:** Ein gespeicherter Sitzplan konnte ein Raster ohne einen einzigen Sitzplatz sein – dann gab es nichts zum Auswählen. Beim ersten Anlegen werden jetzt automatisch so viele Plätze vorbelegt, wie die Party Plätze hat (Raster passt sich an)
+- Im Bearbeiten-Modus: Anleitung „So geht’s“, Zähler „X Sitzplätze markiert“, Knöpfe **„Alle Felder als Platz“** und **„Alle entfernen“**; Speichern ohne Sitzplatz fragt vorher nach
+- Der Knopf heißt „Sitzplan anlegen“, solange es noch keine Plätze gibt
+
 ## 2.33.1 — Admins setzen sich selbst in den Sitzplan, neue Anmeldetexte
 
 - **Fehler behoben:** Als Admin öffnete ein Tipp auf einen Sitzplatz nur den Zuweisen-Dialog, und dort standen nur bestätigte Teilnehmer. War der Admin selbst nur angefragt (oder gar nicht angemeldet), konnte er sich nirgends hinsetzen. Jetzt gibt es im Dialog den Knopf **„Hier sitze ich“** – er setzt dich direkt auf den Platz und bestätigt dich dabei, falls nötig, gleich als Teilnehmer. Ein anderer freier Platz mit „Hier sitze ich“ zieht dich um

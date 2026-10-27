@@ -88,7 +88,12 @@ require __DIR__ . '/includes/site-header.php';
                     <span>Bestätigte Teilnehmer wählen ihren Platz selbst</span>
                 </label>
             </div>
-            <p class="netzje-muted">Felder anklicken, um dort einen Sitzplatz zu setzen oder zu entfernen. Die Nummern vergeben sich von selbst (Reihe für Reihe).</p>
+            <p class="seating-editor-help"><strong>So geht’s:</strong> Tippe im Raster unten auf ein Feld, um dort einen Sitzplatz zu setzen – nochmal tippen entfernt ihn. Leere Felder sind Gang oder Tisch. Die Nummern vergeben sich von selbst (Reihe für Reihe).</p>
+            <div class="seating-editor-tools">
+                <span class="seating-count" id="seatingCount"></span>
+                <button class="secondary-button" id="seatAllButton" type="button">Alle Felder als Platz</button>
+                <button class="secondary-button" id="seatNoneButton" type="button">Alle entfernen</button>
+            </div>
             <p class="form-error" id="seatingError" role="alert" hidden></p>
             <div class="netzje-actions">
                 <button class="secondary-button" id="cancelSeatingButton" type="button">Abbrechen</button>
@@ -932,12 +937,18 @@ require __DIR__ . '/includes/site-header.php';
         const canChoose = loggedIn && isAttendee && seating.self_select;
 
         byId('editSeatingButton').hidden = !isAdmin || editing;
+        byId('editSeatingButton').textContent = seating.seats.length === 0 ? 'Sitzplan anlegen' : 'Sitzplan bearbeiten';
         byId('seatingEditor').hidden = !editing;
+        if (editing) {
+            const count = layout.seats.length;
+            byId('seatingCount').textContent = count === 0 ? 'Noch kein Sitzplatz markiert' : `${count} ${count === 1 ? 'Sitzplatz' : 'Sitzplätze'} markiert`;
+            byId('seatingCount').classList.toggle('is-empty', count === 0);
+        }
         byId('leaveSeatButton').hidden = editing || !seating.my_seat || !(seating.self_select || isAdmin);
 
         const taken = Object.keys(assign).length;
         let note = seating.seats.length === 0
-            ? 'Noch kein Sitzplan. Mit „Sitzplan bearbeiten“ legst du den Raum an.'
+            ? 'Noch kein Sitzplan. Mit „Sitzplan anlegen“ legst du den Raum an.'
             : `${taken} von ${seating.seats.length} Sitzplätzen besetzt.`;
         if (!editing && seating.seats.length > 0) {
             if (party.seats > 0 && seating.seats.length !== party.seats) note += ` (Für die Party sind ${party.seats} Plätze vorgesehen.)`;
@@ -1058,8 +1069,16 @@ require __DIR__ . '/includes/site-header.php';
         const seating = state.data.party.seating;
         seatingState.editing = true;
         seatingState.draft = { cols: seating.cols, rows: seating.rows, seats: [...seating.seats] };
-        byId('seatCols').value = seating.cols;
-        byId('seatRows').value = seating.rows;
+        // Leerer Plan: so viele Plätze vorbelegen, wie die Party Plätze hat (Raster passt sich an)
+        const wanted = Math.min(Number(state.data.party.seats) || 0, 20 * 14);
+        if (seating.seats.length === 0 && wanted > 0) {
+            const cols = Math.min(20, Math.max(seating.cols, Math.min(6, wanted)));
+            const rows = Math.min(14, Math.max(seating.rows, Math.ceil(wanted / cols)));
+            seatingState.draft = { cols, rows, seats: [] };
+            for (let i = 0; i < wanted; i++) seatingState.draft.seats.push(`${i % cols}-${Math.floor(i / cols)}`);
+        }
+        byId('seatCols').value = seatingState.draft.cols;
+        byId('seatRows').value = seatingState.draft.rows;
         byId('seatSelfSelect').checked = seating.self_select;
         byId('seatingError').hidden = true;
         renderSeating();
@@ -1078,12 +1097,25 @@ require __DIR__ . '/includes/site-header.php';
         });
     }
 
+    byId('seatAllButton').addEventListener('click', () => {
+        const { cols, rows } = seatingState.draft;
+        seatingState.draft.seats = [];
+        for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) seatingState.draft.seats.push(`${x}-${y}`);
+        renderSeating();
+    });
+
+    byId('seatNoneButton').addEventListener('click', () => {
+        seatingState.draft.seats = [];
+        renderSeating();
+    });
+
     byId('cancelSeatingButton').addEventListener('click', () => {
         seatingState.editing = false;
         renderSeating();
     });
 
     byId('saveSeatingButton').addEventListener('click', async () => {
+        if (seatingState.draft.seats.length === 0 && !confirm('Es ist kein Sitzplatz markiert – dann kann niemand einen Platz wählen. Trotzdem so speichern?')) return;
         const ok = await runAction('admin_netzje_seating_save', {
             cols: seatingState.draft.cols,
             rows: seatingState.draft.rows,

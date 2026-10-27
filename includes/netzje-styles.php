@@ -175,6 +175,10 @@
         .page-shell .seating-editor .seating-editor-fields input[type="number"] { width: 96px; }
         .seating-self { margin: 0 0 10px; }
         .seat-me-button { width: 100%; }
+        .seating-editor-help { margin: 4px 0 10px; padding: 10px 12px; border-left: 4px solid var(--accent, #76e36c); background: #fff; line-height: 1.5; }
+        .seating-editor-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 10px; }
+        .seating-count { margin-right: auto; font-weight: 800; }
+        .seating-count.is-empty { color: #b3261e; }
         .seat-me-button[hidden] { display: none; }
         @media (max-width: 680px) {
             .seating-grid { --seat-size: 64px; gap: 4px; }
