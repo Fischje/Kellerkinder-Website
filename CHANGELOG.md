@@ -1,5 +1,9 @@
 # Änderungsprotokoll
 
+## 2.34.2 — Infoleiste am Handy schlanker
+
+- Nur noch 20 px Abstand über den Elementen der Infoleiste, kein Abstand mehr darunter (2.34.1 hatte oben 12 px und unten 6 px dazugegeben und die Leiste unnötig vergrößert)
+
 ## 2.34.1 — Mehr Luft über der Infoleiste am Handy
 
 - Die schwarze Infoleiste (Slogan, App-Knopf, Anmelden) sitzt am Handy jetzt 12 px tiefer unter der Statusleiste bzw. Notch und hat unten etwas Abstand – so geht sie nicht mehr in der Statusleiste unter
