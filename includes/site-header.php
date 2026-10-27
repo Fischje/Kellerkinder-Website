@@ -68,6 +68,8 @@ $currentPageHidden = !featurePageEnabled($activeNav);
                 </span>
             </span>
         </a>
+        <div class="main-nav-wrap">
+        <button type="button" class="nav-arrow nav-arrow-left" aria-label="Menü nach links" tabindex="-1" hidden>&#8249;</button>
         <nav class="main-nav" aria-label="Hauptnavigation">
             <?php foreach ($navItems as $key => [$label, $href]): ?>
                 <?php $membersOnly = in_array($key, $membersOnlyNav, true); ?>
@@ -76,6 +78,8 @@ $currentPageHidden = !featurePageEnabled($activeNav);
             <?php /* Nur für Admins sichtbar; assets/sidebar.js blendet den Link ein */ ?>
             <a href="admin.php" class="nav-link nav-admin<?= $activeNav === 'admin' ? ' active' : '' ?>" id="navAdminLink"<?= $activeNav === 'admin' ? ' aria-current="page"' : ' hidden' ?>>Admin</a>
         </nav>
+        <button type="button" class="nav-arrow nav-arrow-right" aria-label="Menü nach rechts" tabindex="-1" hidden>&#8250;</button>
+        </div>
     </div>
 </header>
 

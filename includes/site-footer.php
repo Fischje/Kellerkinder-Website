@@ -81,5 +81,7 @@ foreach (($showSidebar ?? true) ? siteFeatures()['sidebar'] : [] as $entry) {
 
 <footer class="site-footer">Created by Fischje with <span class="heart" aria-label="Love">♥</span> · Made with AI · Version <?= $footerVersion ?></footer>
 <script src="assets/sidebar.js?v=<?= $footerVersion ?>" defer></script>
+<?php /* Pfeile am Hauptmenü, wenn es breiter ist als der Platz */ ?>
+<script src="assets/nav-scroll.js?v=<?= $footerVersion ?>" defer></script>
 <?php /* Herunterziehen zum Neuladen in der installierten App, auf allen Seiten */ ?>
 <script src="assets/pull-refresh.js?v=<?= $footerVersion ?>" defer></script>

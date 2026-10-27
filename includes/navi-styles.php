@@ -314,6 +314,32 @@ if (!isset($backgroundImages) || !is_array($backgroundImages)) { $backgroundImag
 
         .main-nav { gap: 34px; }
 
+        /* Hauptmenü scrollbar mit Pfeilen: Hülle trägt die Platzrolle, das Menü scrollt darin */
+        .main-nav-wrap { position: relative; display: flex; flex: 1 1 0%; min-width: 0; margin: 0 0 0 auto; align-self: stretch; }
+        .main-nav-wrap .main-nav { flex: 1 1 auto; width: 100%; margin: 0; justify-content: flex-start; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+        .main-nav-wrap .main-nav::-webkit-scrollbar { display: none; }
+        .main-nav-wrap .main-nav > :first-child { margin-left: auto; }
+        .nav-arrow {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            z-index: 2;
+            display: grid;
+            place-items: center;
+            width: 44px;
+            padding: 0 0 4px;
+            border: 0;
+            color: var(--accent);
+            font: 900 2rem/1 var(--font-ui);
+            cursor: pointer;
+        }
+        .nav-arrow[hidden] { display: none; }
+        .main-nav-wrap .nav-arrow { height: auto; min-height: 0; border-radius: 0; box-shadow: none; text-transform: none; letter-spacing: 0; }
+        .main-nav-wrap .nav-arrow-left { left: 0; justify-content: start; padding-left: 4px; background: linear-gradient(90deg, #1c1f25 55%, rgba(28, 31, 37, 0)); }
+        .main-nav-wrap .nav-arrow-right { right: 0; justify-content: end; padding-right: 4px; background: linear-gradient(270deg, #1c1f25 55%, rgba(28, 31, 37, 0)); }
+        .main-nav-wrap .nav-arrow:hover { color: #fff; }
+        .nav-arrow:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
         .nav-link {
             color: #fff;
             font-family: var(--font-ui);
@@ -1235,6 +1261,8 @@ if (!isset($backgroundImages) || !is_array($backgroundImages)) { $backgroundImag
             .masthead-row { min-height: 0; padding-top: 10px; }
             .brand-logo { width: 44px; height: 44px; }
             .main-nav { gap: 20px; }
+            .main-nav-wrap { order: 3; flex: 1 1 100%; margin: 0; }
+            .main-nav-wrap .main-nav { min-height: 40px; }
             .nav-link { font-size: .74rem; }
             .nav-link::after { bottom: 0; height: 3px; }
             .page-hero { padding: 28px 0 2px; }

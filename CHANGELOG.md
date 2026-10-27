@@ -1,5 +1,10 @@
 # Änderungsprotokoll
 
+## 2.34.0 — Pfeile am Hauptmenü
+
+- Passt das Menü oben nicht komplett auf den Bildschirm (typisch am Handy), erscheint am Rand ein **Pfeil „›“** auf einem Verlauf; ein Tipp schiebt das Menü weiter. Danach erscheint links ein **„‹“** zum Zurückschieben. Die Pfeile verschwinden am jeweiligen Ende und wenn alles Platz hat. Die aktive Seite wird beim Laden ins Sichtfeld geholt
+- Neu: `assets/nav-scroll.js`
+
 ## 2.33.2 — Sitzplan leichter anlegen
 
 - **Fehler behoben:** Ein gespeicherter Sitzplan konnte ein Raster ohne einen einzigen Sitzplatz sein – dann gab es nichts zum Auswählen. Beim ersten Anlegen werden jetzt automatisch so viele Plätze vorbelegt, wie die Party Plätze hat (Raster passt sich an)
