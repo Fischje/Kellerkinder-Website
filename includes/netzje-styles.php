@@ -174,6 +174,8 @@
         .seating-editor-fields { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px 16px; margin-bottom: 8px; }
         .page-shell .seating-editor .seating-editor-fields input[type="number"] { width: 96px; }
         .seating-self { margin: 0 0 10px; }
+        .seat-me-button { width: 100%; }
+        .seat-me-button[hidden] { display: none; }
         @media (max-width: 680px) {
             .seating-grid { --seat-size: 64px; gap: 4px; }
             .seat-cell { height: 54px; }

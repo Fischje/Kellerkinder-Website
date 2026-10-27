@@ -1,5 +1,11 @@
 # Änderungsprotokoll
 
+## 2.33.1 — Admins setzen sich selbst in den Sitzplan, neue Anmeldetexte
+
+- **Fehler behoben:** Als Admin öffnete ein Tipp auf einen Sitzplatz nur den Zuweisen-Dialog, und dort standen nur bestätigte Teilnehmer. War der Admin selbst nur angefragt (oder gar nicht angemeldet), konnte er sich nirgends hinsetzen. Jetzt gibt es im Dialog den Knopf **„Hier sitze ich“** – er setzt dich direkt auf den Platz und bestätigt dich dabei, falls nötig, gleich als Teilnehmer. Ein anderer freier Platz mit „Hier sitze ich“ zieht dich um
+- Anmelde-Dialog: „Melde dich an, um die Kellerkinder-Seite voll zu nutzen: Kalender, Netzje, Eindrücke und alles, was nur für Mitglieder ist.“ Registrieren: „Lege deinen persönlichen Zugang zur Kellerkinder-Seite an.“
+- `netzje` liefert `my_user_id`
+
 ## 2.33.0 — Spiele-Statistik mit Spielerprofilen und Jahresrückblick, Sitzplan, „Gerade online“, Eindrücke
 
 - **Neue Rubrik „Spiele-Statistik“** (Menüpunkt statt „Spiele“) mit Unternavigation:

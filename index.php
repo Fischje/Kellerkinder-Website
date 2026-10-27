@@ -198,7 +198,7 @@ require __DIR__ . '/includes/site-header.php';
     <form class="modal-content form-stack" id="loginForm" method="dialog">
         <div>
             <h2 class="modal-title">Anmelden</h2>
-            <p class="modal-subtitle">Melde dich an, um deine eigene Verfügbarkeit zu bearbeiten.</p>
+            <p class="modal-subtitle">Melde dich an, um die Kellerkinder-Seite voll zu nutzen: Kalender, Netzje, Eindrücke und alles, was nur für Mitglieder ist.</p>
         </div>
         <div>
             <label for="loginUsername">Benutzername</label>
@@ -224,7 +224,7 @@ require __DIR__ . '/includes/site-header.php';
     <form class="modal-content form-stack" id="registerForm" method="dialog">
         <div>
             <h2 class="modal-title" id="registerDialogTitle">Account anlegen</h2>
-            <p class="modal-subtitle" id="registerDialogSubtitle">Lege deinen persönlichen Zugang zum Kalender an.</p>
+            <p class="modal-subtitle" id="registerDialogSubtitle">Lege deinen persönlichen Zugang zur Kellerkinder-Seite an.</p>
         </div>
         <div>
             <label for="registerUsername">Benutzername</label>
@@ -1677,7 +1677,7 @@ require __DIR__ . '/includes/site-header.php';
         byId('registerDialogTitle').textContent = state.auth.setup_required ? 'Ersten Administrator anlegen' : 'Account anlegen';
         byId('registerDialogSubtitle').textContent = state.auth.setup_required
             ? 'Der erste Account erhält automatisch vollständige Administratorrechte.'
-            : 'Lege deinen persönlichen Zugang zum Kalender an.';
+            : 'Lege deinen persönlichen Zugang zur Kellerkinder-Seite an.';
         registerDialog.showModal();
         requestAnimationFrame(() => byId('registerUsername').focus());
     }

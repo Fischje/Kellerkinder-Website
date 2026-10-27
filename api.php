@@ -2021,6 +2021,7 @@ function netzjeResponse(array $store): array
         'csrf_token' => csrfToken(),
         'logged_in' => $loggedIn,
         'is_admin' => $isAdmin,
+        'my_user_id' => $userId, // für „Hier sitze ich“ im Sitzplan
         'now' => (new DateTimeImmutable('now', new DateTimeZone('Europe/Berlin')))->format('Y-m-d\TH:i'),
         'party' => [
             'title' => $party['title'],

@@ -139,14 +139,17 @@ require __DIR__ . '/includes/site-header.php';
 <dialog id="seatDialog">
     <div class="modal-content form-stack">
         <h2 class="modal-title" id="seatDialogTitle">Platz</h2>
+        <button class="primary-button seat-me-button" id="seatMeButton" type="button">Hier sitze ich</button>
+        <p class="netzje-muted" id="seatMeHint" hidden></p>
         <div>
-            <label for="seatUser">Wer sitzt hier?</label>
+            <label for="seatUser">Oder jemand anderem geben</label>
             <select id="seatUser"></select>
+            <p class="netzje-muted">Zur Auswahl stehen bestätigte Teilnehmer.</p>
         </div>
         <p class="form-error" id="seatDialogError" role="alert" hidden></p>
         <div class="modal-actions">
             <button class="secondary-button" type="button" data-close-dialog="seatDialog">Abbrechen</button>
-            <button class="primary-button" id="saveSeatButton" type="button">Speichern</button>
+            <button class="secondary-button" id="saveSeatButton" type="button">Zuweisen</button>
         </div>
     </div>
 </dialog>
@@ -940,7 +943,7 @@ require __DIR__ . '/includes/site-header.php';
             if (party.seats > 0 && seating.seats.length !== party.seats) note += ` (Für die Party sind ${party.seats} Plätze vorgesehen.)`;
             if (isAdmin) {
                 if (seating.my_seat) note += ` Du sitzt auf Platz ${numbers[seating.my_seat]}.`;
-                note += ' Als Admin tippst du auf einen Platz, um ihn jemandem zu geben.';
+                note += ' Als Admin tippst du auf einen Platz, um dich selbst oder jemand anderen dorthin zu setzen.';
             } else if (canChoose && !seating.my_seat) note += ' Tippe auf einen freien Platz, um ihn zu nehmen.';
             else if (canChoose && seating.my_seat) note += ` Du sitzt auf Platz ${numbers[seating.my_seat]}. Ein anderer freier Platz tauscht dich um.`;
             else if (!seating.self_select) note += ' Die Plätze verteilt ein Admin.';
@@ -1013,9 +1016,37 @@ require __DIR__ . '/includes/site-header.php';
             select.append(option);
         }
         select.value = current ? String(current.id) : '0';
+        // „Hier sitze ich“: Admin setzt sich selbst – ist er noch nicht bestätigt, wird er dabei bestätigt
+        const mine = party.seating.my_seat === id;
+        const meButton = byId('seatMeButton');
+        meButton.hidden = mine || Boolean(current);
+        const hint = byId('seatMeHint');
+        hint.hidden = meButton.hidden || party.my_status === 'approved';
+        hint.textContent = 'Du bist noch nicht als Teilnehmer bestätigt. „Hier sitze ich“ bestätigt dich und gibt dir diesen Platz.';
         byId('seatDialogError').hidden = true;
         byId('seatDialog').showModal();
     }
+
+    byId('seatMeButton').addEventListener('click', async () => {
+        const { party, my_user_id: me } = state.data;
+        const seat = seatingState.dialogSeat;
+        const error = byId('seatDialogError');
+        error.hidden = true;
+        try {
+            if (party.my_status !== 'approved') {
+                // Erst anfragen (falls noch nicht geschehen), dann sich selbst bestätigen
+                if (party.my_status === 'none') state.data = await api('netzje_attend', { attend: true });
+                state.data = await api('admin_netzje_request', { user_id: me, decision: 'approve' });
+            }
+        } catch (failure) {
+            error.textContent = failure.message;
+            error.hidden = false;
+            renderAll();
+            return;
+        }
+        const ok = await runAction('admin_netzje_seat_assign', { seat, user_id: me }, error, `Platz ${seatNumbers(state.data.party.seating.seats)[seat]} gehört dir.`);
+        if (ok) byId('seatDialog').close();
+    });
 
     byId('saveSeatButton').addEventListener('click', async () => {
         const userId = Number(byId('seatUser').value);
