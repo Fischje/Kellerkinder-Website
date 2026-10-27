@@ -1260,6 +1260,8 @@ if (!isset($backgroundImages) || !is_array($backgroundImages)) { $backgroundImag
             .topbar-tagline.subtitle { font-size: .64rem; letter-spacing: .1em; }
             .masthead-row { min-height: 0; padding-top: 10px; }
             .brand-logo { width: 44px; height: 44px; }
+            /* Etwas Luft unter Statusleiste/Notch, damit die Infoleiste (Slogan, App, Anmelden) lesbar bleibt */
+            .topbar-inner { padding-top: calc(env(safe-area-inset-top) + 12px); padding-bottom: 6px; }
             .main-nav { gap: 20px; }
             .main-nav-wrap { order: 3; flex: 1 1 100%; margin: 0; }
             .main-nav-wrap .main-nav { min-height: 40px; }

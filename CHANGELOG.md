@@ -1,5 +1,9 @@
 # Änderungsprotokoll
 
+## 2.34.1 — Mehr Luft über der Infoleiste am Handy
+
+- Die schwarze Infoleiste (Slogan, App-Knopf, Anmelden) sitzt am Handy jetzt 12 px tiefer unter der Statusleiste bzw. Notch und hat unten etwas Abstand – so geht sie nicht mehr in der Statusleiste unter
+
 ## 2.34.0 — Pfeile am Hauptmenü
 
 - Passt das Menü oben nicht komplett auf den Bildschirm (typisch am Handy), erscheint am Rand ein **Pfeil „›“** auf einem Verlauf; ein Tipp schiebt das Menü weiter. Danach erscheint links ein **„‹“** zum Zurückschieben. Die Pfeile verschwinden am jeweiligen Ende und wenn alles Platz hat. Die aktive Seite wird beim Laden ins Sichtfeld geholt
