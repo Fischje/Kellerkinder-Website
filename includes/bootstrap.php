@@ -4,7 +4,7 @@
 date_default_timezone_set('Europe/Berlin');
 $appVersion = trim((string) @file_get_contents(dirname(__DIR__) . DIRECTORY_SEPARATOR . 'VERSION'));
 if ($appVersion === '') {
-    $appVersion = '2.32.0';
+    $appVersion = '2.33.0';
 }
 
 /**
@@ -63,7 +63,7 @@ header(
     . "font-src 'self' https://fonts.gstatic.com; "
     . "connect-src 'self'; "
     // Live-Stream der Seite „Netzje“ (Twitch oder YouTube ohne Cookies)
-    . "frame-src https://player.twitch.tv https://www.youtube-nocookie.com; "
+    . "frame-src https://player.twitch.tv https://clips.twitch.tv https://www.youtube-nocookie.com; "
     . "worker-src 'self'; "
     . "manifest-src 'self'; "
     . "frame-ancestors 'none'; "

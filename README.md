@@ -26,6 +26,10 @@ Mobiloptimierter PHP-Kalender zur Planung gemeinsamer Spielabende mit Benutzerko
 - Seite „Netzje“: LAN-Party mit Termin, begrenzten Plätzen (Zusagen sind Anfragen, ein Admin bestätigt oder lehnt ab), Ort (nur für Angemeldete), Mitbringliste, Teilnehmerliste, Stundenplan als Zeitleiste mit Anmeldung (Platzlimit und Warteliste), Spielvorschlägen und eingebettetem Twitch-/YouTube-Stream
 - Seite „Server“: Gameserver im Kartenraster mit Spiele-Logo, IP, Passwort (nur für Angemeldete lesbar, sonst Sternchen) und Online-/Offline-Status vom Discord-Bot; Admins pflegen die Server direkt auf der Seite
 - Discord-Abfrage über `/kalender`
+- Rubrik „Spiele-Statistik“: Spiele, Spieler mit Spielerprofilen (Abzeichen, Lieblingsspiele, Kalender, Netzje) und Jahresrückblick mit Jahresauswahl
+- Seitenleisten-Widget „Gerade online“ (nur sichtbar, wenn jemand spielt; Daten vom Discord-Bot)
+- Netzje-Sitzplan: Admin legt den Raum an, bestätigte Teilnehmer wählen ihren Platz oder bekommen ihn zugewiesen
+- Seite „Eindrücke“: Fotos und Clips, nur für Angemeldete
 - Zentrale Admin-Seite `admin.php`: Kästen der Seitenleiste an/aus und Reihenfolge, Seiten im Menü ein-/ausblenden, Teile der Startseite, Style für alle, offene Netzje-Anfragen und Benutzerverwaltung (Konten, Admins). Menüpunkt „Admin“ nur für Admins, mit Zahl offener Anfragen
 - Account-Knopf oben rechts auf allen Seiten: Anmelden bzw. Menü mit „Mein Account“, „Adminbereich“ und „Abmelden“
 - Drei globale Styles: „NAVI“ (mittige Spalte mit hellem Inhaltsbereich, dunklem Kopf und grünem Akzent #76e36c, angelehnt an navi.gg) als Standard, Sommer mit Sonne/Wasser/Strand und Winter mit Schnee/Weihnachtsmotiven
@@ -212,6 +216,8 @@ Die Laufzeitdateien unter `data/store.php*` werden von Git ignoriert und dadurch
 │   ├── site-header.php (gemeinsamer Seitenkopf, öffnet den Seitenrahmen)
 │   ├── site-footer.php (Seitenleiste und Fußzeile, schließt den Seitenrahmen)
 │   ├── features.php    (Schalter der Admin-Seite: Standardwerte, Lesen für die Seiten)
+│   ├── review-styles.php (Jahresrückblick und Spielerprofil)
+│   ├── gallery-styles.php (Seite „Eindrücke“)
 │   ├── games-view.php  (gemeinsame Ansicht von games.php und alle-spiele.php)
 │   ├── arena-styles.php (Design „Arena“, über styles.php gelegt)
 │   ├── navi-styles.php (Design „NAVI“, letzte Schicht über arena-styles.php)
@@ -229,6 +235,9 @@ Die Laufzeitdateien unter `data/store.php*` werden von Git ignoriert und dadurch
 ├── check.php
 ├── index.php
 ├── admin.php           (zentrale Admin-Seite: Schalter, Netzje-Anfragen, Benutzerverwaltung)
+├── spieler.php         (Spielerliste; mit ?name= das Spielerprofil)
+├── jahresrueckblick.php (Jahresrückblick der Spiele-Statistik)
+├── eindruecke.php      (Galerie, nur für Angemeldete)
 ├── manifest.webmanifest
 ├── service-worker.js
 ├── CHANGELOG.md

@@ -222,7 +222,9 @@ require __DIR__ . '/includes/site-header.php';
                 const btn = el('button', 'secondary-button admin-move', text);
                 btn.type = 'button';
                 btn.setAttribute('aria-label', `${labels.sidebar[entry.box]} ${aria}`);
-                btn.disabled = index + delta < 0 || index + delta >= features.sidebar.length;
+                // „Gerade online“ bleibt immer oben: weder verschiebbar noch überholbar
+                const pinnedTop = features.sidebar[0] && features.sidebar[0].box === 'now' ? 1 : 0;
+                btn.disabled = entry.box === 'now' || index + delta < pinnedTop || index + delta >= features.sidebar.length;
                 btn.addEventListener('click', () => {
                     const [item] = features.sidebar.splice(index, 1);
                     features.sidebar.splice(index + delta, 0, item);
@@ -231,6 +233,7 @@ require __DIR__ . '/includes/site-header.php';
                 });
                 return btn;
             };
+            if (entry.box === 'now') label.append(el('small', 'admin-muted', 'immer oben, nur wenn jemand spielt'));
             moves.append(move(-1, '↑', 'nach oben'), move(1, '↓', 'nach unten'));
             li.append(el('span', 'admin-order-number', index + 1), label, moves);
             list.append(li);

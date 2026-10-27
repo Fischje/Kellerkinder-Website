@@ -136,6 +136,50 @@
         .netzje-request { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 10px; border: 1px solid var(--line); background: var(--panel, #fff); }
         .netzje-request .netzje-actions button { min-height: 36px; padding: 6px 12px; }
 
+        /* ===== Sitzplan: Raster mit Sitzplätzen (frei / besetzt / dein Platz) ===== */
+        .seating-scroll { overflow-x: auto; padding-bottom: 4px; }
+        .seating-grid { --seat-size: 84px; display: grid; gap: 6px; width: max-content; margin: 6px 0 12px; }
+        .seat-cell {
+            width: var(--seat-size);
+            height: 64px;
+            display: grid;
+            align-content: center;
+            justify-items: center;
+            gap: 2px;
+            padding: 4px;
+            border: 1px solid transparent;
+            border-radius: 0;
+            background: none;
+            color: inherit;
+            font: inherit;
+            cursor: default;
+        }
+        .seat-cell.floor { background: repeating-linear-gradient(45deg, rgba(0, 0, 0, .025) 0 6px, transparent 6px 12px); }
+        .seating-grid.editing .seat-cell { cursor: pointer; border-style: dashed; border-color: var(--line-strong); }
+        .seat-cell.seat { cursor: pointer; border: 1px solid var(--line-strong); background: #fff; }
+        .seat-cell.seat.free { border-style: dashed; color: var(--muted); }
+        .seat-cell.seat.taken { border-color: #4cbf6e; background: #e3f7e7; color: #0b5e2b; }
+        .seat-cell.seat.mine { border: 2px solid var(--accent-text, #217317); background: var(--accent, #76e36c); color: var(--accent-ink, #0b1406); }
+        .seating-grid.editing .seat-cell.seat { border-style: solid; border-color: var(--accent-text, #217317); background: rgba(var(--accent-rgb, 118, 227, 108), .3); }
+        .seat-cell:hover:not(.floor), .seat-cell:focus-visible { outline: 2px solid var(--accent-text, #217317); outline-offset: 1px; }
+        .seating-grid:not(.editing) .seat-cell.floor:hover { outline: none; }
+        .seat-number { font-size: .68rem; font-weight: 900; letter-spacing: .06em; }
+        .seat-name { max-width: 100%; overflow: hidden; font-size: .78rem; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+        .seating-legend { display: flex; flex-wrap: wrap; gap: 14px; margin: 0; padding: 0; list-style: none; font-size: .8rem; color: var(--muted); }
+        .seating-legend li { display: inline-flex; align-items: center; gap: 6px; }
+        .seat-sample { width: 16px; height: 12px; border: 1px dashed var(--line-strong); background: #fff; }
+        .seat-sample.taken { border: 1px solid #4cbf6e; background: #e3f7e7; }
+        .seat-sample.mine { border: 1px solid var(--accent-text, #217317); background: var(--accent, #76e36c); }
+        .seating-editor { margin: 0 0 12px; padding: 14px; border: 1px solid var(--line); background: var(--panel-strong, #f7f8fa); }
+        .seating-editor-fields { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px 16px; margin-bottom: 8px; }
+        .page-shell .seating-editor .seating-editor-fields input[type="number"] { width: 96px; }
+        .seating-self { margin: 0 0 10px; }
+        @media (max-width: 680px) {
+            .seating-grid { --seat-size: 64px; gap: 4px; }
+            .seat-cell { height: 54px; }
+            .seat-name { font-size: .7rem; }
+        }
+
         .netzje-form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; }
         .netzje-dialog-meta { margin: 0; opacity: .8; }
         .form-error { margin: 0; color: var(--red); font-weight: 600; }

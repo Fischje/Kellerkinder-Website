@@ -1,5 +1,19 @@
 # Änderungsprotokoll
 
+## 2.33.0 — Spiele-Statistik mit Spielerprofilen und Jahresrückblick, Sitzplan, „Gerade online“, Eindrücke
+
+- **Neue Rubrik „Spiele-Statistik“** (Menüpunkt statt „Spiele“) mit Unternavigation:
+  - **Spiele** (`games.php`, wie bisher, ohne den Spielerteil) und **Alle Spiele**
+  - **Spieler** (`spieler.php`): Rangliste der Kellerkinder nach Spielzeit; ein Klick öffnet das **Spielerprofil** (`spieler.php?name=…`) mit Profilbild, Platz, Spielzeit gesamt und letzte 30 Tage, Lieblingsspielen, zugesagten Spieltagen im Kalender, Netzje-Teilnahmen, Steam-Link und **Abzeichen** (Dauerzocker, Top 3, Allrounder, Netzje-Gast/-Veteran, Verlässlich/Stammgast, Admin, Autor). Kalender- und Netzje-Daten gehören zum gleichnamigen Spieler der Website. „Spieler ausblenden“ für Admins steht jetzt hier
+  - **Jahresrückblick** (`jahresrueckblick.php`) mit Jahresauswahl ab 2026: gemeinsame Stunden, Spieltage, Spiele, Kellerkinder, Monatsdiagramm, Highlights (aktivster Tag, meiste Spielzeit, Stammgast, Allrounder, Spiel des Jahres), Top-Spiele, fleißigste Kellerkinder, neu dazugekommene Spiele und die Netzjes des Jahres
+- **Widget „Gerade online“:** steht immer ganz oben in der Seitenleiste und erscheint nur, wenn gerade jemand spielt – mit Profilbild, Spiel und „seit … Min.“, jede Minute aktualisiert. Auf der Admin-Seite ein-/ausschaltbar, aber nicht verschiebbar
+- **Netzje: Sitzplan.** Ein Admin legt den Raum als Raster an und setzt per Klick die Sitzplätze (nummeriert Reihe für Reihe). Bestätigte Teilnehmer wählen ihren Platz selbst (abschaltbar) oder ein Admin vergibt die Plätze. Anzeige frei / besetzt / dein Platz, auf dem Handy waagerecht wischbar. „Neue Party“ behält den Raum und leert die Belegung
+- **Netzje-Archiv:** „Neue Party“ legt die alte Party mit ihren Teilnehmern ins Archiv (für Spielerprofile und Jahresrückblick)
+- **Neue Seite „Eindrücke“** (`eindruecke.php`) – nur für Angemeldete, Gäste sehen den Menüpunkt gar nicht: Fotos hochladen (mehrere auf einmal, im Browser verkleinert), Clips per YouTube- oder Twitch-Link, Alben als Filter, Großansicht mit Blättern/Wischen, eigene Einträge löschen (Admins alle). Bilder liegen in `data/impressions` mit zufälligen Namen und werden nur über `api.php?action=impression_file` an Angemeldete ausgeliefert. Die Content-Security-Policy erlaubt dafür zusätzlich `clips.twitch.tv`
+- Netzje-Stundenplan: Anmelden zu Spielen bleibt für alle Angemeldeten offen, auch ohne bestätigten Platz (z. B. wer von zu Hause mitspielt)
+- Spielernamen in der Statistik sind öffentlich (Bot 1.12.0, `STATS_PUBLIC_PLAYERS=true`)
+- Neue API-Aktionen: `now_playing`, `year_review`, `player_profile`, `impressions`, `impression_file`, `impression_upload`, `impression_video`, `impression_delete`, `netzje_seat`, `admin_netzje_seat_assign`, `admin_netzje_seating_save`. Braucht für „Gerade online“ und Jahresrückblick den **Discord-Bot ab 1.12.0**
+
 ## 2.32.0 — Herunterziehen zum Neuladen auf allen Seiten
 
 - In der installierten App (Startbildschirm) funktioniert das Herunterziehen zum Neuladen jetzt auf **jeder** Seite, nicht nur im Kalender

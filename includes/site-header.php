@@ -4,7 +4,9 @@
 // Öffnet außerdem den Seitenrahmen (<div class="page-frame"><div class="page-main">),
 // den includes/site-footer.php wieder schließt – beide Dateien gehören zusammen.
 // Erwartet vor dem Einbinden:
-//   $activeNav     'calendar' | 'blog' | 'games' | 'servers' | 'netzje' | 'admin'
+//   $activeNav     'calendar' | 'blog' | 'games' | 'servers' | 'netzje' | 'impressions' | 'admin'
+//                  ('games' = Rubrik „Spiele-Statistik“ mit den Unterseiten Spiele, Spieler, Jahresrückblick)
+//   $activeSub     in der Rubrik „Spiele-Statistik“: 'games' | 'players' | 'review'
 //   $pageKicker    kleine Zeile über dem Titel (Brotkrumen)
 //   $pageTitle     großer Seitentitel
 //   $pageLead      optionaler Untertitel
@@ -14,10 +16,20 @@ $showInstall = $showInstall ?? false;
 $navItems = [
     'calendar' => ['Kalender', 'index.php'],
     'blog' => ['Blog', 'blog.php'],
-    'games' => ['Spiele', 'games.php'],
+    'games' => ['Spiele-Statistik', 'games.php'],
     'servers' => ['Server', 'gameserver.php'],
     'netzje' => ['Netzje', 'netzje.php'],
+    // Nur für Angemeldete: Gäste sehen den Punkt gar nicht (assets/sidebar.js blendet ihn ein)
+    'impressions' => ['Eindrücke', 'eindruecke.php'],
 ];
+$membersOnlyNav = ['impressions'];
+// Unterseiten der Rubrik „Spiele-Statistik“
+$statsSubNav = [
+    'games' => ['Spiele', 'games.php'],
+    'players' => ['Spieler', 'spieler.php'],
+    'review' => ['Jahresrückblick', 'jahresrueckblick.php'],
+];
+$activeSub = $activeSub ?? '';
 $h = static fn(string $value): string => htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
 
 // Seiten, die ein Admin auf admin.php ausgeblendet hat, fehlen im Menü (per Link bleiben sie erreichbar)
@@ -58,7 +70,8 @@ $currentPageHidden = !featurePageEnabled($activeNav);
         </a>
         <nav class="main-nav" aria-label="Hauptnavigation">
             <?php foreach ($navItems as $key => [$label, $href]): ?>
-                <a href="<?= $h($href) ?>" class="nav-link<?= $key === $activeNav ? ' active' : '' ?>"<?= $key === $activeNav ? ' aria-current="page"' : '' ?>><?= $h($label) ?></a>
+                <?php $membersOnly = in_array($key, $membersOnlyNav, true); ?>
+                <a href="<?= $h($href) ?>" class="nav-link<?= $key === $activeNav ? ' active' : '' ?><?= $membersOnly ? ' nav-members' : '' ?>"<?= $membersOnly ? ' data-members-only' : '' ?><?= $key === $activeNav ? ' aria-current="page"' : ($membersOnly ? ' hidden' : '') ?>><?= $h($label) ?></a>
             <?php endforeach; ?>
             <?php /* Nur für Admins sichtbar; assets/sidebar.js blendet den Link ein */ ?>
             <a href="admin.php" class="nav-link nav-admin<?= $activeNav === 'admin' ? ' active' : '' ?>" id="navAdminLink"<?= $activeNav === 'admin' ? ' aria-current="page"' : ' hidden' ?>>Admin</a>
@@ -75,6 +88,13 @@ $currentPageHidden = !featurePageEnabled($activeNav);
         <h1 class="page-hero-title"><?= $h((string) $pageTitle) ?></h1>
         <?php if (!empty($pageLead)): ?>
             <p class="page-hero-lead"><?= $h((string) $pageLead) ?></p>
+        <?php endif; ?>
+        <?php if ($activeNav === 'games'): ?>
+            <nav class="sub-nav" aria-label="Spiele-Statistik">
+                <?php foreach ($statsSubNav as $subKey => [$subLabel, $subHref]): ?>
+                    <a href="<?= $h($subHref) ?>" class="sub-nav-link<?= $subKey === $activeSub ? ' active' : '' ?>"<?= $subKey === $activeSub ? ' aria-current="page"' : '' ?>><?= $h($subLabel) ?></a>
+                <?php endforeach; ?>
+            </nav>
         <?php endif; ?>
         <?php if ($currentPageHidden): ?>
             <p class="page-hidden-note">Diese Seite ist im Menü ausgeblendet und nur per Link erreichbar. Einschalten unter <a href="admin.php">Admin</a>.</p>

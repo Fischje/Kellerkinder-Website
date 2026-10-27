@@ -65,6 +65,22 @@ const NETZJE_STREAM_TYPES = ['none', 'twitch', 'youtube'];
 const NETZJE_BACKGROUND_MAX_WIDTH = 1920;
 const NETZJE_BACKGROUND_MAX_BYTES = 6000000;
 const NETZJE_SEATS_MAX = 999;
+const NETZJE_HISTORY_MAX = 200;
+// Sitzplan: Raster (Spalten × Reihen) mit markierten Sitzplätzen
+const NETZJE_SEATING_COLS_MAX = 20;
+const NETZJE_SEATING_ROWS_MAX = 14;
+// Jahresrückblick: erstes Jahr mit Daten, Cache (laufendes Jahr kurz, vergangene Jahre lang)
+const STATS_FIRST_YEAR = 2026;
+const YEAR_REVIEW_TTL_CURRENT = 600;
+const YEAR_REVIEW_TTL_PAST = 21600;
+const NOW_PLAYING_TTL_SECONDS = 30;
+// Eindrücke (Galerie nur für Angemeldete): Bilder in data/impressions, ausgeliefert nur über api.php
+const IMPRESSION_MAX_BYTES = 8000000;
+const IMPRESSION_MAX_WIDTH = 2400;
+const IMPRESSION_THUMB_WIDTH = 640;
+const IMPRESSIONS_MAX = 2000;
+const IMPRESSION_ALBUM_MAX = 60;
+const IMPRESSION_CAPTION_MAX = 300;
 const GAMESERVER_QUERY_TYPES = ['a2s', 'minecraft', 'tcp'];
 const GAMESERVER_STATUS_TTL_SECONDS = 20;
 const GAMESERVER_STATUS_MAX_AGE_SECONDS = 300; // älter: Status gilt als unbekannt
@@ -1791,6 +1807,8 @@ function normalizeNetzjeUserIds($value): array
  * Plätze: seats (Anzahl Plätze, bei der Erstellung festgelegt; 0 = noch nicht festgelegt),
  * requests (User-IDs mit offener Platz-Anfrage, in Reihenfolge der Anfrage),
  * attendees (vom Admin bestätigte User-IDs), declined (abgelehnte User-IDs). Die drei Listen schließen sich aus.
+ * Sitzplan: seating = cols, rows (Raster), seats (Liste „x-y“ der Sitzplätze), assign (Sitz → User-ID,
+ * nur bestätigte Teilnehmer, je Person höchstens ein Platz), self_select (Teilnehmer wählen selbst).
  * Slot: id, game, start, end, max (0 = ohne Limit), note, status (planned|proposed), proposed_by,
  * signups (User-IDs in Anmeldereihenfolge: die ersten `max` spielen mit, der Rest steht auf der Warteliste).
  */
@@ -1842,12 +1860,39 @@ function normalizeNetzje($value): array
         ];
         $party['next_slot_id'] = max($party['next_slot_id'], $id + 1);
     }
+    $party['seating'] = normalizeNetzjeSeating($value['seating'] ?? [], $party['attendees']);
     // Jede Person steht höchstens in einer der Listen: bestätigt vor angefragt vor abgelehnt
     $party['requests'] = array_values(array_diff(normalizeNetzjeUserIds($value['requests'] ?? []), $party['attendees']));
     $party['declined'] = array_values(array_diff(normalizeNetzjeUserIds($value['declined'] ?? []), $party['attendees'], $party['requests']));
     usort($party['slots'], static fn(array $a, array $b): int => [$a['start'], $a['id']] <=> [$b['start'], $b['id']]);
     $party['slots'] = array_slice($party['slots'], 0, NETZJE_SLOTS_MAX);
     return $party;
+}
+
+/** Sitzplan in feste Form bringen; Zuweisungen nur für Sitze im Raster und bestätigte Teilnehmer. */
+function normalizeNetzjeSeating($value, array $attendees): array
+{
+    $value = is_array($value) ? $value : [];
+    $cols = max(2, min(NETZJE_SEATING_COLS_MAX, (int) ($value['cols'] ?? 8)));
+    $rows = max(2, min(NETZJE_SEATING_ROWS_MAX, (int) ($value['rows'] ?? 5)));
+    $seats = [];
+    foreach (is_array($value['seats'] ?? null) ? $value['seats'] : [] as $seat) {
+        if (preg_match('/^(\d{1,2})-(\d{1,2})$/', (string) $seat, $match) && (int) $match[1] < $cols && (int) $match[2] < $rows) {
+            $seats[(int) $match[2] * 100 + (int) $match[1]] = (int) $match[1] . '-' . (int) $match[2];
+        }
+    }
+    ksort($seats); // Reihenfolge: Reihe für Reihe, von links nach rechts (= Platznummern)
+    $seats = array_values(array_unique($seats));
+    $assign = [];
+    $taken = [];
+    foreach (is_array($value['assign'] ?? null) ? $value['assign'] : [] as $seat => $userId) {
+        $userId = (int) $userId;
+        if (in_array((string) $seat, $seats, true) && in_array($userId, $attendees, true) && !isset($taken[$userId])) {
+            $assign[(string) $seat] = $userId;
+            $taken[$userId] = true;
+        }
+    }
+    return ['cols' => $cols, 'rows' => $rows, 'seats' => $seats, 'assign' => $assign, 'self_select' => (bool) ($value['self_select'] ?? true)];
 }
 
 /** Prüft ein Spiel aus dem Formular; gibt [Felder, Fehlertext|null] zurück. */
@@ -2000,6 +2045,14 @@ function netzjeResponse(array $store): array
             // Namen der Anfragen und Absagen nur für Admins
             'requests' => $isAdmin ? $names($party['requests']) : [],
             'declined' => $isAdmin ? $names($party['declined']) : [],
+            'seating' => [
+                'cols' => $party['seating']['cols'],
+                'rows' => $party['seating']['rows'],
+                'seats' => $party['seating']['seats'],
+                'self_select' => $party['seating']['self_select'],
+                'assign' => array_map(static fn(int $id): array => ['id' => $id, 'name' => netzjeUserName($store, $id)], $party['seating']['assign']),
+                'my_seat' => $userId > 0 ? (string) (array_search($userId, $party['seating']['assign'], true) ?: '') : '',
+            ],
             'background' => $party['background'] === '' ? null : mediaUrl($party['background']),
         ],
         'slots' => $slots,
@@ -2236,6 +2289,229 @@ function botStatsData(int $days, array $excludedIds = []): ?array
     return null;
 }
 
+/** Adresse eines weiteren Bot-Abrufs, abgeleitet aus BOT_STATS_URL (…/api/stats → …/api/<pfad>). */
+function botApiUrl(string $path): ?string
+{
+    if (!defined('BOT_STATS_URL') || BOT_STATS_URL === '') {
+        return null;
+    }
+    $url = (string) preg_replace('~/api/stats/?$~', '/api/' . $path, (string) BOT_STATS_URL);
+    return $url === (string) BOT_STATS_URL ? null : $url;
+}
+
+/** JSON vom Bot holen und zwischenspeichern; bei Ausfall der letzte Stand (mit 'stale'), sonst null. */
+function botCachedJson(string $url, string $cacheFile, int $ttl): ?array
+{
+    $cached = achievementsCacheRead($cacheFile, $ttl);
+    if ($cached !== null) {
+        return $cached;
+    }
+    $context = stream_context_create(['http' => [
+        'timeout' => 4,
+        'ignore_errors' => true,
+        'header' => "User-Agent: Kellerkinder-Website/1.0\r\nAccept: application/json\r\n",
+    ]]);
+    $raw = @file_get_contents($url, false, $context);
+    $data = $raw === false ? null : json_decode($raw, true);
+    if (is_array($data) && ($data['ok'] ?? false) === true) {
+        achievementsCacheWrite($cacheFile, $data);
+        return $data;
+    }
+    $stale = achievementsCacheRead($cacheFile, null);
+    if ($stale !== null) {
+        $stale['stale'] = true;
+    }
+    return $stale;
+}
+
+/** Wer spielt gerade was (Bot ab 1.12.0, 30 Sekunden zwischengespeichert). */
+function botNowPlaying(): ?array
+{
+    $url = botApiUrl('now');
+    return $url === null ? null : botCachedJson($url, 'now-playing.json', NOW_PLAYING_TTL_SECONDS);
+}
+
+/** Jahresrückblick vom Bot (ab 1.12.0). Die Ausblendeliste gehört zum Cache-Schlüssel. */
+function botYearReview(int $year, array $excludedIds = []): ?array
+{
+    if (!defined('BOT_STATS_URL') || BOT_STATS_URL === '') {
+        return null;
+    }
+    sort($excludedIds, SORT_STRING);
+    $file = 'review-' . $year . '-' . substr(md5(implode(',', $excludedIds)), 0, 10) . '.json';
+    $ttl = $year >= (int) date('Y') ? YEAR_REVIEW_TTL_CURRENT : YEAR_REVIEW_TTL_PAST;
+    $data = botCachedJson(BOT_STATS_URL . '?year=' . $year . '&roster=1&exclude=' . implode(',', $excludedIds), $file, $ttl);
+    return is_array($data) && is_array($data['review'] ?? null) ? $data : null;
+}
+
+/** Gibt es einen Spieler mit diesem Namen (ohne Groß-/Kleinschreibung)? Liefert den Eintrag oder null. */
+function findByName(array $rows, string $name): ?array
+{
+    $needle = textLower(trim($name));
+    foreach ($rows as $row) {
+        if (is_array($row) && textLower(trim((string) ($row['name'] ?? ''))) === $needle) {
+            return $row;
+        }
+    }
+    return null;
+}
+
+/** Alle Netzje-Partys (Archiv + aktuelle, falls geplant): title, start, end, attendees (User-IDs). */
+function netzjeAllParties(array $store): array
+{
+    $parties = $store['netzje_history'] ?? [];
+    $current = $store['netzje'];
+    if ($current['start'] !== '') {
+        $parties[] = ['title' => $current['title'], 'start' => $current['start'], 'end' => $current['end'], 'attendees' => $current['attendees']];
+    }
+    return $parties;
+}
+
+// ---------- Eindrücke (Galerie) ----------
+
+function impressionsDirectory(): string
+{
+    return storageDirectory() . DIRECTORY_SEPARATOR . 'impressions';
+}
+
+/** Dateinamen der Galerie: zufällig und nicht erratbar (32 Hex-Zeichen), optional „-t“ für Vorschaubilder. */
+function validImpressionFile(string $file): bool
+{
+    return (bool) preg_match('/^[a-f0-9]{32}(?:-t)?\.(?:jpg|png|webp)$/', $file);
+}
+
+/** Speichert ein Bild aus einer data-URL (verkleinert auf $maxWidth). Gibt den Dateinamen oder einen Fehlertext zurück. */
+function impressionStoreImage(string $dataUrl, string $baseName, int $maxWidth): array
+{
+    if (!preg_match('#^data:image/(png|jpeg|webp);base64,([A-Za-z0-9+/=]+)$#', $dataUrl, $match)) {
+        return [null, 'Es werden nur PNG-, JPEG- und WEBP-Bilder unterstützt.'];
+    }
+    $binary = base64_decode($match[2], true);
+    if ($binary === false || $binary === '' || strlen($binary) > IMPRESSION_MAX_BYTES) {
+        return [null, 'Das Bild ist ungültig oder zu groß (max. 8 MB).'];
+    }
+    $info = @getimagesizefromstring($binary);
+    $extensions = [IMAGETYPE_PNG => 'png', IMAGETYPE_JPEG => 'jpg', IMAGETYPE_WEBP => 'webp'];
+    if ($info === false || !isset($extensions[$info[2]])) {
+        return [null, 'Die Datei ist kein gültiges PNG-, JPEG- oder WEBP-Bild.'];
+    }
+    $binary = downscaleBlogImage($binary, $info, $maxWidth);
+    $directory = impressionsDirectory();
+    if (!is_dir($directory) && !@mkdir($directory, 0750, true) && !is_dir($directory)) {
+        return [null, 'Der Ordner für Bilder fehlt (Schreibrechte für data?).'];
+    }
+    $file = $baseName . '.' . $extensions[$info[2]];
+    if (@file_put_contents($directory . DIRECTORY_SEPARATOR . $file, $binary) === false) {
+        return [null, 'Das Bild konnte nicht gespeichert werden (Schreibrechte für data?).'];
+    }
+    $size = @getimagesizefromstring($binary) ?: $info;
+    return [['file' => $file, 'width' => (int) $size[0], 'height' => (int) $size[1]], null];
+}
+
+/** YouTube-Video-ID oder Twitch-Clip aus einem Link. Gibt ['type' => youtube|twitch_clip, 'ref' => …] oder null. */
+function impressionVideoRef(string $url): ?array
+{
+    $url = trim($url);
+    if (preg_match('~(?:youtu\.be/|youtube\.com/(?:watch\?(?:.*&)?v=|shorts/|live/|embed/))([A-Za-z0-9_-]{11})~', $url, $match)) {
+        return ['type' => 'youtube', 'ref' => $match[1]];
+    }
+    if (preg_match('~(?:clips\.twitch\.tv/|twitch\.tv/[A-Za-z0-9_]{3,25}/clip/)([A-Za-z0-9_-]{3,100})~', $url, $match)) {
+        return ['type' => 'twitch_clip', 'ref' => $match[1]];
+    }
+    return null;
+}
+
+function normalizeImpressions($value): array
+{
+    $items = [];
+    foreach (is_array($value) ? $value : [] as $item) {
+        if (!is_array($item) || (int) ($item['id'] ?? 0) <= 0) {
+            continue;
+        }
+        $type = (string) ($item['type'] ?? 'image');
+        if ($type === 'image' && (!validImpressionFile((string) ($item['file'] ?? '')) || !validImpressionFile((string) ($item['thumb'] ?? '')))) {
+            continue;
+        }
+        if (in_array($type, ['youtube', 'twitch_clip'], true) && !preg_match('/^[A-Za-z0-9_-]{3,100}$/', (string) ($item['ref'] ?? ''))) {
+            continue;
+        }
+        if (!in_array($type, ['image', 'youtube', 'twitch_clip'], true)) {
+            continue;
+        }
+        $items[] = [
+            'id' => (int) $item['id'],
+            'type' => $type,
+            'file' => $type === 'image' ? (string) $item['file'] : '',
+            'thumb' => $type === 'image' ? (string) $item['thumb'] : '',
+            'ref' => $type === 'image' ? '' : (string) $item['ref'],
+            'width' => max(0, (int) ($item['width'] ?? 0)),
+            'height' => max(0, (int) ($item['height'] ?? 0)),
+            'caption' => mb_substr(trim((string) ($item['caption'] ?? '')), 0, IMPRESSION_CAPTION_MAX, 'UTF-8'),
+            'album' => mb_substr(trim((string) ($item['album'] ?? '')), 0, IMPRESSION_ALBUM_MAX, 'UTF-8'),
+            'user_id' => (int) ($item['user_id'] ?? 0),
+            'created_at' => (string) ($item['created_at'] ?? ''),
+        ];
+    }
+    return array_slice($items, -IMPRESSIONS_MAX);
+}
+
+/** Liste für die Seite „Eindrücke“ (neueste zuerst). */
+function impressionsResponse(array $store, array $user): array
+{
+    $isAdmin = isAdminUser($store, $user);
+    $items = [];
+    $albums = [];
+    foreach (array_reverse($store['impressions']) as $item) {
+        if ($item['album'] !== '') {
+            $albums[$item['album']] = ($albums[$item['album']] ?? 0) + 1;
+        }
+        $items[] = [
+            'id' => $item['id'],
+            'type' => $item['type'],
+            'src' => $item['type'] === 'image' ? 'api.php?action=impression_file&f=' . rawurlencode($item['file']) : null,
+            'thumb' => $item['type'] === 'image' ? 'api.php?action=impression_file&f=' . rawurlencode($item['thumb']) : null,
+            'ref' => $item['ref'],
+            'width' => $item['width'],
+            'height' => $item['height'],
+            'caption' => $item['caption'],
+            'album' => $item['album'],
+            'author' => netzjeUserName($store, $item['user_id']),
+            'created_at' => $item['created_at'],
+            'can_delete' => $isAdmin || $item['user_id'] === (int) $user['id'],
+        ];
+    }
+    arsort($albums);
+    return [
+        'ok' => true,
+        'csrf_token' => csrfToken(),
+        'items' => $items,
+        'albums' => array_map(static fn(string $name, int $count): array => ['name' => $name, 'count' => $count], array_keys($albums), array_values($albums)),
+    ];
+}
+
+/** Archiv vergangener Partys: Liste aus title, start, end, attendees (bestätigte User-IDs). */
+function normalizeNetzjeHistory($value): array
+{
+    $history = [];
+    foreach (is_array($value) ? $value : [] as $entry) {
+        if (!is_array($entry)) {
+            continue;
+        }
+        $start = validNetzjeTime($entry['start'] ?? '');
+        if ($start === null) {
+            continue;
+        }
+        $history[] = [
+            'title' => mb_substr(trim((string) ($entry['title'] ?? '')), 0, 80, 'UTF-8'),
+            'start' => $start,
+            'end' => validNetzjeTime($entry['end'] ?? '') ?? $start,
+            'attendees' => normalizeNetzjeUserIds($entry['attendees'] ?? []),
+        ];
+    }
+    usort($history, static fn(array $a, array $b): int => strcmp($a['start'], $b['start']));
+    return array_slice($history, -NETZJE_HISTORY_MAX);
+}
+
 function raiderIoCharacterSlug(string $name, string $realm, string $region): string
 {
     return $region . '-' . $realm . '-' . $name;
@@ -2401,6 +2677,9 @@ function defaultStore(): array
         'gameservers' => [],
         'next_gameserver_id' => 1,
         'netzje' => normalizeNetzje([]),
+        'netzje_history' => [],
+        'impressions' => [],
+        'next_impression_id' => 1,
         'settings' => [
             'admin_player_names' => [],
             'theme' => 'default',
@@ -2488,6 +2767,9 @@ function normalizeStore(array $store): array
     $store['next_post_id'] = max(1, (int) ($store['next_post_id'] ?? 1));
     $store['gameservers'] = normalizeGameservers($store['gameservers'] ?? []);
     $store['netzje'] = normalizeNetzje($store['netzje'] ?? []);
+    $store['netzje_history'] = normalizeNetzjeHistory($store['netzje_history'] ?? []);
+    $store['impressions'] = normalizeImpressions($store['impressions'] ?? []);
+    $store['next_impression_id'] = max(1, (int) ($store['next_impression_id'] ?? 1), 1 + max([0, ...array_map(static fn(array $item): int => $item['id'], $store['impressions'])]));
     $store['next_gameserver_id'] = max(
         1,
         (int) ($store['next_gameserver_id'] ?? 1),
@@ -3855,6 +4137,255 @@ if ($action === 'steam_achievements') {
     steamRefreshInBackground($steamStore, $response);
 }
 
+if ($action === 'impressions') {
+    // Galerie: nur für Angemeldete
+    $galleryStore = readStore();
+    [, $galleryUser] = requireUser($galleryStore);
+    $galleryOut = impressionsResponse($galleryStore, $galleryUser);
+    session_write_close();
+    respond($galleryOut);
+}
+
+if ($action === 'impression_file') {
+    // Ein Bild der Galerie ausliefern – nur an Angemeldete, nie über einen öffentlichen Pfad
+    $fileStore = readStore();
+    requireUser($fileStore);
+    session_write_close();
+    $file = (string) ($payload['f'] ?? '');
+    $path = impressionsDirectory() . DIRECTORY_SEPARATOR . $file;
+    if (!validImpressionFile($file) || !is_file($path)) {
+        http_response_code(404);
+        exit;
+    }
+    $types = ['jpg' => 'image/jpeg', 'png' => 'image/png', 'webp' => 'image/webp'];
+    header('Content-Type: ' . $types[pathinfo($file, PATHINFO_EXTENSION)]);
+    header('Content-Length: ' . filesize($path));
+    // Privat zwischenspeichern (Browser ja, Cloudflare & Co. nein); Dateinamen ändern sich nie
+    header('Cache-Control: private, max-age=604800, immutable');
+    header_remove('Pragma');
+    readfile($path);
+    exit;
+}
+
+if ($action === 'now_playing') {
+    // Widget „Gerade online“: wer spielt gerade was. Ohne Discord-IDs; Profilbilder als lokale Kopie.
+    session_write_close();
+    $now = botNowPlaying();
+    if ($now === null) {
+        respond(['ok' => true, 'configured' => botApiUrl('now') !== null, 'players' => []]);
+    }
+    $avatarIndex = discordAvatarIndex();
+    $iconIndex = gameIconIndex();
+    $players = [];
+    // Veraltete Daten (Bot nicht erreichbar) zeigen niemanden als online
+    foreach (!empty($now['stale']) ? [] : (is_array($now['players'] ?? null) ? $now['players'] : []) as $player) {
+        if (!is_array($player)) {
+            continue;
+        }
+        $games = [];
+        foreach (is_array($player['games'] ?? null) ? $player['games'] : [] as $game) {
+            $gameName = mb_substr((string) ($game['name'] ?? ''), 0, 100, 'UTF-8');
+            if ($gameName === '') {
+                continue;
+            }
+            $games[] = [
+                'name' => $gameName,
+                'since' => (string) ($game['since'] ?? ''),
+                'icon' => gameIconUrl($iconIndex[gameIconKey($gameName)] ?? null),
+            ];
+        }
+        if ($games === []) {
+            continue;
+        }
+        $players[] = [
+            'name' => mb_substr((string) ($player['name'] ?? ''), 0, 60, 'UTF-8'),
+            'avatar' => discordAvatarLocal((string) ($player['id'] ?? ''), $avatarIndex),
+            'games' => array_slice($games, 0, 3),
+        ];
+    }
+    respond(['ok' => true, 'configured' => true, 'players' => array_slice($players, 0, 30)]);
+}
+
+if ($action === 'year_review') {
+    // Seite „Jahresrückblick“ (Rubrik Spiele-Statistik)
+    $reviewStore = readStore();
+    session_write_close();
+    $currentYear = (int) date('Y');
+    $years = range($currentYear, STATS_FIRST_YEAR);
+    $year = (int) ($payload['year'] ?? $currentYear);
+    if ($year < STATS_FIRST_YEAR || $year > $currentYear) {
+        respond(['ok' => false, 'error' => 'Für dieses Jahr gibt es keinen Rückblick.'], 422);
+    }
+    if (!defined('BOT_STATS_URL') || BOT_STATS_URL === '') {
+        respond(['ok' => true, 'configured' => false, 'year' => $year, 'years' => $years]);
+    }
+    $data = botYearReview($year, statsExcludedIds($reviewStore));
+    if ($data === null) {
+        respond(['ok' => false, 'error' => 'Der Jahresrückblick ist gerade nicht erreichbar (Bot ab Version 1.12.0 nötig).'], 502);
+    }
+    $review = $data['review'];
+    $avatarIndex = discordAvatarIndex();
+    $iconIndex = gameIconIndex();
+    $icon = static fn(string $name): ?string => gameIconUrl($iconIndex[gameIconKey($name)] ?? null);
+    $details = is_array($data['details']['players'] ?? null) ? $data['details']['players'] : [];
+    $avatarByName = [];
+    foreach ($details as $person) {
+        $avatarByName[textLower((string) ($person['name'] ?? ''))] = discordAvatarLocal((string) ($person['id'] ?? ''), $avatarIndex);
+    }
+    $showPersons = is_array($data['players'] ?? null);
+    $person = static fn(array $row, string $valueKey = 'minutes'): array => [
+        'name' => (string) ($row['name'] ?? ''),
+        'avatar' => $avatarByName[textLower((string) ($row['name'] ?? ''))] ?? null,
+        'value' => (int) ($row[$valueKey] ?? 0),
+    ];
+    $games = array_map(static fn(array $game): array => [
+        'name' => (string) $game['name'],
+        'minutes' => (int) $game['minutes'],
+        'players' => (int) ($game['players'] ?? 0),
+        'icon' => $icon((string) $game['name']),
+    ], array_slice(is_array($data['games'] ?? null) ? $data['games'] : [], 0, 10));
+    $parties = [];
+    foreach (netzjeAllParties($reviewStore) as $party) {
+        if ((int) substr($party['start'], 0, 4) !== $year) {
+            continue;
+        }
+        $names = array_values(array_filter(array_map(static fn(int $id): string => netzjeUserName($reviewStore, $id), $party['attendees'])));
+        $parties[] = ['title' => $party['title'] ?: 'Netzje', 'start' => $party['start'], 'attendees' => $names];
+    }
+    respond([
+        'ok' => true,
+        'configured' => true,
+        'stale' => !empty($data['stale']),
+        'year' => $year,
+        'years' => $years,
+        'total_minutes' => (int) ($data['totalMinutes'] ?? 0),
+        'first_tracked_date' => $review['firstTrackedDate'] ?? null,
+        'months' => array_map('intval', array_slice(is_array($review['months'] ?? null) ? $review['months'] : [], 0, 12)),
+        'active_days' => (int) ($review['activeDays'] ?? 0),
+        'busiest_day' => is_array($review['busiestDay'] ?? null) ? ['date' => (string) $review['busiestDay']['date'], 'minutes' => (int) $review['busiestDay']['minutes']] : null,
+        'games_count' => (int) ($review['gamesCount'] ?? 0),
+        'players_count' => (int) ($review['playersCount'] ?? 0),
+        'games' => $games,
+        'new_games' => array_map(static fn(array $game): array => [
+            'name' => (string) $game['name'],
+            'first_played' => (string) ($game['firstPlayed'] ?? ''),
+            'minutes' => (int) ($game['minutes'] ?? 0),
+            'icon' => $icon((string) $game['name']),
+        ], array_slice(is_array($review['newGames'] ?? null) ? $review['newGames'] : [], 0, 12)),
+        'new_games_count' => count(is_array($review['newGames'] ?? null) ? $review['newGames'] : []),
+        'players' => $showPersons ? array_map(static fn(array $row): array => $person($row) + ['top_game' => (string) ($row['topGame'] ?? '')], array_slice($data['players'], 0, 10)) : [],
+        'most_games' => $showPersons ? array_map(static fn(array $row): array => $person($row, 'value'), is_array($review['mostGames'] ?? null) ? $review['mostGames'] : []) : [],
+        'most_days' => $showPersons ? array_map(static fn(array $row): array => $person($row, 'value'), is_array($review['mostDays'] ?? null) ? $review['mostDays'] : []) : [],
+        'netzje' => $parties,
+    ]);
+}
+
+if ($action === 'player_profile') {
+    // Spielerprofil (Rubrik Spiele-Statistik → Spieler). Name wie in der Discord-Statistik.
+    $profileStore = readStore();
+    session_write_close();
+    $name = trim((string) ($payload['name'] ?? ''));
+    if ($name === '' || mb_strlen($name, 'UTF-8') > 80) {
+        respond(['ok' => false, 'error' => 'Spieler nicht gefunden.'], 404);
+    }
+    if (!defined('BOT_STATS_URL') || BOT_STATS_URL === '') {
+        respond(['ok' => false, 'error' => 'Die Statistik ist noch nicht eingerichtet.'], 404);
+    }
+    $excluded = statsExcludedIds($profileStore);
+    $all = botStatsData(0, $excluded);
+    $recent = botStatsData(30, $excluded);
+    if ($all === null || !is_array($all['players'] ?? null)) {
+        respond(['ok' => false, 'error' => 'Spielerprofile gibt es nur, wenn die Spielernamen öffentlich sind.'], 404);
+    }
+    $allDetails = is_array($all['details']['players'] ?? null) ? $all['details']['players'] : [];
+    $person = findByName($allDetails, $name);
+    if ($person === null) {
+        respond(['ok' => false, 'error' => 'Spieler nicht gefunden.'], 404);
+    }
+    $realName = (string) $person['name'];
+    $rank = 1;
+    foreach ($all['players'] as $index => $row) {
+        if (textLower((string) $row['name']) === textLower($realName)) {
+            $rank = $index + 1;
+            break;
+        }
+    }
+    $recentPerson = findByName(is_array($recent['details']['players'] ?? null) ? $recent['details']['players'] : [], $realName);
+    $iconIndex = gameIconIndex();
+    $gameRows = static fn(array $rows): array => array_map(static fn(array $game): array => [
+        'name' => (string) ($game['name'] ?? ''),
+        'minutes' => (int) ($game['minutes'] ?? 0),
+        'icon' => gameIconUrl($iconIndex[gameIconKey((string) ($game['name'] ?? ''))] ?? null),
+    ], $rows);
+
+    // Kalender und Netzje: über den gleichnamigen Spieler bzw. Account der Website
+    $calendarPlayer = findByName($profileStore['players'], $realName);
+    $onlineDays = 0;
+    $userId = null;
+    if ($calendarPlayer !== null) {
+        $userId = $calendarPlayer['user_id'] ?? null;
+        foreach ($profileStore['availability'] as $entry) {
+            if ((int) ($entry['player_id'] ?? 0) === (int) $calendarPlayer['id'] && in_array($entry['status'] ?? '', ['online', 'late'], true)) {
+                $onlineDays++;
+            }
+        }
+    }
+    $netzjeParties = [];
+    if ($userId !== null) {
+        foreach (netzjeAllParties($profileStore) as $party) {
+            if (in_array((int) $userId, $party['attendees'], true)) {
+                $netzjeParties[] = ['title' => $party['title'] ?: 'Netzje', 'start' => $party['start']];
+            }
+        }
+    }
+    $account = null;
+    if ($userId !== null) {
+        $accountIndex = findUserIndex($profileStore['users'], (int) $userId);
+        if ($accountIndex !== null) {
+            $accountUser = $profileStore['users'][$accountIndex];
+            $account = [
+                'steam_profile' => steamProfileUrl((string) ($accountUser['steam_name'] ?? '')),
+                'is_admin' => isAdminUser($profileStore, $accountUser),
+                'is_author' => !empty($accountUser['is_author']),
+            ];
+        }
+    }
+
+    // Abzeichen aus den vorhandenen Daten
+    $badges = [];
+    $allGames = 0;
+    foreach (is_array($all['details']['games'] ?? null) ? $all['details']['games'] : [] as $topPlayers) {
+        if (findByName(is_array($topPlayers) ? $topPlayers : [], $realName) !== null) {
+            $allGames++;
+        }
+    }
+    if ($rank === 1) $badges[] = ['icon' => '👑', 'label' => 'Dauerzocker', 'text' => 'Die meiste Spielzeit überhaupt'];
+    elseif ($rank <= 3) $badges[] = ['icon' => '🏆', 'label' => 'Top 3', 'text' => "Platz {$rank} der meisten Spielzeit"];
+    if ($allGames >= 8) $badges[] = ['icon' => '🎲', 'label' => 'Allrounder', 'text' => "In {$allGames} Spielen unter den Top-Spielern"];
+    if (count($netzjeParties) >= 3) $badges[] = ['icon' => '🖥️', 'label' => 'Netzje-Veteran', 'text' => count($netzjeParties) . ' LAN-Partys dabei'];
+    elseif (count($netzjeParties) >= 1) $badges[] = ['icon' => '🔌', 'label' => 'Netzje-Gast', 'text' => 'Bei einer LAN-Party dabei'];
+    if ($onlineDays >= 50) $badges[] = ['icon' => '📅', 'label' => 'Stammgast', 'text' => "{$onlineDays} Spieltage im Kalender zugesagt"];
+    elseif ($onlineDays >= 10) $badges[] = ['icon' => '🗓️', 'label' => 'Verlässlich', 'text' => "{$onlineDays} Spieltage im Kalender zugesagt"];
+    if (($account['is_admin'] ?? false) === true) $badges[] = ['icon' => '🛡️', 'label' => 'Admin', 'text' => 'Kümmert sich um die Seite'];
+    if (($account['is_author'] ?? false) === true) $badges[] = ['icon' => '✍️', 'label' => 'Autor', 'text' => 'Schreibt im Blog'];
+
+    respond([
+        'ok' => true,
+        'name' => $realName,
+        'avatar' => discordAvatarLocal((string) ($person['id'] ?? ''), discordAvatarIndex()),
+        'rank' => $rank,
+        'players_count' => count($all['players']),
+        'total_minutes' => (int) ($person['minutes'] ?? 0),
+        'recent_minutes' => (int) ($recentPerson['minutes'] ?? 0),
+        'top_games' => $gameRows(is_array($person['games'] ?? null) ? $person['games'] : []),
+        'recent_games' => $gameRows(is_array($recentPerson['games'] ?? null) ? $recentPerson['games'] : []),
+        'calendar_days' => $calendarPlayer !== null ? $onlineDays : null,
+        'netzje' => $netzjeParties,
+        'steam_profile' => $account['steam_profile'] ?? '',
+        'badges' => $badges,
+    ]);
+}
+
 if ($action === 'playtime_stats') {
     $statsStore = readStore();
     $statsUserIndex = currentUserIndex($statsStore);
@@ -4653,6 +5184,16 @@ withWritableStore(function (array &$store) use ($action, $payload): array {
         case 'admin_netzje_new':
             // „Neue Party“: Termin, Stundenplan, Teilnehmer und Hintergrundbild leeren, Texte bleiben als Vorlage stehen.
             requireAdmin($store);
+            // Die bisherige Party kommt ins Archiv (für Spielerprofile und Jahresrückblick)
+            if ($store['netzje']['start'] !== '') {
+                $store['netzje_history'][] = [
+                    'title' => $store['netzje']['title'],
+                    'start' => $store['netzje']['start'],
+                    'end' => $store['netzje']['end'],
+                    'attendees' => $store['netzje']['attendees'],
+                ];
+                $store['netzje_history'] = normalizeNetzjeHistory($store['netzje_history']);
+            }
             if ($store['netzje']['background'] !== '') {
                 @unlink(mediaDirectory() . DIRECTORY_SEPARATOR . $store['netzje']['background']);
                 $store['netzje']['background'] = '';
@@ -4661,6 +5202,7 @@ withWritableStore(function (array &$store) use ($action, $payload): array {
             $store['netzje']['attendees'] = [];
             $store['netzje']['requests'] = [];
             $store['netzje']['declined'] = [];
+            $store['netzje']['seating']['assign'] = []; // Raum bleibt als Vorlage, die Plätze werden frei
             $store['netzje']['start'] = '';
             $store['netzje']['end'] = '';
             $store['netzje'] = normalizeNetzje($store['netzje']);
@@ -4690,6 +5232,145 @@ withWritableStore(function (array &$store) use ($action, $payload): array {
                 $store['netzje']['attendees'] = $without($store['netzje']['attendees']);
                 $store['netzje']['requests'] = $without($store['netzje']['requests']);
             }
+            $store['netzje'] = normalizeNetzje($store['netzje']);
+            return [netzjeResponse($store), 200, true];
+
+        case 'impression_upload':
+            // Bild hochladen (im Browser schon verkleinert: image bis 2400 px, thumb bis 640 px)
+            [, $uploadUser] = requireUser($store);
+            if (count($store['impressions']) >= IMPRESSIONS_MAX) {
+                return [['ok' => false, 'error' => 'Die Galerie ist voll. Bitte erst alte Eindrücke löschen.'], 422, false];
+            }
+            $base = bin2hex(random_bytes(16));
+            [$full, $error] = impressionStoreImage((string) ($payload['image'] ?? ''), $base, IMPRESSION_MAX_WIDTH);
+            if ($full === null) {
+                return [['ok' => false, 'error' => $error], 422, false];
+            }
+            [$thumb, $error] = impressionStoreImage((string) ($payload['thumb'] ?? ''), $base . '-t', IMPRESSION_THUMB_WIDTH);
+            if ($thumb === null) {
+                @unlink(impressionsDirectory() . DIRECTORY_SEPARATOR . $full['file']);
+                return [['ok' => false, 'error' => $error], 422, false];
+            }
+            $store['impressions'][] = [
+                'id' => (int) $store['next_impression_id'],
+                'type' => 'image',
+                'file' => $full['file'],
+                'thumb' => $thumb['file'],
+                'ref' => '',
+                'width' => $full['width'],
+                'height' => $full['height'],
+                'caption' => mb_substr(trim((string) ($payload['caption'] ?? '')), 0, IMPRESSION_CAPTION_MAX, 'UTF-8'),
+                'album' => mb_substr(trim((string) ($payload['album'] ?? '')), 0, IMPRESSION_ALBUM_MAX, 'UTF-8'),
+                'user_id' => (int) $uploadUser['id'],
+                'created_at' => gmdate('c'),
+            ];
+            $store['next_impression_id']++;
+            return [impressionsResponse($store, $uploadUser), 200, true];
+
+        case 'impression_video':
+            // Clip als Link: YouTube-Video oder Twitch-Clip
+            [, $videoUser] = requireUser($store);
+            $video = impressionVideoRef((string) ($payload['url'] ?? ''));
+            if ($video === null) {
+                return [['ok' => false, 'error' => 'Bitte einen Link zu einem YouTube-Video oder Twitch-Clip angeben.'], 422, false];
+            }
+            $store['impressions'][] = [
+                'id' => (int) $store['next_impression_id'],
+                'type' => $video['type'],
+                'ref' => $video['ref'],
+                'caption' => mb_substr(trim((string) ($payload['caption'] ?? '')), 0, IMPRESSION_CAPTION_MAX, 'UTF-8'),
+                'album' => mb_substr(trim((string) ($payload['album'] ?? '')), 0, IMPRESSION_ALBUM_MAX, 'UTF-8'),
+                'user_id' => (int) $videoUser['id'],
+                'created_at' => gmdate('c'),
+            ];
+            $store['next_impression_id']++;
+            $store['impressions'] = normalizeImpressions($store['impressions']);
+            return [impressionsResponse($store, $videoUser), 200, true];
+
+        case 'impression_delete':
+            // Eigene Eindrücke löschen; Admins dürfen alle löschen
+            [, $deleteUser] = requireUser($store);
+            $deleteId = (int) ($payload['id'] ?? 0);
+            foreach ($store['impressions'] as $index => $item) {
+                if ($item['id'] !== $deleteId) {
+                    continue;
+                }
+                if ($item['user_id'] !== (int) $deleteUser['id'] && !isAdminUser($store, $deleteUser)) {
+                    return [['ok' => false, 'error' => 'Du kannst nur deine eigenen Eindrücke löschen.'], 403, false];
+                }
+                foreach ([$item['file'], $item['thumb']] as $file) {
+                    if ($file !== '' && validImpressionFile($file)) {
+                        @unlink(impressionsDirectory() . DIRECTORY_SEPARATOR . $file);
+                    }
+                }
+                array_splice($store['impressions'], $index, 1);
+                return [impressionsResponse($store, $deleteUser), 200, true];
+            }
+            return [['ok' => false, 'error' => 'Diesen Eindruck gibt es nicht mehr.'], 404, false];
+
+        case 'admin_netzje_seating_save':
+            // Admin: Raum festlegen (Raster und welche Felder Sitzplätze sind)
+            requireAdmin($store);
+            $seating = $store['netzje']['seating'];
+            $cols = (int) ($payload['cols'] ?? 0);
+            $rows = (int) ($payload['rows'] ?? 0);
+            if ($cols < 2 || $cols > NETZJE_SEATING_COLS_MAX || $rows < 2 || $rows > NETZJE_SEATING_ROWS_MAX) {
+                return [['ok' => false, 'error' => 'Das Raster muss 2–' . NETZJE_SEATING_COLS_MAX . ' Spalten und 2–' . NETZJE_SEATING_ROWS_MAX . ' Reihen haben.'], 422, false];
+            }
+            $store['netzje']['seating'] = normalizeNetzjeSeating([
+                'cols' => $cols,
+                'rows' => $rows,
+                'seats' => is_array($payload['seats'] ?? null) ? $payload['seats'] : [],
+                'assign' => $seating['assign'], // bleibt, solange es den Sitz noch gibt
+                'self_select' => !empty($payload['self_select']),
+            ], $store['netzje']['attendees']);
+            return [netzjeResponse($store), 200, true];
+
+        case 'netzje_seat':
+            // Bestätigte Teilnehmer wählen ihren Platz (seat leer = Platz freigeben)
+            [, $seatUser] = requireUser($store);
+            $seatUserId = (int) $seatUser['id'];
+            $seating = $store['netzje']['seating'];
+            if (!in_array($seatUserId, $store['netzje']['attendees'], true)) {
+                return [['ok' => false, 'error' => 'Einen Platz wählen können nur bestätigte Teilnehmer.'], 403, false];
+            }
+            if (!$seating['self_select'] && !isAdminUser($store, $seatUser)) {
+                return [['ok' => false, 'error' => 'Die Plätze verteilt ein Admin.'], 403, false];
+            }
+            $seat = (string) ($payload['seat'] ?? '');
+            $assign = array_filter($seating['assign'], static fn(int $id): bool => $id !== $seatUserId);
+            if ($seat !== '') {
+                if (!in_array($seat, $seating['seats'], true)) {
+                    return [['ok' => false, 'error' => 'Diesen Platz gibt es nicht.'], 404, false];
+                }
+                if (isset($assign[$seat])) {
+                    return [['ok' => false, 'error' => 'Der Platz ist schon besetzt.'], 409, false];
+                }
+                $assign[$seat] = $seatUserId;
+            }
+            $store['netzje']['seating']['assign'] = $assign;
+            $store['netzje'] = normalizeNetzje($store['netzje']);
+            return [netzjeResponse($store), 200, true];
+
+        case 'admin_netzje_seat_assign':
+            // Admin: Platz einem bestätigten Teilnehmer geben (user_id 0 = Platz freigeben)
+            requireAdmin($store);
+            $seating = $store['netzje']['seating'];
+            $seat = (string) ($payload['seat'] ?? '');
+            $targetId = (int) ($payload['user_id'] ?? 0);
+            if (!in_array($seat, $seating['seats'], true)) {
+                return [['ok' => false, 'error' => 'Diesen Platz gibt es nicht.'], 404, false];
+            }
+            if ($targetId > 0 && !in_array($targetId, $store['netzje']['attendees'], true)) {
+                return [['ok' => false, 'error' => 'Plätze gibt es nur für bestätigte Teilnehmer.'], 422, false];
+            }
+            $assign = $seating['assign'];
+            unset($assign[$seat]);
+            if ($targetId > 0) {
+                $assign = array_filter($assign, static fn(int $id): bool => $id !== $targetId);
+                $assign[$seat] = $targetId;
+            }
+            $store['netzje']['seating']['assign'] = $assign;
             $store['netzje'] = normalizeNetzje($store['netzje']);
             return [netzjeResponse($store), 200, true];
 

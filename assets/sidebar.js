@@ -5,7 +5,7 @@
 // der aktuellen Seite (data-skip) laden wir gar nicht erst.
 // Außerdem auf allen Seiten: Account-Knopf in der Kopfleiste (Anmelden bzw. Account-Menü
 // mit „Mein Account“, „Adminbereich“, „Abmelden“) und für Admins der Menüpunkt „Admin“
-// (mit Zahl offener Netzje-Anfragen). Die Dialoge für Anmelden und Account liegen im
+// (mit Zahl offener Netzje-Anfragen) sowie Menüpunkte nur für Angemeldete (Eindrücke). Die Dialoge für Anmelden und Account liegen im
 // Kalender (index.php); dort stellt index.php window.kkAccount bereit und öffnet sie direkt,
 // auf anderen Seiten führen die Links zu index.php#anmelden bzw. #account.
 // Texte werden nur per textContent eingesetzt, nie als HTML.
@@ -290,10 +290,54 @@
         if (data && data.csrf_token) accountCsrf = data.csrf_token;
         renderAccount(data);
         renderAdminLink(data);
+        // Menüpunkte nur für Angemeldete (z. B. „Eindrücke“): Gäste sehen sie gar nicht
+        const member = Boolean(data && data.logged_in);
+        for (const link of document.querySelectorAll('[data-members-only]')) {
+            link.hidden = !member && !link.classList.contains('active');
+        }
     }
 
     // index.php ruft das nach Anmelden/Abmelden auf, damit die Kopfleiste stimmt
     window.kkRefreshAccount = loadAccount;
+
+    // „Gerade online“: nur sichtbar, solange jemand spielt; jede Minute neu abfragen
+    function sinceText(iso) {
+        const minutes = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
+        if (!Number.isFinite(minutes)) return '';
+        if (minutes < 1) return 'gerade eben';
+        if (minutes < 60) return `seit ${minutes} Min.`;
+        const hours = Math.floor(minutes / 60);
+        const rest = minutes % 60;
+        return `seit ${hours} Std.${rest ? ` ${rest} Min.` : ''}`;
+    }
+
+    async function loadNow() {
+        const section = box('now');
+        if (!section) return;
+        const data = await getJson('now_playing');
+        const players = data && Array.isArray(data.players) ? data.players : [];
+        const list = section.querySelector('[data-list]');
+        list.replaceChildren();
+        for (const player of players) {
+            const games = player.games.map((game) => game.name).join(', ');
+            list.appendChild(row({
+                href: `spieler.php?name=${encodeURIComponent(player.name)}`,
+                image: player.avatar || '',
+                placeholder: (player.name || '?').slice(0, 1).toUpperCase(),
+                title: player.name,
+                sub: `${games} · ${sinceText(player.games[0].since)}`,
+                dot: 'online',
+            }));
+        }
+        section.querySelector('[data-count]').textContent = players.length ? `(${players.length})` : '';
+        section.hidden = players.length === 0;
+        if (players.length) sidebar.classList.add('has-content');
+    }
+
+    if (box('now')) {
+        loadNow();
+        setInterval(() => { if (!document.hidden) loadNow(); }, 60_000);
+    }
 
     const loaders = { games: loadGames, netzje: loadNetzje, blog: loadBlog, servers: loadServers };
     for (const [name, loader] of Object.entries(loaders)) {

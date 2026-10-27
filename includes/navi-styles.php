@@ -698,7 +698,7 @@ if (!isset($backgroundImages) || !is_array($backgroundImages)) { $backgroundImag
         label { font-family: var(--font-ui); font-size: .72rem; font-weight: 800; letter-spacing: .1em; }
 
         :is(.page-shell, dialog) :is(input[type="text"], input[type="password"], input[type="date"],
-            input[type="datetime-local"], input[type="file"], select, textarea) {
+            input[type="datetime-local"], input[type="file"], input[type="number"], select, textarea) {
             border: 0;
             border-radius: 0;
             color: var(--text);
@@ -706,6 +706,9 @@ if (!isset($backgroundImages) || !is_array($backgroundImages)) { $backgroundImag
             box-shadow: inset 0 0 0 1px var(--line-strong);
             color-scheme: light;
         }
+
+        /* Zahlenfelder (Plätze, Sitzplan-Raster) wie die übrigen Eingabefelder */
+        :is(.page-shell, dialog) input[type="number"] { width: 100%; min-height: 47px; padding: 10px 12px; outline: none; }
 
         :is(.page-shell, dialog) :is(input, select, textarea):focus { box-shadow: inset 0 0 0 2px var(--accent), 0 0 0 3px rgba(var(--accent-rgb), .25); }
 
@@ -887,6 +890,34 @@ if (!isset($backgroundImages) || !is_array($backgroundImages)) { $backgroundImag
         .netzje-block:hover, .netzje-block:focus-visible { outline-color: var(--text); }
         .netzje-block.full { background: #e3e6eb; }
 
+        /* ===== Unternavigation der Rubrik „Spiele-Statistik“ (Spiele · Spieler · Jahresrückblick) ===== */
+        .sub-nav { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 18px; }
+        .sub-nav-link {
+            display: inline-flex;
+            align-items: center;
+            min-height: 40px;
+            padding: 8px 16px;
+            color: var(--text);
+            background: #fff;
+            box-shadow: inset 0 0 0 1px var(--line-strong);
+            font-family: var(--font-ui);
+            font-size: .74rem;
+            font-weight: 800;
+            letter-spacing: .1em;
+            text-decoration: none;
+            text-transform: uppercase;
+        }
+
+        .sub-nav-link:hover, .sub-nav-link:focus-visible { outline: none; background: rgba(var(--accent-rgb), .18); }
+        .sub-nav-link.active { color: var(--accent-ink); background: var(--accent); box-shadow: none; }
+
+        /* Nur für Angemeldete (Eindrücke): bis assets/sidebar.js den Punkt einblendet */
+        .nav-members[hidden] { display: none; }
+
+        /* Rangliste: Zeilen, die zum Spielerprofil führen */
+        a.stats-row.is-link { color: inherit; text-decoration: none; grid-template-columns: 2.2em 40px minmax(0, 1fr) auto 1.2em; }
+        a.stats-row.is-link:hover, a.stats-row.is-link:focus-visible { outline: none; box-shadow: inset 0 0 0 3px var(--accent); }
+
         /* ===== Seitenleiste „Kurz & knapp“ (includes/site-footer.php, Daten: assets/sidebar.js) ===== */
         .site-sidebar {
             min-width: 0;
@@ -1017,6 +1048,13 @@ if (!isset($backgroundImages) || !is_array($backgroundImages)) { $backgroundImag
 
         .sidebar-feature strong { color: #fff; font-family: var(--font-ui); font-size: 1.5rem; font-weight: 900; line-height: 1.1; text-transform: uppercase; }
         .sidebar-feature-meta { color: #8e95a1; font-size: .8rem; font-weight: 600; }
+
+        /* „Gerade online“: grüner Puls am Titel */
+        .sidebar-now .sidebar-title { display: flex; align-items: center; gap: 10px; }
+        .sidebar-count { color: var(--muted); font-size: .9rem; }
+        .live-dot { width: 10px; height: 10px; flex: none; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 0 rgba(var(--accent-rgb), .6); animation: livePulse 1.8s ease-out infinite; }
+        @keyframes livePulse { 0% { box-shadow: 0 0 0 0 rgba(var(--accent-rgb), .6); } 80%, 100% { box-shadow: 0 0 0 9px rgba(var(--accent-rgb), 0); } }
+        .sidebar-row-media.placeholder { font-weight: 900; }
 
         /* Belegung der Netzje-Plätze in der dunklen Karte */
         .sidebar-seatbar { display: block; height: 6px; margin: 8px 0 2px; background: rgba(255, 255, 255, .12); }

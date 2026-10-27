@@ -64,6 +64,45 @@ require __DIR__ . '/includes/site-header.php';
         <div id="partyBody"><p class="widget-loading">Wird geladen …</p></div>
     </section>
 
+    <section class="netzje-panel" id="seatingPanel" hidden>
+        <div class="netzje-head">
+            <h2 class="section-title"><span class="accent">Der</span> Sitzplan</h2>
+            <div class="netzje-actions">
+                <button class="secondary-button" id="leaveSeatButton" type="button" hidden>Platz freigeben</button>
+                <button class="secondary-button" id="editSeatingButton" type="button" hidden>Sitzplan bearbeiten</button>
+            </div>
+        </div>
+        <p class="netzje-note" id="seatingNote"></p>
+        <div class="seating-editor" id="seatingEditor" hidden>
+            <div class="seating-editor-fields">
+                <div>
+                    <label for="seatCols">Spalten</label>
+                    <input type="number" id="seatCols" min="2" max="20" inputmode="numeric">
+                </div>
+                <div>
+                    <label for="seatRows">Reihen</label>
+                    <input type="number" id="seatRows" min="2" max="14" inputmode="numeric">
+                </div>
+                <label class="remember-row seating-self">
+                    <input type="checkbox" id="seatSelfSelect">
+                    <span>Bestätigte Teilnehmer wählen ihren Platz selbst</span>
+                </label>
+            </div>
+            <p class="netzje-muted">Felder anklicken, um dort einen Sitzplatz zu setzen oder zu entfernen. Die Nummern vergeben sich von selbst (Reihe für Reihe).</p>
+            <p class="form-error" id="seatingError" role="alert" hidden></p>
+            <div class="netzje-actions">
+                <button class="secondary-button" id="cancelSeatingButton" type="button">Abbrechen</button>
+                <button class="primary-button" id="saveSeatingButton" type="button">Sitzplan speichern</button>
+            </div>
+        </div>
+        <div class="seating-scroll"><div class="seating-grid" id="seatingGrid"></div></div>
+        <ul class="seating-legend" aria-hidden="true">
+            <li><span class="seat-sample free"></span>Frei</li>
+            <li><span class="seat-sample taken"></span>Besetzt</li>
+            <li><span class="seat-sample mine"></span>Dein Platz</li>
+        </ul>
+    </section>
+
     <section class="netzje-panel" id="streamPanel" hidden>
         <div class="netzje-head">
             <h2 class="section-title"><span class="accent">Live</span> dabei</h2>
@@ -96,6 +135,21 @@ require __DIR__ . '/includes/site-header.php';
 
 </main>
 <?php require __DIR__ . '/includes/site-footer.php'; ?>
+
+<dialog id="seatDialog">
+    <div class="modal-content form-stack">
+        <h2 class="modal-title" id="seatDialogTitle">Platz</h2>
+        <div>
+            <label for="seatUser">Wer sitzt hier?</label>
+            <select id="seatUser"></select>
+        </div>
+        <p class="form-error" id="seatDialogError" role="alert" hidden></p>
+        <div class="modal-actions">
+            <button class="secondary-button" type="button" data-close-dialog="seatDialog">Abbrechen</button>
+            <button class="primary-button" id="saveSeatButton" type="button">Speichern</button>
+        </div>
+    </div>
+</dialog>
 
 <dialog id="partyDialog" class="wide">
     <div class="modal-content form-stack">
@@ -850,9 +904,175 @@ require __DIR__ . '/includes/site-header.php';
 
     // ===== Laden =====
     let scrolledToNow = false;
+    // ===== Sitzplan =====
+    const seatingState = { editing: false, draft: null, dialogSeat: '' };
+
+    function seatNumbers(seats) {
+        const numbers = {};
+        seats.forEach((seat, index) => { numbers[seat] = index + 1; });
+        return numbers;
+    }
+
+    function renderSeating() {
+        const { party, logged_in: loggedIn, is_admin: isAdmin } = state.data;
+        const panel = byId('seatingPanel');
+        const seating = party.seating || { cols: 8, rows: 5, seats: [], assign: {}, self_select: true, my_seat: '' };
+        const planned = Boolean(party.start && party.end);
+        panel.hidden = !planned || (seating.seats.length === 0 && !isAdmin);
+        if (panel.hidden) return;
+
+        const editing = seatingState.editing && isAdmin;
+        const layout = editing ? seatingState.draft : seating;
+        const assign = seating.assign || {};
+        const numbers = seatNumbers(layout.seats);
+        const isAttendee = party.my_status === 'approved';
+        const canChoose = loggedIn && isAttendee && seating.self_select;
+
+        byId('editSeatingButton').hidden = !isAdmin || editing;
+        byId('seatingEditor').hidden = !editing;
+        byId('leaveSeatButton').hidden = editing || !seating.my_seat || !(seating.self_select || isAdmin);
+
+        const taken = Object.keys(assign).length;
+        let note = seating.seats.length === 0
+            ? 'Noch kein Sitzplan. Mit „Sitzplan bearbeiten“ legst du den Raum an.'
+            : `${taken} von ${seating.seats.length} Sitzplätzen besetzt.`;
+        if (!editing && seating.seats.length > 0) {
+            if (party.seats > 0 && seating.seats.length !== party.seats) note += ` (Für die Party sind ${party.seats} Plätze vorgesehen.)`;
+            if (isAdmin) {
+                if (seating.my_seat) note += ` Du sitzt auf Platz ${numbers[seating.my_seat]}.`;
+                note += ' Als Admin tippst du auf einen Platz, um ihn jemandem zu geben.';
+            } else if (canChoose && !seating.my_seat) note += ' Tippe auf einen freien Platz, um ihn zu nehmen.';
+            else if (canChoose && seating.my_seat) note += ` Du sitzt auf Platz ${numbers[seating.my_seat]}. Ein anderer freier Platz tauscht dich um.`;
+            else if (!seating.self_select) note += ' Die Plätze verteilt ein Admin.';
+            else if (loggedIn && !isAttendee) note += ' Einen Platz wählen können bestätigte Teilnehmer.';
+        }
+        byId('seatingNote').textContent = note;
+
+        const grid = byId('seatingGrid');
+        grid.replaceChildren();
+        grid.style.gridTemplateColumns = `repeat(${layout.cols}, var(--seat-size))`;
+        grid.classList.toggle('editing', editing);
+        for (let y = 0; y < layout.rows; y++) {
+            for (let x = 0; x < layout.cols; x++) {
+                const id = `${x}-${y}`;
+                const isSeat = layout.seats.includes(id);
+                const cell = el('button', 'seat-cell');
+                cell.type = 'button';
+                if (isSeat) {
+                    const occupant = !editing ? assign[id] : null;
+                    cell.classList.add('seat', occupant ? 'taken' : 'free');
+                    if (!editing && seating.my_seat === id) cell.classList.add('mine');
+                    cell.append(el('span', 'seat-number', String(numbers[id])));
+                    cell.append(el('span', 'seat-name', occupant ? occupant.name : (editing ? '' : 'frei')));
+                    cell.setAttribute('aria-label', `Platz ${numbers[id]}: ${occupant ? occupant.name : 'frei'}`);
+                } else {
+                    cell.classList.add('floor');
+                    cell.setAttribute('aria-label', editing ? `Feld ${x + 1}/${y + 1}: kein Platz` : 'kein Platz');
+                    if (!editing) cell.tabIndex = -1;
+                }
+                cell.addEventListener('click', () => onSeatClick(id, isSeat, editing));
+                grid.append(cell);
+            }
+        }
+    }
+
+    async function onSeatClick(id, isSeat, editing) {
+        const { party, is_admin: isAdmin } = state.data;
+        const seating = party.seating;
+        if (editing) {
+            const seats = seatingState.draft.seats;
+            seatingState.draft.seats = seats.includes(id) ? seats.filter((seat) => seat !== id) : [...seats, id].sort((a, b) => {
+                const [ax, ay] = a.split('-').map(Number);
+                const [bx, by] = b.split('-').map(Number);
+                return ay - by || ax - bx;
+            });
+            renderSeating();
+            return;
+        }
+        if (!isSeat) return;
+        if (isAdmin) { openSeatDialog(id); return; }
+        const occupant = seating.assign[id];
+        if (occupant || party.my_status !== 'approved' || !seating.self_select) return;
+        await runAction('netzje_seat', { seat: id }, null, `Platz ${seatNumbers(seating.seats)[id]} gehört dir.`);
+    }
+
+    function openSeatDialog(id) {
+        const { party } = state.data;
+        const number = seatNumbers(party.seating.seats)[id];
+        seatingState.dialogSeat = id;
+        byId('seatDialogTitle').textContent = `Platz ${number}`;
+        const select = byId('seatUser');
+        select.replaceChildren(el('option', '', '— frei —'));
+        select.firstChild.value = '0';
+        const current = party.seating.assign[id];
+        for (const person of party.attendees) {
+            const option = el('option', '', person.name);
+            option.value = String(person.id);
+            const seatOf = Object.entries(party.seating.assign).find(([, who]) => who.id === person.id);
+            if (seatOf && seatOf[0] !== id) option.textContent += ` (jetzt Platz ${seatNumbers(party.seating.seats)[seatOf[0]]})`;
+            select.append(option);
+        }
+        select.value = current ? String(current.id) : '0';
+        byId('seatDialogError').hidden = true;
+        byId('seatDialog').showModal();
+    }
+
+    byId('saveSeatButton').addEventListener('click', async () => {
+        const userId = Number(byId('seatUser').value);
+        const ok = await runAction('admin_netzje_seat_assign', { seat: seatingState.dialogSeat, user_id: userId }, byId('seatDialogError'), userId ? 'Platz vergeben.' : 'Platz ist wieder frei.');
+        if (ok) byId('seatDialog').close();
+    });
+
+    byId('editSeatingButton').addEventListener('click', () => {
+        const seating = state.data.party.seating;
+        seatingState.editing = true;
+        seatingState.draft = { cols: seating.cols, rows: seating.rows, seats: [...seating.seats] };
+        byId('seatCols').value = seating.cols;
+        byId('seatRows').value = seating.rows;
+        byId('seatSelfSelect').checked = seating.self_select;
+        byId('seatingError').hidden = true;
+        renderSeating();
+    });
+
+    for (const [inputId, key, max] of [['seatCols', 'cols', 20], ['seatRows', 'rows', 14]]) {
+        byId(inputId).addEventListener('input', () => {
+            const value = Math.max(2, Math.min(max, Number(byId(inputId).value) || 2));
+            seatingState.draft[key] = value;
+            // Sitze außerhalb des kleineren Rasters fallen weg
+            seatingState.draft.seats = seatingState.draft.seats.filter((seat) => {
+                const [x, y] = seat.split('-').map(Number);
+                return x < seatingState.draft.cols && y < seatingState.draft.rows;
+            });
+            renderSeating();
+        });
+    }
+
+    byId('cancelSeatingButton').addEventListener('click', () => {
+        seatingState.editing = false;
+        renderSeating();
+    });
+
+    byId('saveSeatingButton').addEventListener('click', async () => {
+        const ok = await runAction('admin_netzje_seating_save', {
+            cols: seatingState.draft.cols,
+            rows: seatingState.draft.rows,
+            seats: seatingState.draft.seats,
+            self_select: byId('seatSelfSelect').checked,
+        }, byId('seatingError'), 'Sitzplan gespeichert.');
+        if (ok) { seatingState.editing = false; renderSeating(); }
+    });
+
+    byId('leaveSeatButton').addEventListener('click', async () => {
+        const { party, is_admin: isAdmin } = state.data;
+        if (!confirm('Deinen Platz freigeben?')) return;
+        if (party.seating.self_select) await runAction('netzje_seat', { seat: '' }, null, 'Platz freigegeben.');
+        else if (isAdmin) await runAction('admin_netzje_seat_assign', { seat: party.seating.my_seat, user_id: 0 }, null, 'Platz freigegeben.');
+    });
+
     function renderAll() {
         renderBackground();
         renderParty();
+        renderSeating();
         renderStream();
         renderTimetable();
         if (byId('detailDialog').open) renderDetail();

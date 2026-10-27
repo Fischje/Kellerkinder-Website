@@ -35,7 +35,13 @@ foreach (($showSidebar ?? true) ? siteFeatures()['sidebar'] : [] as $entry) {
 
 <aside class="site-sidebar" id="siteSidebar" data-skip="<?= htmlspecialchars($sidebarSkip, ENT_QUOTES, 'UTF-8') ?>" aria-label="Kurz & knapp"<?= $sidebarBoxes === [] ? ' hidden' : '' ?>>
 <?php foreach ($sidebarBoxes as $sidebarBox): ?>
-<?php if ($sidebarBox === 'games'): ?>
+<?php if ($sidebarBox === 'now'): ?>
+    <?php /* Erscheint nur, wenn gerade jemand spielt; steht immer ganz oben */ ?>
+    <section class="sidebar-section sidebar-now" data-box="now" hidden aria-live="polite">
+        <h2 class="sidebar-title"><span class="live-dot" aria-hidden="true"></span>Gerade online <span class="sidebar-count" data-count></span></h2>
+        <ul class="sidebar-list" data-list></ul>
+    </section>
+<?php elseif ($sidebarBox === 'games'): ?>
     <section class="sidebar-section" data-box="games" hidden>
         <h2 class="sidebar-title">Meist gespielt</h2>
         <ul class="sidebar-list" data-list></ul>

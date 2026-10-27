@@ -1,8 +1,9 @@
 <?php
-// Gemeinsame Ansicht für die Seiten „Spiele“ (games.php, Top 10/30) und „Alle Spiele“
-// (alle-spiele.php). Erwartet $gamesView = 'top' | 'all'.
+// Gemeinsame Ansicht der Rubrik „Spiele-Statistik“: „Spiele“ (games.php, Top 10/30),
+// „Alle Spiele“ (alle-spiele.php) und „Spieler“ (spieler.php, Rangliste der Kellerkinder,
+// jede Zeile führt zum Spielerprofil). Erwartet $gamesView = 'top' | 'all' | 'players'.
 declare(strict_types=1);
-$gamesView = ($gamesView ?? 'top') === 'all' ? 'all' : 'top';
+$gamesView = in_array($gamesView ?? 'top', ['top', 'all', 'players'], true) ? $gamesView : 'top';
 require __DIR__ . '/bootstrap.php';
 ?>
 <!doctype html>
@@ -15,7 +16,7 @@ require __DIR__ . '/bootstrap.php';
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Kellerkinder">
-    <title><?= $gamesView === 'all' ? 'Alle Spiele' : 'Spiele' ?> — Kellerkinder</title>
+    <title><?= ['all' => 'Alle Spiele', 'players' => 'Spieler', 'top' => 'Spiele'][$gamesView] ?> — Kellerkinder</title>
     <meta name="description" content="Welche Spiele die Kellerkinder spielen und wie lange.">
     <link rel="icon" href="assets/kellerkinder-logo.svg?v=<?= htmlspecialchars($appVersion, ENT_QUOTES, 'UTF-8') ?>" type="image/svg+xml">
     <link rel="apple-touch-icon" href="assets/app-icon-180.png?v=<?= htmlspecialchars($appVersion, ENT_QUOTES, 'UTF-8') ?>">
@@ -43,12 +44,17 @@ require __DIR__ . '/bootstrap.php';
 
 <?php
 $activeNav = 'games';
-if ($gamesView === 'all') {
-    $pageKicker = 'Spiele / Alle Spiele';
+$activeSub = $gamesView === 'players' ? 'players' : 'games';
+if ($gamesView === 'players') {
+    $pageKicker = 'Spiele-Statistik';
+    $pageTitle = 'Die Kellerkinder';
+    $pageLead = 'Wer am meisten zockt – und was. Ein Klick auf einen Namen öffnet das Spielerprofil.';
+} elseif ($gamesView === 'all') {
+    $pageKicker = 'Spiele-Statistik';
     $pageTitle = 'Alle Spiele';
     $pageLead = 'Die komplette Rangliste aller Spiele, die bei uns auf Discord gespielt wurden. Der Bot zählt dafür nur volle 15 Minuten pro Spiel.';
 } else {
-    $pageKicker = 'Spiele';
+    $pageKicker = 'Spiele-Statistik';
     $pageTitle = 'Das spielen wir';
     $pageLead = 'Welche Spiele bei uns auf Discord laufen und wie lange. Der Bot zählt dafür nur volle 15 Minuten pro Spiel.';
 }
@@ -62,6 +68,8 @@ require __DIR__ . '/site-header.php';
         <div class="games-head">
             <?php if ($gamesView === 'all'): ?>
                 <h2 class="section-title"><span class="accent">Alle</span> Spiele</h2>
+            <?php elseif ($gamesView === 'players'): ?>
+                <h2 class="section-title"><span class="accent">Meiste</span> Spielzeit</h2>
             <?php else: ?>
                 <h2 class="section-title"><span class="accent">Meist</span> gespielt</h2>
             <?php endif; ?>
@@ -77,7 +85,7 @@ require __DIR__ . '/site-header.php';
         <div id="statsBody"><p class="widget-loading">Wird geladen …</p></div>
     </section>
 
-    <?php if ($gamesView === 'top'): ?>
+    <?php if ($gamesView === 'players'): ?>
     <section class="games-panel stats-admin" id="statsAdmin" hidden>
         <h2 class="section-title"><span class="accent">Spieler</span> ausblenden</h2>
         <p class="stats-note">Nur für Admins sichtbar. Angehakte Discord-Mitglieder zählen nicht zur Statistik –
@@ -97,7 +105,7 @@ require __DIR__ . '/site-header.php';
 
 <script nonce="<?= htmlspecialchars($cspNonce, ENT_QUOTES, 'UTF-8') ?>">
     const body = document.getElementById('statsBody');
-    const VIEW = <?= json_encode($gamesView) ?>;       // 'top' oder 'all'
+    const VIEW = <?= json_encode($gamesView) ?>;       // 'top', 'all' oder 'players'
     const TOP_VISIBLE = 10;                              // so viele Spiele sind sofort zu sehen
     const TOP_EXPANDED = 30;                             // bis hierhin lässt sich aufklappen
     const ALLOWED_DAYS = [7, 30, 365, 0];
@@ -227,10 +235,11 @@ require __DIR__ . '/site-header.php';
                 li.hidden = true;
                 extraItems.push(li);
             }
-            const expandable = Boolean(row.detail && row.detail.rows.length > 0);
-            const main = document.createElement(expandable ? 'button' : 'div');
-            main.className = 'stats-row' + (expandable ? ' expandable' : '');
+            const expandable = !row.href && Boolean(row.detail && row.detail.rows.length > 0);
+            const main = document.createElement(row.href ? 'a' : (expandable ? 'button' : 'div'));
+            main.className = 'stats-row' + (expandable ? ' expandable' : '') + (row.href ? ' is-link' : '');
             if (expandable) main.type = 'button';
+            if (row.href) main.href = row.href;
             const bar = document.createElement('span');
             bar.className = 'stats-bar';
             bar.style.width = `${Math.max(2, Math.round((row.minutes / max) * 100))}%`;
@@ -254,6 +263,13 @@ require __DIR__ . '/site-header.php';
                 main.append(bar, rank, icon, name, time);
             } else {
                 main.append(bar, rank, name, time);
+            }
+            if (row.href) {
+                const caret = document.createElement('span');
+                caret.className = 'stats-caret';
+                caret.setAttribute('aria-hidden', 'true');
+                caret.textContent = '→';
+                main.appendChild(caret);
             }
             if (expandable) {
                 const caret = document.createElement('span');
@@ -391,11 +407,20 @@ require __DIR__ . '/site-header.php';
         const totalGames = Number(data.total_games) || data.games.length;
         const summary = document.createElement('div');
         summary.className = 'stats-summary';
-        summary.append(
-            tile(formatMinutes(data.total_minutes), 'Gesamte Spielzeit'),
-            tile(String(totalGames), totalGames === 1 ? 'Spiel' : 'Spiele'),
-            tile(data.games[0].name, 'Meistgespielt'),
-        );
+        const playersList = Array.isArray(data.players) ? data.players : [];
+        if (VIEW === 'players') {
+            summary.append(
+                tile(formatMinutes(data.total_minutes), 'Gesamte Spielzeit'),
+                tile(String(playersList.length), playersList.length === 1 ? 'Spieler' : 'Spieler'),
+                tile(playersList[0] ? playersList[0].name : '–', 'Am meisten gezockt'),
+            );
+        } else {
+            summary.append(
+                tile(formatMinutes(data.total_minutes), 'Gesamte Spielzeit'),
+                tile(String(totalGames), totalGames === 1 ? 'Spiel' : 'Spiele'),
+                tile(data.games[0].name, 'Meistgespielt'),
+            );
+        }
 
         const nodes = [summary];
         if (data.stale) {
@@ -411,6 +436,25 @@ require __DIR__ . '/site-header.php';
             back.href = `games.php?tage=${data.days}`;
             back.textContent = '← Zurück zu den Top-Spielen';
             nodes.push(back);
+        }
+        if (VIEW === 'players') {
+            if (playersList.length === 0) {
+                const note = document.createElement('p');
+                note.className = 'widget-empty';
+                note.textContent = 'Die Spielernamen sind gerade nicht öffentlich.';
+                nodes.push(note);
+            } else {
+                nodes.push(list('Kellerkinder', playersList.map(player => ({
+                    name: player.name,
+                    minutes: player.minutes,
+                    sub: player.top_game ? `am meisten ${player.top_game}` : '',
+                    href: `spieler.php?name=${encodeURIComponent(player.name)}&tage=${data.days}`,
+                    hasAvatar: true,
+                    avatar: player.avatar || '',
+                }))));
+            }
+            body.replaceChildren(...nodes);
+            return;
         }
         nodes.push(list('Spiele', data.games.map(game => ({
             name: game.name,
@@ -428,20 +472,17 @@ require __DIR__ . '/site-header.php';
             all.textContent = `Alle ${totalGames} Spiele ansehen →`;
             nodes.push(all);
         }
-        if (VIEW === 'top' && Array.isArray(data.players) && data.players.length > 0) {
-            nodes.push(list('Kellerkinder', data.players.map(player => ({
-                name: player.name,
-                minutes: player.minutes,
-                sub: player.top_game ? `am meisten ${player.top_game}` : '',
-                detail: Array.isArray(player.top_games) ? { title: 'Top-5-Spiele', rows: player.top_games } : null,
-                hasAvatar: true,
-                avatar: player.avatar || '',
-            }))));
+        if (VIEW === 'top' && playersList.length > 0) {
+            const more = document.createElement('a');
+            more.className = 'secondary-button stats-link-button';
+            more.href = `spieler.php?tage=${data.days}`;
+            more.textContent = 'Zu den Spielern →';
+            nodes.push(more);
         }
         if (hasDetails || data.games.some(game => Array.isArray(game.top_players))) {
             const hint = document.createElement('p');
             hint.className = 'stats-note';
-            hint.textContent = 'Tipp: Ein Spiel oder einen Spieler anklicken, um die Top-Spieler bzw. Top-5-Spiele zu sehen.';
+            hint.textContent = 'Tipp: Ein Spiel anklicken, um seine Top-Spieler zu sehen.';
             nodes.splice(nodes.indexOf(summary) + 1, 0, hint);
         }
         body.replaceChildren(...nodes);

@@ -5,8 +5,11 @@
 // Wird von api.php (Lesen/Speichern) und von den Seiten (Menü, Seitenleiste,
 // Startseite) eingebunden. Die Seiten lesen die Datendatei nur lesend.
 
-/** Kästen der Seitenleiste in Standard-Reihenfolge (die nächste Netzje steht unten). */
+/** Kästen der Seitenleiste in Standard-Reihenfolge (die nächste Netzje steht unten).
+ *  „Gerade online“ steht immer ganz oben und erscheint nur, wenn jemand spielt. */
+const FEATURE_SIDEBAR_PINNED = 'now';
 const FEATURE_SIDEBAR_BOXES = [
+    'now' => 'Gerade online',
     'games' => 'Meist gespielt',
     'blog' => 'Neu im Blog',
     'servers' => 'Unsere Server',
@@ -16,9 +19,10 @@ const FEATURE_SIDEBAR_BOXES = [
 /** Seiten, die sich im Menü aus- und einblenden lassen (der Kalender bleibt immer). */
 const FEATURE_PAGES = [
     'blog' => 'Blog',
-    'games' => 'Spiele',
+    'games' => 'Spiele-Statistik',
     'servers' => 'Server',
     'netzje' => 'Netzje',
+    'impressions' => 'Eindrücke (nur für Angemeldete)',
 ];
 
 /** Teile der Startseite (Kalender). */
@@ -45,6 +49,10 @@ function normalizeFeatures($value): array
     foreach (array_keys(FEATURE_SIDEBAR_BOXES) as $box) {
         $sidebar[$box] ??= ['box' => $box, 'enabled' => true];
     }
+    // „Gerade online“ immer an erster Stelle
+    $pinned = $sidebar[FEATURE_SIDEBAR_PINNED];
+    unset($sidebar[FEATURE_SIDEBAR_PINNED]);
+    $sidebar = [FEATURE_SIDEBAR_PINNED => $pinned] + $sidebar;
     $flags = static function ($raw, array $keys): array {
         $raw = is_array($raw) ? $raw : [];
         $result = [];
