@@ -311,6 +311,7 @@ if (!isset($backgroundImages) || !is_array($backgroundImages)) { $backgroundImag
         }
 
         .brand-accent { color: var(--accent); }
+        .brand-tld { margin-left: 2px; color: #9aa1ad; font-size: .42em; font-weight: 700; letter-spacing: .04em; vertical-align: baseline; }
 
         .main-nav { gap: 34px; }
 

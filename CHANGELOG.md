@@ -1,5 +1,9 @@
 # Änderungsprotokoll
 
+## 2.34.3 — „.gg“ hinter dem Titel
+
+- Hinter „Kellerkinder“ im Kopfband steht jetzt ganz klein, grau „.gg“ (Vorbereitung auf den Umzug zu kellerkinder.gg)
+
 ## 2.34.2 — Infoleiste am Handy schlanker
 
 - Nur noch 20 px Abstand über den Elementen der Infoleiste, kein Abstand mehr darunter (2.34.1 hatte oben 12 px und unten 6 px dazugegeben und die Leiste unnötig vergrößert)

@@ -63,7 +63,7 @@ $currentPageHidden = !featurePageEnabled($activeNav);
             <img src="assets/kellerkinder-logo.svg?v=<?= $h((string) ($appVersion ?? '')) ?>" alt="" class="brand-logo">
             <span class="brand-text">
                 <span class="brand-name-row">
-                    <span class="brand-name">Keller<span class="brand-accent">kinder</span></span>
+                    <span class="brand-name">Keller<span class="brand-accent">kinder</span><span class="brand-tld">.gg</span></span>
                     <span class="brand-sun" aria-hidden="true">☀️💦</span>
                 </span>
             </span>
