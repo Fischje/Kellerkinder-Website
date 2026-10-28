@@ -1,5 +1,9 @@
 # Änderungsprotokoll
 
+## 2.37.2 — Links im Fließtext mit Symbol
+
+- Links in Texten (Blog, Home) sind grün und fett; dahinter zeigt „↗“ eine andere Website (öffnet im neuen Tab), „→“ eine Seite der Kellerkinder. Unterstrichen nur beim Drüberfahren
+
 ## 2.37.1 — Schönere Links in Texten
 
 - Verlinkte Überschriften (Home, Blog) sind jetzt klickbare Kacheln: weiß, grüner Rand links, Pfeil rechts, beim Drüberfahren hellgrün – statt grün unterstrichener Schrift

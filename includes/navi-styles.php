@@ -833,9 +833,11 @@ if (!isset($backgroundImages) || !is_array($backgroundImages)) { $backgroundImag
         .post-body :is(h2, h3, h4):has(> a:hover, > a:focus-visible) { background: rgba(var(--accent-rgb), .18); }
         .post-body :is(h2, h3, h4) > a { flex: 1; display: flex; align-items: center; justify-content: space-between; gap: 10px; color: var(--text); text-decoration: none; outline: none; }
         .post-body :is(h2, h3, h4) > a::after { content: "→"; color: var(--accent-text); font-weight: 900; }
-        /* Links im Fließtext */
-        .post-body :is(p, li, blockquote) a { color: var(--text); font-weight: 700; text-decoration: none; border-bottom: 2px solid var(--accent); }
-        .post-body :is(p, li, blockquote) a:hover, .post-body :is(p, li, blockquote) a:focus-visible { color: var(--accent-text); }
+        /* Links im Fließtext: grün und fett; „↗“ = andere Website (neuer Tab), „→“ = Seite der Kellerkinder */
+        .post-body :is(p, li, blockquote) a { color: var(--accent-text); font-weight: 700; text-decoration: none; }
+        .post-body :is(p, li, blockquote) a::after { content: "→"; display: inline-block; margin-left: 3px; font-size: .85em; }
+        .post-body :is(p, li, blockquote) a[target="_blank"]::after { content: "↗"; font-size: .8em; }
+        .post-body :is(p, li, blockquote) a:hover, .post-body :is(p, li, blockquote) a:focus-visible { text-decoration: underline; text-underline-offset: 3px; }
         .post-body blockquote { border-left-color: var(--accent); background: var(--panel-strong); }
         .post-body pre { background: var(--panel-soft); color: var(--text); }
 
