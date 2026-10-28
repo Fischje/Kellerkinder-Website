@@ -91,29 +91,7 @@ require __DIR__ . '/includes/site-header.php';
 
         <div>
             <label for="editorSurface">Inhalt</label>
-            <div class="editor-toolbar" role="toolbar" aria-label="Formatierung">
-                <button type="button" data-cmd="bold" title="Fett"><b>B</b></button>
-                <button type="button" data-cmd="italic" title="Kursiv"><i>I</i></button>
-                <button type="button" data-cmd="underline" title="Unterstrichen"><u>U</u></button>
-                <button type="button" data-cmd="strikeThrough" title="Durchgestrichen"><s>S</s></button>
-                <span class="sep"></span>
-                <button type="button" data-block="h2" title="Überschrift">H2</button>
-                <button type="button" data-block="h3" title="Zwischenüberschrift">H3</button>
-                <button type="button" data-block="p" title="Normaler Text">¶</button>
-                <span class="sep"></span>
-                <button type="button" data-cmd="insertUnorderedList" title="Aufzählung">• Liste</button>
-                <button type="button" data-cmd="insertOrderedList" title="Nummerierte Liste">1. Liste</button>
-                <button type="button" data-block="blockquote" title="Zitat">❝</button>
-                <span class="sep"></span>
-                <button type="button" id="btnLink" title="Link einfügen">🔗 Link</button>
-                <button type="button" id="btnImage" title="Bild hochladen">🖼 Bild</button>
-                <button type="button" id="btnYoutube" title="YouTube-Video einbetten">▶ YouTube</button>
-                <span class="sep"></span>
-                <button type="button" data-cmd="removeFormat" title="Formatierung entfernen">✗</button>
-            </div>
-            <div class="editor-surface" id="editorSurface" contenteditable="true"
-                 data-placeholder="Schreib hier deinen Beitrag …"></div>
-            <p class="editor-hint">Bilder über „Bild“, per Einfügen (Strg+V) oder Hineinziehen – sie werden automatisch auf maximal 1600 Pixel Breite verkleinert. Über „Bild“ kannst du die Anzeigebreite anpassen.</p>
+            <?php $richEditorId = 'editorSurface'; $richEditorPlaceholder = 'Schreib hier deinen Beitrag …'; require __DIR__ . '/includes/rich-editor.php'; ?>
         </div>
 
         <label class="remember-row">
@@ -129,7 +107,7 @@ require __DIR__ . '/includes/site-header.php';
     </div>
 </dialog>
 
-<input type="file" id="imageInput" accept="image/png,image/jpeg,image/gif,image/webp" hidden>
+<script src="assets/rich-editor.js?v=<?= htmlspecialchars($appVersion, ENT_QUOTES, 'UTF-8') ?>"></script>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script nonce="<?= htmlspecialchars($cspNonce, ENT_QUOTES, 'UTF-8') ?>">
@@ -327,7 +305,6 @@ require __DIR__ . '/includes/site-header.php';
 
     // ===== Editor =====
     const editorDialog = byId('editorDialog');
-    const surface = byId('editorSurface');
 
     function openEditor(post = null) {
         state.editingId = post ? post.id : 0;
@@ -335,214 +312,13 @@ require __DIR__ . '/includes/site-header.php';
         byId('postTitle').value = post ? post.title : '';
         byId('postTags').value = post ? post.tags.join(', ') : '';
         byId('postDraft').checked = post ? post.status === 'draft' : false;
-        surface.innerHTML = post ? post.content_html : '';
+        editor.setHtml(post ? post.content_html : '');
         byId('deletePostButton').hidden = !post;
         editorDialog.showModal();
         requestAnimationFrame(() => byId('postTitle').focus());
     }
 
-    function runCommand(command) {
-        surface.focus();
-        document.execCommand(command, false, undefined);
-    }
-
-    function applyBlock(tag) {
-        surface.focus();
-        document.execCommand('formatBlock', false, tag);
-    }
-
-    for (const button of document.querySelectorAll('.editor-toolbar [data-cmd]')) {
-        button.addEventListener('click', () => runCommand(button.dataset.cmd));
-    }
-    for (const button of document.querySelectorAll('.editor-toolbar [data-block]')) {
-        button.addEventListener('click', () => applyBlock(button.dataset.block));
-    }
-
-    byId('btnLink').addEventListener('click', () => {
-        const url = window.prompt('Link-Adresse (mit https:// beginnen):', 'https://');
-        if (!url) return;
-        if (!/^https?:\/\//i.test(url)) {
-            showToast('Der Link muss mit http:// oder https:// beginnen.');
-            return;
-        }
-        surface.focus();
-        document.execCommand('createLink', false, url);
-    });
-
-    function youtubeId(url) {
-        const patterns = [
-            /(?:youtube\.com\/watch\?(?:.*&)?v=)([A-Za-z0-9_-]{6,20})/,
-            /(?:youtu\.be\/)([A-Za-z0-9_-]{6,20})/,
-            /(?:youtube\.com\/(?:embed|shorts)\/)([A-Za-z0-9_-]{6,20})/
-        ];
-        for (const pattern of patterns) {
-            const match = url.match(pattern);
-            if (match) return match[1];
-        }
-        return null;
-    }
-
-    byId('btnYoutube').addEventListener('click', () => {
-        const url = window.prompt('YouTube-Link einfügen:', 'https://');
-        if (!url) return;
-        const id = youtubeId(url);
-        if (!id) {
-            showToast('Das sieht nicht nach einem YouTube-Link aus.');
-            return;
-        }
-        const anchor = document.createElement('a');
-        anchor.className = 'yt-embed';
-        anchor.href = `https://www.youtube.com/watch?v=${id}`;
-        const thumb = document.createElement('img');
-        thumb.src = `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
-        thumb.alt = 'YouTube-Video ansehen';
-        const play = document.createElement('span');
-        play.className = 'yt-embed-play';
-        play.textContent = '▶';
-        anchor.append(thumb, play);
-        insertNode(anchor);
-    });
-
-    function insertNode(node) {
-        surface.focus();
-        const selection = window.getSelection();
-        if (selection && selection.rangeCount > 0 && surface.contains(selection.anchorNode)) {
-            const range = selection.getRangeAt(0);
-            range.deleteContents();
-            range.insertNode(node);
-            range.setStartAfter(node);
-            selection.removeAllRanges();
-            selection.addRange(range);
-        } else {
-            surface.appendChild(node);
-        }
-        surface.appendChild(document.createElement('br'));
-    }
-
-    // ===== Bilder: Bild-Knopf, Einfügen aus der Zwischenablage, Hineinziehen =====
-    // Bilder werden im Browser auf höchstens 1600 px Breite verkleinert (Handyfotos sind sonst zu groß
-    // für den Upload) und dann hochgeladen; im Beitrag steht nur noch die Adresse.
-    // Über FileReader + data-URL, weil die Content-Security-Policy blob:-Bilder blockiert.
-    const BLOG_IMAGE_MAX_WIDTH = 1600;
-
-    function readAsDataUrl(file) {
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(String(reader.result || ''));
-            reader.onerror = () => reject(new Error('Das Bild konnte nicht gelesen werden.'));
-            reader.readAsDataURL(file);
-        });
-    }
-
-    function loadImage(src) {
-        return new Promise((resolve, reject) => {
-            const image = new Image();
-            image.onload = () => resolve(image);
-            image.onerror = () => reject(new Error('Das Bild konnte nicht geöffnet werden (nur PNG, JPEG, GIF oder WebP).'));
-            image.src = src;
-        });
-    }
-
-    /** Verkleinert ein Bild (data-URL) und gibt eine neue data-URL zurück; GIFs bleiben, damit sie animiert bleiben. */
-    async function shrinkDataUrl(dataUrl) {
-        if (/^data:image\/gif;/.test(dataUrl) && dataUrl.length < 7_500_000) return dataUrl;
-        const image = await loadImage(dataUrl);
-        const scale = Math.min(1, BLOG_IMAGE_MAX_WIDTH / image.naturalWidth);
-        // Kleine PNGs (z. B. mit Transparenz) bleiben PNG; alles andere wird JPEG
-        if (/^data:image\/png;/.test(dataUrl) && scale === 1 && dataUrl.length < 2_000_000) return dataUrl;
-        // Unter ~700 KB bleiben: Viele Server nehmen standardmäßig nur 1 MB pro Anfrage an.
-        // Erst die Qualität senken, dann notfalls die Größe.
-        const MAX_LENGTH = 950_000;
-        let width = Math.max(1, Math.round(image.naturalWidth * scale));
-        let result = '';
-        for (let attempt = 0; attempt < 6; attempt++) {
-            const canvas = document.createElement('canvas');
-            canvas.width = width;
-            canvas.height = Math.max(1, Math.round(image.naturalHeight * (width / image.naturalWidth)));
-            const context = canvas.getContext('2d');
-            context.fillStyle = '#ffffff';
-            context.fillRect(0, 0, canvas.width, canvas.height);
-            context.drawImage(image, 0, 0, canvas.width, canvas.height);
-            for (const quality of [0.86, 0.74, 0.62]) {
-                result = canvas.toDataURL('image/jpeg', quality);
-                if (result.length <= MAX_LENGTH) return result;
-            }
-            width = Math.max(1, Math.round(width * 0.75));
-        }
-        return result;
-    }
-
-    async function uploadDataUrl(dataUrl) {
-        const result = await api('blog_upload_image', { image: await shrinkDataUrl(dataUrl) });
-        return result.url;
-    }
-
-    async function insertImageFile(file, askWidth) {
-        if (!/^image\/(png|jpeg|gif|webp)$/.test(file.type)) {
-            showToast('Nur PNG-, JPEG-, GIF- oder WebP-Bilder.');
-            return;
-        }
-        if (file.size > 30_000_000) {
-            showToast('Das Bild ist zu groß (über 30 MB).');
-            return;
-        }
-        showToast('Bild wird hochgeladen …');
-        try {
-            const url = await uploadDataUrl(await readAsDataUrl(file));
-            const image = document.createElement('img');
-            image.src = url;
-            image.alt = '';
-            insertNode(image);
-            showToast('Bild eingefügt.');
-            if (askWidth) {
-                const width = window.prompt('Anzeigebreite in Pixeln (leer lassen für volle Breite):', '');
-                if (width && /^\d+$/.test(width)) image.setAttribute('width', width);
-            }
-        } catch (error) {
-            showToast(error.message);
-        }
-    }
-
-    function imageFiles(dataTransfer) {
-        return [...((dataTransfer && dataTransfer.files) || [])].filter(file => file.type.startsWith('image/'));
-    }
-
-    byId('btnImage').addEventListener('click', () => byId('imageInput').click());
-
-    byId('imageInput').addEventListener('change', async event => {
-        const file = event.target.files && event.target.files[0];
-        event.target.value = '';
-        if (file) await insertImageFile(file, true);
-    });
-
-    // Einfügen (Strg+V) bzw. Hineinziehen von Bildern: hochladen statt als riesige data-URL in den Text
-    surface.addEventListener('paste', async event => {
-        const files = imageFiles(event.clipboardData);
-        if (files.length === 0) return;
-        event.preventDefault();
-        for (const file of files) await insertImageFile(file, false);
-    });
-    surface.addEventListener('drop', async event => {
-        const files = imageFiles(event.dataTransfer);
-        if (files.length === 0) return;
-        event.preventDefault();
-        for (const file of files) await insertImageFile(file, false);
-    });
-
-    /** Vor dem Speichern: noch eingebettete Bilder (data-URL) hochladen; fremde Bild-Adressen melden. */
-    async function uploadEmbeddedImages() {
-        let foreign = 0;
-        for (const image of [...surface.querySelectorAll('img')]) {
-            const src = image.getAttribute('src') || '';
-            if (src.startsWith('data:image/')) {
-                showToast('Bild wird hochgeladen …');
-                image.setAttribute('src', await uploadDataUrl(src));
-            } else if (/^https?:/i.test(src) && !/^https:\/\/i\.ytimg\.com\//.test(src)) {
-                foreign++;
-            }
-        }
-        return foreign;
-    }
+    const editor = kkRichEditor({ root: editorDialog.querySelector('[data-rich-editor]'), api, showToast });
 
     byId('savePostButton').addEventListener('click', async () => {
         const title = byId('postTitle').value.trim();
@@ -555,12 +331,11 @@ require __DIR__ . '/includes/site-header.php';
         const button = byId('savePostButton');
         button.disabled = true;
         try {
-            const foreign = await uploadEmbeddedImages();
-            if (foreign > 0 && !window.confirm(`${foreign === 1 ? 'Ein Bild stammt' : `${foreign} Bilder stammen`} von einer anderen Website und ${foreign === 1 ? 'wird' : 'werden'} nicht übernommen. Bitte das Bild speichern und über „Bild“ hochladen. Trotzdem ohne ${foreign === 1 ? 'dieses Bild' : 'diese Bilder'} speichern?`)) return;
+            if (!await editor.prepareForSave()) return;
             await api('blog_save_post', {
                 id: state.editingId,
                 title,
-                content_html: surface.innerHTML,
+                content_html: editor.getHtml(),
                 tags,
                 status: byId('postDraft').checked ? 'draft' : 'published'
             });

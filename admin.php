@@ -35,7 +35,7 @@ require __DIR__ . '/includes/bootstrap.php';
 $activeNav = 'admin';
 $pageKicker = 'Admin';
 $pageTitle = 'Adminbereich';
-$pageLead = 'Zentrale Schalter für Seitenleiste, Menü und Startseite, die offenen Netzje-Anfragen, Benutzer und das Aufräumen der Daten.';
+$pageLead = 'Zentrale Schalter für Seitenleiste, Menü, Home und Kalender, die offenen Netzje-Anfragen, Benutzer und das Aufräumen der Daten.';
 $showInstall = false;
 require __DIR__ . '/includes/site-header.php';
 ?>
@@ -58,18 +58,18 @@ require __DIR__ . '/includes/site-header.php';
         <form id="featuresForm" class="admin-settings">
             <section class="admin-panel">
                 <h2 class="section-title"><span class="accent">Seitenleiste</span></h2>
-                <p class="admin-help">Welche Kästen rechts (auf dem Handy unter dem Inhalt) erscheinen und in welcher Reihenfolge. Ist eine Seite im Menü ausgeblendet, fehlt auch ihr Kasten.</p>
+                <p class="admin-help">Welche Kästen rechts (auf dem Handy unter dem Inhalt) erscheinen, in welcher Reihenfolge und auf welchen Seiten. Hat eine Seite keinen Kasten, nutzt der Inhalt die volle Breite. Ist eine Seite im Menü ausgeblendet, fehlt auch ihr Kasten.</p>
                 <ol class="admin-order" id="sidebarList"></ol>
             </section>
 
             <section class="admin-panel">
                 <h2 class="section-title"><span class="accent">Menü</span> &amp; Seiten</h2>
-                <p class="admin-help">Ausgeblendete Seiten verschwinden aus dem Menü und der Seitenleiste. Per Link bleiben sie erreichbar (mit Hinweis), damit du sie vorbereiten kannst. Der Kalender ist immer da.</p>
+                <p class="admin-help">Ausgeblendete Seiten verschwinden aus dem Menü und der Seitenleiste. Per Link bleiben sie erreichbar (mit Hinweis), damit du sie vorbereiten kannst. Home und Kalender sind immer da.</p>
                 <div class="admin-switches" id="pageSwitches"></div>
             </section>
 
             <section class="admin-panel">
-                <h2 class="section-title"><span class="accent">Startseite</span></h2>
+                <h2 class="section-title"><span class="accent">Home</span> &amp; Kalender</h2>
                 <div class="admin-switches" id="homeSwitches"></div>
             </section>
 
@@ -226,7 +226,7 @@ require __DIR__ . '/includes/site-header.php';
             const input = el('input');
             input.type = 'checkbox';
             input.checked = entry.enabled;
-            input.addEventListener('change', () => { entry.enabled = input.checked; setDirty(true); });
+            input.addEventListener('change', () => { entry.enabled = input.checked; setDirty(true); renderSettings(); });
             label.append(input, el('span', '', labels.sidebar[entry.box] || entry.box));
             const pageOff = features.pages[entry.box] === false;
             if (pageOff) label.append(el('small', 'admin-muted', 'Seite ist ausgeblendet'));
@@ -249,6 +249,23 @@ require __DIR__ . '/includes/site-header.php';
             if (entry.box === 'now') label.append(el('small', 'admin-muted', 'immer oben, nur wenn jemand spielt'));
             moves.append(move(-1, '↑', 'nach oben'), move(1, '↓', 'nach unten'));
             li.append(el('span', 'admin-order-number', index + 1), label, moves);
+            // Auf welchen Seiten der Kasten erscheint
+            const where = el('div', 'admin-box-pages');
+            where.append(el('span', 'admin-muted', 'Zeigen auf:'));
+            for (const [page, text] of Object.entries(labels.sidebar_pages || {})) {
+                const chip = el('label', 'admin-page-chip');
+                const check = el('input');
+                check.type = 'checkbox';
+                check.checked = entry.pages.includes(page);
+                check.disabled = !entry.enabled;
+                check.addEventListener('change', () => {
+                    entry.pages = check.checked ? [...entry.pages, page] : entry.pages.filter((item) => item !== page);
+                    setDirty(true);
+                });
+                chip.append(check, el('span', '', text));
+                where.append(chip);
+            }
+            li.append(where);
             list.append(li);
         });
 
@@ -352,7 +369,7 @@ require __DIR__ . '/includes/site-header.php';
     // ===== Benutzer & Admins =====
     const userDialog = byId('adminUserDialog');
 
-    // Gleiche Regeln wie beim Registrieren (index.php); der Server prüft ohnehin selbst.
+    // Gleiche Regeln wie beim Registrieren (kalender.php); der Server prüft ohnehin selbst.
     function passwordValidationMessage(password, confirmation = null) {
         const characters = [...password];
         const hasLetter = characters.some((c) => /^\p{L}$/u.test(c));
@@ -564,7 +581,7 @@ require __DIR__ . '/includes/site-header.php';
                 : 'Bitte melde dich im Kalender mit einem Admin-Konto an und öffne diese Seite dann erneut.');
             gate.append(text);
             const link = el('a', 'primary-button', 'Zum Kalender');
-            link.href = 'index.php';
+            link.href = 'kalender.php#anmelden';
             gate.append(link);
             return;
         }

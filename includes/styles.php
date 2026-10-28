@@ -1,6 +1,6 @@
 <?php
 // Gemeinsames Stylesheet für alle Seiten (Kalender, Blog).
-// Wird von index.php und blog.php eingebunden. Enthält PHP, weil die
+// Wird von allen Seiten eingebunden. Enthält PHP, weil die
 // Hintergrundbilder je Theme dynamisch eingesetzt werden.
 if (!isset($backgroundImages) || !is_array($backgroundImages)) { $backgroundImages = []; }
 ?>

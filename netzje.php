@@ -46,7 +46,6 @@ $pageKicker = 'Netzje';
 $pageTitle = 'Netzje';
 $pageLead = 'Unsere LAN-Party: Termin, Stundenplan, Anmeldung und Live-Stream.';
 $showInstall = false;
-$showSidebar = false; // Wunsch: keine Widgets auf der Netzje-Seite, volle Breite für Party und Stundenplan
 require __DIR__ . '/includes/site-header.php';
 ?>
 
@@ -548,7 +547,7 @@ require __DIR__ . '/includes/site-header.php';
         const hint = el('p', 'netzje-muted');
         hint.append(`${text} `);
         const link = el('a', '', 'Zur Anmeldung');
-        link.href = 'index.php';
+        link.href = 'kalender.php#anmelden';
         hint.append(link);
         return hint;
     }

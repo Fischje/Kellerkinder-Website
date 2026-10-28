@@ -16,6 +16,32 @@ const FEATURE_SIDEBAR_BOXES = [
     'netzje' => 'Nächste Netzje',
 ];
 
+/** Seiten, auf denen Kästen der Seitenleiste erscheinen können (Schlüssel wie $activeNav). */
+const FEATURE_SIDEBAR_PAGES = [
+    'home' => 'Home',
+    'calendar' => 'Kalender',
+    'blog' => 'Blog',
+    'games' => 'Spiele-Statistik',
+    'servers' => 'Server',
+    'netzje' => 'Netzje',
+    'impressions' => 'Eindrücke',
+    'admin' => 'Admin',
+];
+
+/**
+ * Standard: Ein Kasten erscheint überall außer auf „seiner“ Seite (dort steht der Inhalt schon),
+ * „Neu im Blog“ nicht auf Home (dort stehen die neuesten Beiträge unter dem Text) und auf der
+ * Netzje-Seite gar keine Kästen (Wunsch: volle Breite für Party und Stundenplan).
+ */
+function featureSidebarDefaultPages(string $box): array
+{
+    $hidden = ['netzje', $box];
+    if ($box === 'blog') {
+        $hidden[] = 'home';
+    }
+    return array_values(array_diff(array_keys(FEATURE_SIDEBAR_PAGES), $hidden));
+}
+
 /** Seiten, die sich im Menü aus- und einblenden lassen (der Kalender bleibt immer). */
 const FEATURE_PAGES = [
     'blog' => 'Blog',
@@ -25,10 +51,10 @@ const FEATURE_PAGES = [
     'impressions' => 'Eindrücke (nur für Angemeldete)',
 ];
 
-/** Teile der Startseite (Kalender). */
+/** Teile der Seiten Home und Kalender (Schlüssel bleiben aus Kompatibilität gleich). */
 const FEATURE_HOME = [
-    'blog_teaser' => 'Hinweis „Neu im Blog“ über dem Kalender',
-    'achievements' => 'Abschnitt „Unsere Erfolge“',
+    'blog_teaser' => 'Home: „Neu im Blog“ (die drei neuesten Beiträge) unter dem Starttext',
+    'achievements' => 'Kalender: Abschnitt „Unsere Erfolge“',
 ];
 
 /**
@@ -43,11 +69,15 @@ function normalizeFeatures($value): array
     foreach (is_array($value['sidebar'] ?? null) ? $value['sidebar'] : [] as $entry) {
         $box = is_array($entry) ? (string) ($entry['box'] ?? '') : '';
         if (isset(FEATURE_SIDEBAR_BOXES[$box]) && !isset($sidebar[$box])) {
-            $sidebar[$box] = ['box' => $box, 'enabled' => (bool) ($entry['enabled'] ?? true)];
+            // pages: auf welchen Seiten der Kasten erscheint (fehlt die Angabe, gelten die Standardwerte)
+            $pages = is_array($entry['pages'] ?? null)
+                ? array_values(array_intersect(array_keys(FEATURE_SIDEBAR_PAGES), array_map('strval', $entry['pages'])))
+                : featureSidebarDefaultPages($box);
+            $sidebar[$box] = ['box' => $box, 'enabled' => (bool) ($entry['enabled'] ?? true), 'pages' => $pages];
         }
     }
     foreach (array_keys(FEATURE_SIDEBAR_BOXES) as $box) {
-        $sidebar[$box] ??= ['box' => $box, 'enabled' => true];
+        $sidebar[$box] ??= ['box' => $box, 'enabled' => true, 'pages' => featureSidebarDefaultPages($box)];
     }
     // „Gerade online“ immer an erster Stelle
     $pinned = $sidebar[FEATURE_SIDEBAR_PINNED];

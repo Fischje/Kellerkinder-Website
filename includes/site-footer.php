@@ -5,35 +5,28 @@
 // </main> eingebunden.
 // Die Seitenleiste ist hier nur ein Gerüst; die Inhalte lädt assets/sidebar.js
 // über die vorhandenen öffentlichen API-Aktionen. Kästen ohne Daten bleiben
-// unsichtbar. Den Kasten zur aktuellen Seite zeigen wir nicht (data-skip).
-// Welche Kästen in welcher Reihenfolge erscheinen, stellt ein Admin auf
-// admin.php ein (settings.features.sidebar, siehe includes/features.php).
+// unsichtbar. Welche Kästen in welcher Reihenfolge auf welchen Seiten erscheinen,
+// stellt ein Admin auf admin.php ein (settings.features.sidebar, siehe includes/features.php).
 // Ist eine Seite im Menü ausgeblendet, fehlt auch ihr Kasten.
 // Am Computer steht die Leiste rechts (weiß, volle Höhe, wie bei navi.gg),
 // auf Tablet und Handy rutscht sie als Karten unter den Inhalt.
 // Erwartet: $activeNav (aus site-header.php) und $appVersion (aus bootstrap.php).
-// Optional: $showSidebar = false vor dem Einbinden blendet die Seitenleiste ganz aus
-// (der Inhalt nutzt dann die volle Breite), z. B. auf der Netzje-Seite.
+// Welche Kästen auf welcher Seite erscheinen, stellt ein Admin auf admin.php ein (settings.features.sidebar[].pages,
+// Standardwerte in includes/features.php). Hat eine Seite keinen Kasten, nutzt der Inhalt die volle Breite.
+// Optional: $showSidebar = false vor dem Einbinden blendet die Seitenleiste in jedem Fall aus.
 require_once __DIR__ . '/features.php';
-$sidebarSkip = [
-    'calendar' => 'blog',      // Der Kalender hat schon den Hinweis „Neu im Blog“
-    'blog' => 'blog',
-    'games' => 'games',
-    'servers' => 'servers',
-    'netzje' => 'netzje',
-][$activeNav ?? ''] ?? '';
 $footerVersion = htmlspecialchars((string) ($appVersion ?? ''), ENT_QUOTES, 'UTF-8');
 
 $sidebarBoxes = [];
 foreach (($showSidebar ?? true) ? siteFeatures()['sidebar'] : [] as $entry) {
-    if ($entry['enabled'] && featurePageEnabled($entry['box'])) {
+    if ($entry['enabled'] && featurePageEnabled($entry['box']) && in_array($activeNav ?? '', $entry['pages'], true)) {
         $sidebarBoxes[] = $entry['box'];
     }
 }
 ?>
 </div><!-- /.page-main -->
 
-<aside class="site-sidebar" id="siteSidebar" data-skip="<?= htmlspecialchars($sidebarSkip, ENT_QUOTES, 'UTF-8') ?>" aria-label="Kurz & knapp"<?= $sidebarBoxes === [] ? ' hidden' : '' ?>>
+<aside class="site-sidebar" id="siteSidebar" aria-label="Kurz & knapp"<?= $sidebarBoxes === [] ? ' hidden' : '' ?>>
 <?php foreach ($sidebarBoxes as $sidebarBox): ?>
 <?php if ($sidebarBox === 'now'): ?>
     <?php /* Erscheint nur, wenn gerade jemand spielt; steht immer ganz oben */ ?>

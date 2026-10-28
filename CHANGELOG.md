@@ -1,5 +1,14 @@
 # Änderungsprotokoll
 
+## 2.36.0 — Neue Startseite „Home“, Kalender auf eigener Seite, Seitenleiste je Seite einstellbar
+
+- **Neue Startseite „Home“** (`index.php`, erster Menüpunkt): Text, den Admins mit dem Blog-Editor bearbeiten („Text bearbeiten“, inkl. Bilder, Links, YouTube). Vorlage: kurze Beschreibung aller Menüpunkte (außer Admin); „Vorlage wiederherstellen“ setzt sie zurück. Darunter **„Neu im Blog“** mit den drei neuesten Beiträgen – ein Klick springt zum Beitrag im Blog
+- **Der Kalender liegt jetzt auf `kalender.php`** (Menüpunkt „Kalender“). Alte Links wie `index.php#anmelden` leiten automatisch weiter. Der Hinweis „Neu im Blog“ über dem Kalender entfällt
+- **Seitenleiste je Seite:** Auf der Admin-Seite lässt sich für jeden Kasten einstellen, auf welchen Seiten er erscheint (Home, Kalender, Blog, Spiele-Statistik, Server, Netzje, Eindrücke, Admin). Standard wie bisher: nicht auf „seiner“ Seite, „Neu im Blog“ nicht auf Home, auf der Netzje keine Kästen. Hat eine Seite keinen Kasten, nutzt der Inhalt die volle Breite
+- Gemeinsamer Editor für Blog und Home: `includes/rich-editor.php` (Markup) und `assets/rich-editor.js`
+- Blog- und Home-Texte dürfen auf eigene Seiten verlinken (z. B. `kalender.php#registrieren`)
+- Admin-Seite: Abschnitt „Home & Kalender“ statt „Startseite“
+
 ## 2.35.1 — Blog: Beiträge mit Bildern lassen sich wieder posten
 
 - **Fehler behoben:** Ein per Strg+V eingefügtes Bild landete als riesiger Text (data-URL) im Beitrag → „Der Beitrag ist zu lang“. Jetzt werden eingefügte und hineingezogene Bilder wie beim Knopf „Bild“ hochgeladen; noch eingebettete Bilder werden beim Speichern hochgeladen. Bilder von fremden Websites werden vor dem Speichern gemeldet

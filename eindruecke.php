@@ -388,7 +388,7 @@ require __DIR__ . '/includes/site-header.php';
                 ? 'Die Eindrücke sehen nur angemeldete Mitglieder. Melde dich an, dann geht’s los.'
                 : failure.message));
             const link = el('a', 'primary-button', 'Anmelden');
-            link.href = 'index.php#anmelden';
+            link.href = 'kalender.php#anmelden';
             gate.append(link);
         }
     })();

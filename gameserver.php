@@ -254,7 +254,7 @@ require __DIR__ . '/includes/site-header.php';
             const hint = el('p', 'server-hint');
             hint.append(document.createTextNode('Das Passwort siehst du, wenn du angemeldet bist – '));
             const link = el('a', '', 'zur Anmeldung');
-            link.href = 'index.php';
+            link.href = 'kalender.php#anmelden';
             hint.append(link, '.');
             card.append(hint);
         }

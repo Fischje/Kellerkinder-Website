@@ -287,6 +287,10 @@ function sanitizeBlogNode(DOMNode $node): void
             $value = trim($attribute->nodeValue ?? '');
 
             if ($name === 'href') {
+                // Eigene Seiten (z. B. kalender.php#registrieren) öffnen im selben Fenster
+                if (preg_match('#^[a-z0-9-]+\.php(?:[?\#][A-Za-z0-9=&%_.\#-]*)?$#', $value)) {
+                    continue;
+                }
                 if (!preg_match('#^(https?://|mailto:)#i', $value)) {
                     $child->removeAttribute('href');
                     continue;
@@ -2111,7 +2115,7 @@ function siteSettingsResponse(array $store): array
         'netzje_requests' => $isAdmin ? count(normalizeNetzje($store['netzje'] ?? [])['requests']) : 0,
         'features' => normalizeFeatures($store['settings']['features'] ?? []),
         'theme' => validateThemeValue($store['settings']['theme'] ?? 'default', 'default'),
-        'labels' => ['sidebar' => FEATURE_SIDEBAR_BOXES, 'pages' => FEATURE_PAGES, 'home' => FEATURE_HOME],
+        'labels' => ['sidebar' => FEATURE_SIDEBAR_BOXES, 'sidebar_pages' => FEATURE_SIDEBAR_PAGES, 'pages' => FEATURE_PAGES, 'home' => FEATURE_HOME],
     ];
 }
 
@@ -2815,6 +2819,8 @@ function defaultStore(): array
         'netzje_history' => [],
         'impressions' => [],
         'next_impression_id' => 1,
+        // Startseite „Home“: Text des Admins (HTML wie im Blog); leer = Vorlage defaultHomeHtml()
+        'home' => ['html' => '', 'updated_at' => null],
         'settings' => [
             'admin_player_names' => [],
             'theme' => 'default',
@@ -2904,6 +2910,10 @@ function normalizeStore(array $store): array
     $store['netzje'] = normalizeNetzje($store['netzje'] ?? []);
     $store['netzje_history'] = normalizeNetzjeHistory($store['netzje_history'] ?? []);
     $store['impressions'] = normalizeImpressions($store['impressions'] ?? []);
+    $store['home'] = [
+        'html' => (string) ($store['home']['html'] ?? ''),
+        'updated_at' => is_string($store['home']['updated_at'] ?? null) ? $store['home']['updated_at'] : null,
+    ];
     $store['next_impression_id'] = max(1, (int) ($store['next_impression_id'] ?? 1), 1 + max([0, ...array_map(static fn(array $item): int => $item['id'], $store['impressions'])]));
     $store['next_gameserver_id'] = max(
         1,
@@ -4182,7 +4192,7 @@ function cleanupData(array &$store, bool $apply): array
         }
     }
     $mediaUsed[$store['netzje']['background']] = true;
-    $blogText = implode("\n", array_column($store['blog_posts'], 'content_html'));
+    $blogText = implode("\n", array_column($store['blog_posts'], 'content_html')) . "\n" . $store['home']['html'];
     $mediaDir = mediaDirectory();
     $files['media'] = ['Bilder ohne Verwendung (Spiele-Symbole, Profilbilder, Netzje-Hintergründe, Blog-Bilder)',
         cleanupFiles($mediaDir, 3600, static function (string $name) use ($mediaUsed, $blogText, $mediaDir): bool {
@@ -4214,6 +4224,50 @@ function cleanupData(array &$store, bool $apply): array
         $note('files_' . $key, $label, count($paths), array_sum($paths));
     }
     return $items;
+}
+
+/** Vorlage der Startseite „Home“: kurze Beschreibung aller Menüpunkte (ohne Admin). */
+function defaultHomeHtml(): string
+{
+    return <<<'HTML'
+<h2>Wer wir sind</h2>
+<p>Wir sind eine Truppe, die gerne zusammen zockt – meistens online, ab und zu bei einer LAN-Party im Keller. Hier findest du alles rund um unsere Spieleabende.</p>
+<h2>Was du hier findest</h2>
+<h3>📅 <a href="kalender.php">Kalender</a></h3>
+<p>Wer zockt wann? Trag ein, an welchen Tagen du online bist, später kommst, verhindert oder im Urlaub bist – und was du spielen willst. Feste Spieltage hinterlegst du einmal in deinem Konto.</p>
+<h3>📝 <a href="blog.php">Blog</a></h3>
+<p>Spielerlebnisse, Erfolge und Neuigkeiten aus dem Keller – mit Bildern und Videos.</p>
+<h3>📊 <a href="games.php">Spiele-Statistik</a></h3>
+<p>Was wir wirklich spielen, automatisch erfasst von unserem Discord-Bot:</p>
+<ul>
+<li><strong>Spiele</strong> – die meistgespielten Spiele für verschiedene Zeiträume, bis zur kompletten Liste.</li>
+<li><strong>Spieler</strong> – die Rangliste nach Spielzeit, mit Profil, Lieblingsspielen und Abzeichen.</li>
+<li><strong>Jahresrückblick</strong> – das Spielejahr in Zahlen: Monate, Highlights, Top-Spiele und neue Spiele.</li>
+</ul>
+<h3>🖥️ <a href="gameserver.php">Server</a></h3>
+<p>Unsere eigenen Gameserver mit Adresse und Live-Status: Wer ist gerade drauf? Das Passwort siehst du nach der Anmeldung.</p>
+<h3>🔌 <a href="netzje.php">Netzje</a></h3>
+<p>Unsere LAN-Party: Termin, Platz anfragen, Sitzplan und Stundenplan mit Spielen zum Anmelden – eigene Spielvorschläge sind willkommen.</p>
+<h3>📸 Eindrücke</h3>
+<p>Fotos und Clips von unseren Abenden und LAN-Partys – nur für angemeldete Mitglieder sichtbar.</p>
+<p>Noch kein Konto? <a href="kalender.php#registrieren">Registriere dich</a> – dann kannst du überall mitmachen.</p>
+HTML;
+}
+
+/** Antwort für die Startseite „Home“. */
+function homeResponse(array $store): array
+{
+    $userIndex = currentUserIndex($store);
+    $user = $userIndex === null ? null : $store['users'][$userIndex];
+    $custom = $store['home']['html'] !== '';
+    return [
+        'ok' => true,
+        'csrf_token' => csrfToken(),
+        'html' => $custom ? $store['home']['html'] : sanitizeBlogHtml(defaultHomeHtml()),
+        'is_template' => !$custom,
+        'updated_at' => $store['home']['updated_at'],
+        'can_edit' => $user !== null && empty($user['must_change_password']) && isAdminUser($store, $user),
+    ];
 }
 
 function bootstrapResponse(array $store): array
@@ -4366,6 +4420,14 @@ if ($action === 'blog_posts') {
     usort($tags, static fn(array $a, array $b): int => $b['count'] <=> $a['count'] ?: strcasecmp($a['label'], $b['label']));
 
     respond(['ok' => true, 'posts' => $posts, 'tags' => $tags]);
+}
+
+if ($action === 'home_page') {
+    // Startseite „Home“: Text für alle; can_edit nur für Admins
+    $homeStore = readStore();
+    $homeOut = homeResponse($homeStore);
+    session_write_close();
+    respond($homeOut);
 }
 
 if ($action === 'site_settings') {
@@ -5990,6 +6052,24 @@ withWritableStore(function (array &$store) use ($action, $payload): array {
             }
             $store['settings']['theme'] = validateThemeValue($payload['theme'] ?? ($store['settings']['theme'] ?? 'default'));
             return [bootstrapResponse($store), 200, true];
+
+        case 'admin_save_home':
+            // Startseite „Home“ bearbeiten (gleiche Filterung wie im Blog); reset = zurück zur Vorlage
+            requireAdmin($store);
+            if (!empty($payload['reset'])) {
+                $store['home'] = ['html' => '', 'updated_at' => gmdate('c')];
+                return [homeResponse($store), 200, true];
+            }
+            $rawHome = (string) ($payload['html'] ?? '');
+            if (strlen($rawHome) > BLOG_CONTENT_MAX) {
+                return [['ok' => false, 'error' => 'Der Text ist zu lang.'], 422, false];
+            }
+            $safeHome = sanitizeBlogHtml($rawHome);
+            if (trim(strip_tags($safeHome)) === '' && !str_contains($safeHome, '<img')) {
+                return [['ok' => false, 'error' => 'Die Startseite braucht etwas Text. Für die Vorlage „Vorlage wiederherstellen“ wählen.'], 422, false];
+            }
+            $store['home'] = ['html' => $safeHome, 'updated_at' => gmdate('c')];
+            return [homeResponse($store), 200, true];
 
         case 'admin_cleanup':
             // Admin-Seite „Daten aufräumen“: apply = false zeigt nur, was weg könnte; apply = true räumt auf

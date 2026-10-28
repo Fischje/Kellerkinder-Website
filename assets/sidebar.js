@@ -1,19 +1,17 @@
 // Seitenleiste „Kurz & knapp“ (includes/site-footer.php): füllt die Kästen
 // Meist gespielt, Neu im Blog, Unsere Server und Nächste Netzje über die
-// öffentlichen API-Aktionen. Welche Kästen es gibt, legt die Seite fest
-// (Schalter auf admin.php); Kästen ohne Daten bleiben versteckt, den Kasten
-// der aktuellen Seite (data-skip) laden wir gar nicht erst.
+// öffentlichen API-Aktionen. Welche Kästen auf welcher Seite stehen, legt
+// site-footer.php fest (Schalter auf admin.php); Kästen ohne Daten bleiben versteckt.
 // Außerdem auf allen Seiten: Account-Knopf in der Kopfleiste (Anmelden bzw. Account-Menü
 // mit „Mein Account“, „Adminbereich“, „Abmelden“) und für Admins der Menüpunkt „Admin“
 // (mit Zahl offener Netzje-Anfragen) sowie Menüpunkte nur für Angemeldete (Eindrücke). Die Dialoge für Anmelden und Account liegen im
-// Kalender (index.php); dort stellt index.php window.kkAccount bereit und öffnet sie direkt,
-// auf anderen Seiten führen die Links zu index.php#anmelden bzw. #account.
+// Kalender (kalender.php); dort stellt kalender.php window.kkAccount bereit und öffnet sie direkt,
+// auf anderen Seiten führen die Links zu kalender.php#anmelden bzw. #account.
 // Texte werden nur per textContent eingesetzt, nie als HTML.
 (function () {
     'use strict';
 
     const sidebar = document.getElementById('siteSidebar');
-    const skip = sidebar ? sidebar.dataset.skip || '' : '';
 
     const box = (name) => (sidebar ? sidebar.querySelector(`[data-box="${name}"]`) : null);
 
@@ -177,7 +175,7 @@
     // ===== Account-Knopf & Menüpunkt „Admin“ =====
     let accountCsrf = '';
 
-    // Auf dem Kalender öffnet index.php die Dialoge selbst, sonst zum Kalender springen.
+    // Auf dem Kalender öffnet kalender.php die Dialoge selbst, sonst zum Kalender springen.
     function openAccountDialog(kind, event) {
         if (window.kkAccount && typeof window.kkAccount.open === 'function' && window.kkAccount.open(kind)) {
             if (event) event.preventDefault();
@@ -214,7 +212,7 @@
         if (!user) {
             const login = el('a', 'topbar-account-button', 'Anmelden');
             login.id = 'topbarLogin';
-            login.href = 'index.php#anmelden';
+            login.href = 'kalender.php#anmelden';
             login.addEventListener('click', (event) => openAccountDialog('login', event));
             container.appendChild(login);
             return;
@@ -249,7 +247,7 @@
             li.appendChild(link);
             menu.appendChild(li);
         };
-        item(user.must_change_password ? 'Passwort ändern' : 'Mein Account', 'index.php#account', (event) => openAccountDialog('profile', event));
+        item(user.must_change_password ? 'Passwort ändern' : 'Mein Account', 'kalender.php#account', (event) => openAccountDialog('profile', event));
         if (data.is_admin) item('Adminbereich', 'admin.php', null, Number(data.netzje_requests) || 0);
         item('Abmelden', null, logout);
 
@@ -297,7 +295,7 @@
         }
     }
 
-    // index.php ruft das nach Anmelden/Abmelden auf, damit die Kopfleiste stimmt
+    // kalender.php ruft das nach Anmelden/Abmelden auf, damit die Kopfleiste stimmt
     window.kkRefreshAccount = loadAccount;
 
     // „Gerade online“: nur sichtbar, solange jemand spielt; jede Minute neu abfragen
@@ -341,7 +339,7 @@
 
     const loaders = { games: loadGames, netzje: loadNetzje, blog: loadBlog, servers: loadServers };
     for (const [name, loader] of Object.entries(loaders)) {
-        if (name !== skip && box(name)) loader();
+        if (box(name)) loader();
     }
     loadAccount();
 })();

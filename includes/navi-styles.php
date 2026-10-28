@@ -1144,6 +1144,11 @@ if (!isset($backgroundImages) || !is_array($backgroundImages)) { $backgroundImag
         }
 
         .admin-moves { display: flex; gap: 6px; }
+        /* Auf welchen Seiten ein Kasten erscheint */
+        .admin-box-pages { grid-column: 2 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
+        label.admin-page-chip { display: inline-flex; align-items: center; gap: 6px; margin: 0; padding: 4px 10px; border: 1px solid var(--line); color: var(--text); background: #fff; font-size: .8rem; font-weight: 700; letter-spacing: 0; text-transform: none; cursor: pointer; }
+        .admin-page-chip input { width: 16px; height: 16px; margin: 0; accent-color: var(--accent-text); cursor: pointer; }
+        .admin-page-chip:has(input:disabled) { opacity: .45; cursor: default; }
         .admin-move { min-height: 40px; min-width: 44px; padding: 6px 10px; font-size: 1rem; }
         .admin-move:disabled { opacity: .35; cursor: default; }
 
@@ -1294,6 +1299,7 @@ if (!isset($backgroundImages) || !is_array($backgroundImages)) { $backgroundImag
             .admin-order-item { grid-template-columns: 28px minmax(0, 1fr); }
             .admin-order-number { width: 28px; height: 28px; }
             .admin-moves { grid-column: 1 / -1; justify-content: flex-end; }
+            .admin-box-pages { grid-column: 1 / -1; }
             .admin-request-actions { width: 100%; }
             .admin-request-actions > * { flex: 1 1 0; }
             .admin-savebar { margin-left: calc(-1 * var(--gutter)); margin-right: calc(-1 * var(--gutter)); border-left: 0; border-right: 0; }

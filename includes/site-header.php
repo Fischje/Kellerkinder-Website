@@ -1,10 +1,10 @@
 <?php
-// Gemeinsamer Seitenkopf für Kalender, Blog, Spiele und Server: schmale Infoleiste,
+// Gemeinsamer Seitenkopf für alle Seiten: schmale Infoleiste,
 // Kopfband mit Logo und Navigation sowie der Seitentitel-Bereich.
 // Öffnet außerdem den Seitenrahmen (<div class="page-frame"><div class="page-main">),
 // den includes/site-footer.php wieder schließt – beide Dateien gehören zusammen.
 // Erwartet vor dem Einbinden:
-//   $activeNav     'calendar' | 'blog' | 'games' | 'servers' | 'netzje' | 'impressions' | 'admin'
+//   $activeNav     'home' | 'calendar' | 'blog' | 'games' | 'servers' | 'netzje' | 'impressions' | 'admin'
 //                  ('games' = Rubrik „Spiele-Statistik“ mit den Unterseiten Spiele, Spieler, Jahresrückblick)
 //   $activeSub     in der Rubrik „Spiele-Statistik“: 'games' | 'players' | 'review'
 //   $pageKicker    kleine Zeile über dem Titel (Brotkrumen)
@@ -14,7 +14,8 @@
 $activeNav = $activeNav ?? '';
 $showInstall = $showInstall ?? false;
 $navItems = [
-    'calendar' => ['Kalender', 'index.php'],
+    'home' => ['Home', 'index.php'],
+    'calendar' => ['Kalender', 'kalender.php'],
     'blog' => ['Blog', 'blog.php'],
     'games' => ['Spiele-Statistik', 'games.php'],
     'servers' => ['Server', 'gameserver.php'],
@@ -50,7 +51,7 @@ $currentPageHidden = !featurePageEnabled($activeNav);
             <?php /* Account-Knopf auf allen Seiten: assets/sidebar.js macht daraus „Account“ mit Menü,
                      sobald jemand angemeldet ist. Ohne JavaScript bleibt der Link zur Anmeldung. */ ?>
             <div class="topbar-account" id="topbarAccount">
-                <a class="topbar-account-button" id="topbarLogin" href="index.php#anmelden">Anmelden</a>
+                <a class="topbar-account-button" id="topbarLogin" href="kalender.php#anmelden">Anmelden</a>
             </div>
         </div>
     </div>

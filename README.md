@@ -222,6 +222,7 @@ Die Laufzeitdateien unter `data/store.php*` werden von Git ignoriert und dadurch
 │   ├── sidebar.js      (füllt die Seitenleiste „Kurz & knapp“)
 │   ├── pull-refresh.js (Herunterziehen zum Neuladen in der installierten App, alle Seiten)
 │   ├── nav-scroll.js   (Pfeile am Hauptmenü, wenn es nicht auf den Bildschirm passt)
+│   ├── rich-editor.js  (Text-Editor für Blog und Home: Format, Links, Bilder, YouTube)
 │   └── smartphone-install.svg
 ├── data/
 │   ├── .htaccess
@@ -232,6 +233,7 @@ Die Laufzeitdateien unter `data/store.php*` werden von Git ignoriert und dadurch
 │   ├── site-header.php (gemeinsamer Seitenkopf, öffnet den Seitenrahmen)
 │   ├── site-footer.php (Seitenleiste und Fußzeile, schließt den Seitenrahmen)
 │   ├── features.php    (Schalter der Admin-Seite: Standardwerte, Lesen für die Seiten)
+│   ├── rich-editor.php (Markup des Text-Editors)
 │   ├── review-styles.php (Jahresrückblick und Spielerprofil)
 │   ├── gallery-styles.php (Seite „Eindrücke“)
 │   ├── games-view.php  (gemeinsame Ansicht von games.php und alle-spiele.php)
@@ -248,7 +250,8 @@ Die Laufzeitdateien unter `data/store.php*` werden von Git ignoriert und dadurch
 ├── steam-refresh.php   (Cron: Steam-Erfolge, Spiele-Symbole, Profilbilder holen)
 ├── media.php           (liefert Spiele-Symbole und Profilbilder aus data/media aus; ist data nicht beschreibbar: Temp-Ordner als Ersatz)
 ├── feed.php
-├── index.php
+├── index.php           (Startseite „Home“: Text des Admins + „Neu im Blog“)
+├── kalender.php        (Kalender „Wer zockt wann?“, Anmelde- und Konto-Dialoge)
 ├── admin.php           (zentrale Admin-Seite: Schalter, Netzje-Anfragen, Benutzerverwaltung, Daten aufräumen)
 ├── spieler.php         (Spielerliste; mit ?name= das Spielerprofil)
 ├── jahresrueckblick.php (Jahresrückblick der Spiele-Statistik)

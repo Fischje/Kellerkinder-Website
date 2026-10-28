@@ -1,10 +1,10 @@
 <?php
 // Gemeinsamer Vorspann für alle Seiten: Version, Hintergrundbilder,
-// Sicherheits-Header und CSP-Nonce. Eingebunden von index.php und blog.php.
+// Sicherheits-Header und CSP-Nonce. Eingebunden von allen Seiten.
 date_default_timezone_set('Europe/Berlin');
 $appVersion = trim((string) @file_get_contents(dirname(__DIR__) . DIRECTORY_SEPARATOR . 'VERSION'));
 if ($appVersion === '') {
-    $appVersion = '2.35.1';
+    $appVersion = '2.36.0';
 }
 
 /**
