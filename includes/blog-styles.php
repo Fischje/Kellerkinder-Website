@@ -138,26 +138,6 @@
 
         .tag-chip .tag-count { opacity: .65; margin-left: 4px; }
 
-        .blog-sidebar { display: grid; gap: 16px; }
-
-        .sidebar-box {
-            padding: 16px;
-            border: 1px solid var(--line);
-            border-radius: var(--radius-lg);
-            background: rgba(var(--panel-deep-rgb), .5);
-            box-shadow: var(--shadow);
-        }
-
-        .sidebar-box h2 {
-            margin: 0 0 12px;
-            color: #fff;
-            font-family: var(--font-heading);
-            font-size: .88rem;
-            font-weight: 900;
-            letter-spacing: .02em;
-            text-transform: uppercase;
-        }
-
         .yt-embed {
             display: block;
             position: relative;
@@ -233,7 +213,6 @@
 
         @media (max-width: 900px) {
             .blog-layout { grid-template-columns: minmax(0, 1fr); }
-            .blog-sidebar { order: 2; }
         }
 
         @media (max-width: 680px) {

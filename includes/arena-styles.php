@@ -70,12 +70,12 @@
         }
 
         /* Abgeschnittene Ecken oben rechts und unten links */
-        .primary-button, .secondary-button, .danger-button, .compact-button,
-        .tag-chip, .install-app-button, .blog-teaser-label, .section-cta {
+        .primary-button, .secondary-button, .danger-button,
+        .tag-chip, .install-app-button, .blog-teaser-label {
             clip-path: polygon(0 0, calc(100% - var(--cut)) 0, 100% var(--cut), 100% 100%, var(--cut) 100%, 0 calc(100% - var(--cut)));
         }
 
-        .board, .achievements, .account-strip, .blog-panel, .games-panel, .sidebar-box,
+        .board, .achievements, .blog-panel, .games-panel,
         .post-card, .achievement-card, dialog, .blog-teaser {
             clip-path: polygon(0 0, calc(100% - var(--cut-lg)) 0, 100% var(--cut-lg), 100% 100%, var(--cut-lg) 100%, 0 calc(100% - var(--cut-lg)));
         }
@@ -321,7 +321,6 @@
         .section-title .accent { color: var(--accent); margin-right: -6px; }
 
         /* Kartentitel mit Akzentbalken (Overworld) */
-        .card-title,
         .modal-title,
         .post-card h2,
         .achievement-card-head h3 {
@@ -332,14 +331,12 @@
             color: #fff;
         }
 
-        .card-title,
         .modal-title,
         .post-card h2 {
             position: relative;
             padding-left: 16px;
         }
 
-        .card-title::before,
         .modal-title::before,
         .post-card h2::before {
             content: "";
@@ -356,8 +353,7 @@
         /* ===== Buttons ===== */
         .primary-button,
         .secondary-button,
-        .danger-button,
-        .compact-button {
+        .danger-button {
             min-height: 44px;
             padding: 10px 22px;
             border: 0;
@@ -378,15 +374,13 @@
         body[data-theme="summer"] .primary-button:hover,
         body[data-theme="winter"] .primary-button:hover { color: #fff; }
 
-        .secondary-button,
-        .compact-button {
+        .secondary-button {
             color: #fff;
             background: rgba(var(--panel-soft-rgb), .95);
             box-shadow: inset 0 0 0 1px var(--line-strong);
         }
 
-        .secondary-button:hover,
-        .compact-button:hover {
+        .secondary-button:hover {
             color: #fff;
             background: rgba(var(--primary-rgb), .3);
             box-shadow: inset 0 0 0 1px var(--primary);
@@ -402,26 +396,6 @@
 
         .primary-button:hover, .secondary-button:hover, .danger-button:hover { transform: none; }
         .primary-button:active, .secondary-button:active, .danger-button:active { transform: translateY(1px); }
-
-        .compact-button { min-height: 40px; padding: 8px 16px; font-size: .92rem; }
-
-        /* ===== Konto-Leiste ===== */
-        .account-strip {
-            margin-top: 0;
-            padding: 14px 18px;
-            border: 0;
-            border-radius: 0;
-            background: rgba(var(--panel-rgb), .92);
-            box-shadow: inset 3px 0 0 var(--accent);
-            backdrop-filter: none;
-        }
-
-        .account-summary strong {
-            font-family: var(--font-heading);
-            font-size: 1.15rem;
-            letter-spacing: .03em;
-            text-transform: uppercase;
-        }
 
         .avatar, .avatar-placeholder { border-radius: 2px; }
         .avatar-placeholder { color: #fff; background: var(--primary); border-color: transparent; font-family: var(--font-heading); font-size: .95rem; }
@@ -825,7 +799,6 @@
         .blog-layout { gap: 22px; margin-top: 0; }
 
         .blog-panel,
-        .sidebar-box,
         .games-panel {
             border: 0;
             border-radius: 0;
@@ -870,8 +843,6 @@
 
         .tag-chip:hover { color: #fff; background: rgba(var(--primary-rgb), .45); }
         .tag-chip.active { color: #fff; background: var(--accent); border-color: transparent; }
-
-        .sidebar-box h2.card-title { margin: 0 0 14px; font-size: 1.2rem; }
 
         .editor-toolbar button, .editor-surface { border-radius: 0; }
 

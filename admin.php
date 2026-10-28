@@ -6,7 +6,8 @@ declare(strict_types=1);
 // der frühere Adminbereich im Kalender ist seit 2.29.0 hier aufgegangen.
 // Daten: api.php?action=site_settings (lesen), admin_save_features (speichern),
 // netzje / admin_netzje_request (Anfragen), bootstrap (Benutzerliste),
-// admin_create_user / admin_update_user / admin_delete_user / admin_save_settings. Nur Admins sehen die Einstellungen;
+// admin_create_user / admin_update_user / admin_delete_user / admin_save_settings, admin_cleanup (Daten aufräumen).
+// Nur Admins sehen die Einstellungen;
 // die API prüft die Rechte bei jedem Speichern selbst.
 require __DIR__ . '/includes/bootstrap.php';
 ?>
@@ -34,7 +35,7 @@ require __DIR__ . '/includes/bootstrap.php';
 $activeNav = 'admin';
 $pageKicker = 'Admin';
 $pageTitle = 'Adminbereich';
-$pageLead = 'Zentrale Schalter für Seitenleiste, Menü und Startseite – und die offenen Netzje-Anfragen.';
+$pageLead = 'Zentrale Schalter für Seitenleiste, Menü und Startseite, die offenen Netzje-Anfragen, Benutzer und das Aufräumen der Daten.';
 $showInstall = false;
 require __DIR__ . '/includes/site-header.php';
 ?>
@@ -105,6 +106,15 @@ require __DIR__ . '/includes/site-header.php';
                     <button class="secondary-button" type="submit">Admins speichern</button>
                 </div>
             </form>
+        </section>
+
+        <section class="admin-panel" id="cleanupPanel">
+            <div class="admin-panel-head">
+                <h2 class="section-title"><span class="accent">Daten</span> aufräumen</h2>
+                <button class="secondary-button" id="cleanupCheckButton" type="button">Prüfen</button>
+            </div>
+            <p class="admin-help">Sucht nach Resten, auf die nichts mehr verweist: Einträge gelöschter Konten und Spieler, leere alte Kalendereinträge, veraltete Felder sowie Bilder und Zwischenspeicher, die niemand mehr braucht. Kalender, Blog, Galerie, Netzje-Archiv und Spielzeit bleiben erhalten. „Prüfen“ zeigt nur an – gelöscht wird erst mit „Jetzt aufräumen“.</p>
+            <div id="cleanupResult"></div>
         </section>
     </div>
 
@@ -474,6 +484,63 @@ require __DIR__ . '/includes/site-header.php';
             showToast('Admins gespeichert.');
         } catch (failure) {
             showToast(failure.message);
+        }
+    });
+
+    // ===== Daten aufräumen =====
+    const formatBytes = (bytes) => bytes >= 1048576
+        ? `${(bytes / 1048576).toLocaleString('de-DE', { maximumFractionDigits: 1 })} MB`
+        : `${Math.max(1, Math.round(bytes / 1024)).toLocaleString('de-DE')} KB`;
+
+    function renderCleanup(data) {
+        const box = byId('cleanupResult');
+        box.replaceChildren();
+        const total = data.items.reduce((sum, item) => sum + item.count, 0);
+        const freed = data.items.reduce((sum, item) => sum + item.bytes, 0);
+        if (total === 0) {
+            box.append(el('p', 'admin-help', `${data.applied ? 'Aufgeräumt.' : 'Alles sauber – es gibt nichts aufzuräumen.'} Datendatei: ${formatBytes(data.store_bytes)}.`));
+            return;
+        }
+        const list = el('ul', 'cleanup-list');
+        for (const item of data.items) {
+            const li = el('li', 'cleanup-item');
+            li.append(el('span', 'cleanup-count', item.count.toLocaleString('de-DE')), el('span', '', item.label), el('span', 'cleanup-size', item.bytes > 0 ? formatBytes(item.bytes) : ''));
+            list.append(li);
+        }
+        box.append(list);
+        const actions = el('div', 'cleanup-actions');
+        if (data.applied) {
+            actions.append(el('p', 'admin-help', `Erledigt: ${total.toLocaleString('de-DE')} Einträge bzw. Dateien entfernt${freed > 0 ? `, ${formatBytes(freed)} Dateien frei` : ''}. Datendatei jetzt: ${formatBytes(data.store_bytes)}.`));
+        } else {
+            actions.append(el('p', 'admin-help', `Datendatei: ${formatBytes(data.store_bytes)}${freed > 0 ? ` · Dateien: ${formatBytes(freed)}` : ''}`));
+            const run = el('button', 'danger-button', 'Jetzt aufräumen');
+            run.type = 'button';
+            run.addEventListener('click', async () => {
+                if (!confirm('Die aufgelisteten Einträge und Dateien endgültig entfernen?')) return;
+                run.disabled = true;
+                try {
+                    renderCleanup(await api('admin_cleanup', { apply: true }));
+                    showToast('Daten aufgeräumt.');
+                } catch (failure) {
+                    showToast(failure.message);
+                    run.disabled = false;
+                }
+            });
+            actions.append(run);
+        }
+        box.append(actions);
+    }
+
+    byId('cleanupCheckButton').addEventListener('click', async () => {
+        const button = byId('cleanupCheckButton');
+        button.disabled = true;
+        byId('cleanupResult').replaceChildren(el('p', 'widget-loading', 'Wird geprüft …'));
+        try {
+            renderCleanup(await api('admin_cleanup', { apply: false }));
+        } catch (failure) {
+            byId('cleanupResult').replaceChildren(el('p', 'form-error', failure.message));
+        } finally {
+            button.disabled = false;
         }
     });
 

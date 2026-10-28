@@ -91,11 +91,10 @@ const STEAM_NAME_MAX = 64;
 const STEAM_ACHIEVEMENTS_PLAYERS_MAX = 7;
 const STEAM_RECENT_GAMES_MAX = 8;      // so viele Spiele je Spieler auf Erfolge prüfen
 const STEAM_CACHE_TTL_SECONDS = 3600;  // Erfolge höchstens stündlich bei Steam abholen
-const STEAM_RETRY_TTL_SECONDS = 120;
+const STEAM_RETRY_TTL_SECONDS = 120;  // nach einer Steam-Störung schon nach 2 Minuten neu versuchen
 const STEAM_PARALLEL_MAX = 6;          // so viele Steam-Abrufe gleichzeitig
-const STEAM_ACHIEVEMENTS_CACHE_FILE = 'steam-achievements-v3.json'; // v3: Ergebnisse der fehlerhaften Version 2.14.3 verwerfen   // nach einer Steam-Störung schon nach 2 Minuten neu versuchen
+const STEAM_ACHIEVEMENTS_CACHE_FILE = 'steam-achievements-v3.json'; // v3: Ergebnisse der fehlerhaften Version 2.14.3 verwerfen
 const STEAM_SCHEMA_TTL_SECONDS = 86400;
-const ACHIEVEMENT_MANUAL_GAMES = ['hots', 'diablo4', 'rocket_league']; // Spiele mit manuell gepflegter Statistik
 const ACHIEVEMENT_GAMES = ['wow', 'hots', 'diablo4', 'rocket_league']; // Alle Spiele (inkl. WoW, das Titel/Links aber nicht Stats manuell hat)
 const ACHIEVEMENT_LABEL_MAX = 40;
 const ACHIEVEMENT_VALUE_MAX = 60;
@@ -914,7 +913,7 @@ function backgroundSpawnCli(string $argument): void
     }
     foreach ([PHP_BINDIR . '/php', '/usr/bin/php', '/usr/local/bin/php'] as $php) {
         if (is_file($php) && is_executable($php)) {
-            @exec(escapeshellarg($php) . ' ' . escapeshellarg(__DIR__ . '/steam-refresh.php') . ($argument !== '' ? ' ' . $argument : '') . ' > /dev/null 2>&1 &');
+            @exec(escapeshellarg($php) . ' ' . escapeshellarg(__DIR__ . '/steam-refresh.php') . ($argument !== '' ? ' ' . escapeshellarg($argument) : '') . ' > /dev/null 2>&1 &');
             return;
         }
     }
@@ -1636,6 +1635,143 @@ function validateCsrf(array $payload): void
     }
 }
 
+// ---------- Schutz vor Passwort-Raten und Massen-Registrierung ----------
+//
+// Fehlversuche beim Anmelden werden je Netz/Gerät und Benutzername sowie je Benutzername insgesamt
+// gezählt (data/cache/login-throttle.json, nur Hashes, keine Klartext-Adressen). Zu viele Fehlversuche
+// sperren die Anmeldung für dieses Konto kurz. Neue Konten gibt es höchstens ein paar pro Stunde und Netz.
+
+const THROTTLE_FILE = 'login-throttle.json';
+const LOGIN_THROTTLE_WINDOW_SECONDS = 900;    // 15 Minuten
+const LOGIN_THROTTLE_MAX_PER_CLIENT = 8;      // je Netz/Gerät und Benutzername
+const LOGIN_THROTTLE_MAX_PER_ACCOUNT = 30;    // je Benutzername von überall zusammen
+const REGISTER_THROTTLE_WINDOW_SECONDS = 3600;
+const REGISTER_THROTTLE_MAX_PER_CLIENT = 5;
+// Bei unbekannten Benutzernamen wird gegen diesen Hash geprüft, damit die Antwortzeit nichts verrät.
+const LOGIN_DUMMY_HASH = '$2y$10$VNy68FlFvfbiWBVJasDTku0zV213kfPjwKARLWVubEDB0kR5qyzrK';
+
+/** Kennung des Absenders: Hinter Cloudflare steht die echte Adresse in CF-Connecting-IP. */
+function clientAddress(): string
+{
+    $remote = (string) ($_SERVER['REMOTE_ADDR'] ?? '');
+    $forwarded = (string) ($_SERVER['HTTP_CF_CONNECTING_IP'] ?? '');
+    // Der Kopf lässt sich fälschen, wenn jemand den Server direkt anspricht; deshalb immer mit REMOTE_ADDR
+    // kombinieren. Wer ihn fälscht, umgeht nur die Grenze je Netz, nicht die je Benutzername.
+    return filter_var($forwarded, FILTER_VALIDATE_IP) !== false ? $remote . '|' . $forwarded : $remote;
+}
+
+/** Liest die Zählerdatei unter Sperre, lässt $change sie ändern und schreibt sie zurück. */
+function throttleUpdate(?callable $change = null): array
+{
+    $directory = achievementsCacheDirectory();
+    if (!is_dir($directory) && !@mkdir($directory, 0750, true) && !is_dir($directory)) {
+        return [];
+    }
+    $handle = @fopen($directory . DIRECTORY_SEPARATOR . THROTTLE_FILE, 'c+');
+    if ($handle === false) {
+        return [];
+    }
+    try {
+        flock($handle, LOCK_EX);
+        $data = json_decode((string) stream_get_contents($handle), true);
+        $data = is_array($data) ? $data : [];
+        $now = time();
+        foreach ($data as $key => $times) {
+            $data[$key] = array_values(array_filter(is_array($times) ? $times : [], static fn($time): bool => is_int($time) && $now - $time < REGISTER_THROTTLE_WINDOW_SECONDS));
+            if ($data[$key] === []) {
+                unset($data[$key]);
+            }
+        }
+        if ($change !== null) {
+            $data = $change($data);
+        }
+        rewind($handle);
+        ftruncate($handle, 0);
+        fwrite($handle, json_encode($data));
+        fflush($handle);
+        return $data;
+    } finally {
+        flock($handle, LOCK_UN);
+        fclose($handle);
+    }
+}
+
+function throttleCount(array $data, string $key, int $window): int
+{
+    $now = time();
+    return count(array_filter($data[$key] ?? [], static fn(int $time): bool => $now - $time < $window));
+}
+
+/** Schlüssel der Zähler: je Netz und Benutzername ('client') und je Benutzername ('account'). */
+function loginThrottleKeys(string $username): array
+{
+    $name = textLower(trim($username));
+    return ['client' => 'l:' . hash('sha256', clientAddress() . '|' . $name), 'account' => 'a:' . hash('sha256', $name)];
+}
+
+function loginBlocked(string $username): bool
+{
+    $keys = loginThrottleKeys($username);
+    $data = throttleUpdate();
+    return throttleCount($data, $keys['client'], LOGIN_THROTTLE_WINDOW_SECONDS) >= LOGIN_THROTTLE_MAX_PER_CLIENT
+        || throttleCount($data, $keys['account'], LOGIN_THROTTLE_WINDOW_SECONDS) >= LOGIN_THROTTLE_MAX_PER_ACCOUNT;
+}
+
+function loginFailed(string $username): void
+{
+    $keys = loginThrottleKeys($username);
+    throttleUpdate(static function (array $data) use ($keys): array {
+        $data[$keys['client']][] = time();
+        $data[$keys['account']][] = time();
+        return $data;
+    });
+}
+
+/** Erfolgreich angemeldet: eigene Fehlversuche vergessen (die Zählung je Benutzername bleibt bis zum Ablauf). */
+function loginSucceeded(string $username): void
+{
+    $keys = loginThrottleKeys($username);
+    throttleUpdate(static function (array $data) use ($keys): array {
+        unset($data[$keys['client']]);
+        return $data;
+    });
+}
+
+function registerThrottleKey(): string
+{
+    return 'r:' . hash('sha256', clientAddress());
+}
+
+function registerBlocked(): bool
+{
+    return throttleCount(throttleUpdate(), registerThrottleKey(), REGISTER_THROTTLE_WINDOW_SECONDS) >= REGISTER_THROTTLE_MAX_PER_CLIENT;
+}
+
+function registerCounted(): void
+{
+    $key = registerThrottleKey();
+    throttleUpdate(static function (array $data) use ($key): array {
+        $data[$key][] = time();
+        return $data;
+    });
+}
+
+/**
+ * Schnittstellen nur für den Discord-Bot (gameservers_config mit internen Adressen, stats_exclusions mit
+ * Discord-IDs). Steht in config.php BOT_SHARED_TOKEN, muss der Bot denselben Wert im Kopf X-Bot-Token
+ * mitschicken (im Bot: WEBSITE_API_TOKEN). Ohne Eintrag bleiben sie wie bisher offen.
+ */
+function requireBotToken(): void
+{
+    if (!defined('BOT_SHARED_TOKEN') || (string) BOT_SHARED_TOKEN === '') {
+        return;
+    }
+    $given = (string) ($_SERVER['HTTP_X_BOT_TOKEN'] ?? '');
+    if ($given === '' || !hash_equals((string) BOT_SHARED_TOKEN, $given)) {
+        respond(['ok' => false, 'error' => 'Diese Schnittstelle ist nur für den Discord-Bot.'], 403);
+    }
+}
+
 function storageDirectory(): string
 {
     return __DIR__ . DIRECTORY_SEPARATOR . 'data';
@@ -2180,11 +2316,7 @@ function validateGameserverInput(array $payload): array
 /** Adresse der Gameserver-Abfrage des Bots, abgeleitet aus BOT_STATS_URL; null = Bot nicht eingerichtet. */
 function botGameserversUrl(): ?string
 {
-    if (!defined('BOT_STATS_URL') || BOT_STATS_URL === '') {
-        return null;
-    }
-    $url = (string) preg_replace('~/api/stats/?$~', '/api/gameservers', (string) BOT_STATS_URL);
-    return $url === (string) BOT_STATS_URL ? null : $url;
+    return botApiUrl('gameservers');
 }
 
 /**
@@ -2621,7 +2753,8 @@ function achievementsWowData(): array
             'level' => $bestRun['level'],
             'upgrades' => $bestRun['upgrades'],
             'score' => round($score, 1),
-            'profile_url' => (string) ($data['profile_url'] ?? ''),
+            // Nur echte Raider.IO-Links übernehmen (die Adresse landet als Link im Browser)
+            'profile_url' => preg_match('#^https://raider\.io/[A-Za-z0-9_/%.-]+$#', (string) ($data['profile_url'] ?? '')) ? (string) $data['profile_url'] : '',
         ];
     }
 
@@ -3838,6 +3971,243 @@ function renameOrAssignUserPlayer(array &$store, int $userIndex, string $newName
     $store['users'][$userIndex]['player_id'] = $playerId;
 }
 
+/**
+ * Entfernt Konten, die es nicht mehr gibt, aus der Netzje: Teilnehmer, Anfragen, Absagen, Anmeldungen zu
+ * Spielen, Sitzplätze, offene Vorschläge und das Archiv. Gibt die Anzahl der entfernten Einträge zurück.
+ */
+function pruneNetzjeUsers(array &$store, array $validIds): int
+{
+    $valid = array_flip($validIds);
+    $removed = 0;
+    $keep = static function (array $ids) use ($valid, &$removed): array {
+        $kept = array_values(array_filter($ids, static fn(int $id): bool => isset($valid[$id])));
+        $removed += count($ids) - count($kept);
+        return $kept;
+    };
+    foreach (['attendees', 'requests', 'declined'] as $list) {
+        $store['netzje'][$list] = $keep($store['netzje'][$list]);
+    }
+    $slots = [];
+    foreach ($store['netzje']['slots'] as $slot) {
+        if ($slot['status'] === 'proposed' && !isset($valid[$slot['proposed_by']])) {
+            $removed++;
+            continue;
+        }
+        $slot['signups'] = $keep($slot['signups']);
+        $slots[] = $slot;
+    }
+    $store['netzje']['slots'] = $slots;
+    foreach ($store['netzje']['seating']['assign'] as $seat => $userId) {
+        if (!isset($valid[$userId])) {
+            unset($store['netzje']['seating']['assign'][$seat]);
+            $removed++;
+        }
+    }
+    foreach ($store['netzje_history'] as $index => $party) {
+        $store['netzje_history'][$index]['attendees'] = $keep($party['attendees']);
+    }
+    return $removed;
+}
+
+/** Dateien eines Ordners, die älter als $minAge Sekunden sind und $isUnused erfüllen: [Pfad => Größe]. */
+function cleanupFiles(string $directory, int $minAge, callable $isUnused): array
+{
+    $found = [];
+    if (!is_dir($directory)) {
+        return $found;
+    }
+    foreach (scandir($directory) ?: [] as $name) {
+        $path = $directory . DIRECTORY_SEPARATOR . $name;
+        if ($name === '.' || $name === '..' || !is_file($path) || time() - (int) filemtime($path) < $minAge) {
+            continue;
+        }
+        if ($isUnused($name)) {
+            $found[$path] = (int) filesize($path);
+        }
+    }
+    return $found;
+}
+
+/**
+ * „Daten aufräumen“ (Admin-Seite): verwaiste Einträge im Store und nicht mehr benutzte Dateien.
+ * Mit $apply = false wird nur gezählt (Vorschau), sonst entfernt. Kalenderdaten, Blog, Galerie,
+ * Netzje-Archiv und Spielzeit bleiben erhalten – es fällt nur weg, worauf nichts mehr verweist.
+ * Rückgabe: Liste aus ['key', 'label', 'count', 'bytes'] (nur Posten mit Treffern).
+ */
+function cleanupData(array &$store, bool $apply): array
+{
+    $items = [];
+    $note = static function (string $key, string $label, int $count, int $bytes = 0) use (&$items): void {
+        if ($count > 0) {
+            $items[] = ['key' => $key, 'label' => $label, 'count' => $count, 'bytes' => $bytes];
+        }
+    };
+    $userIds = array_map(static fn(array $user): int => (int) $user['id'], $store['users']);
+    $users = array_flip($userIds);
+    $players = array_flip(array_map(static fn(array $player): int => (int) $player['id'], $store['players']));
+    $today = (new DateTimeImmutable('today', new DateTimeZone('Europe/Berlin')))->format('Y-m-d');
+    $monthAgo = (new DateTimeImmutable('today -30 days', new DateTimeZone('Europe/Berlin')))->format('Y-m-d');
+
+    // Kalender: Einträge gelöschter Spieler und leere Einträge („Offen“ ohne Hinweis) vergangener Tage
+    $orphans = 0;
+    $empty = 0;
+    foreach ($store['availability'] as $key => $entry) {
+        [$keyPlayer, $keyDate] = array_pad(explode(':', (string) $key, 2), 2, '');
+        $playerId = is_array($entry) ? (int) ($entry['player_id'] ?? $keyPlayer) : 0;
+        $date = is_array($entry) ? (string) ($entry['event_date'] ?? $keyDate) : '';
+        if (!isset($players[$playerId]) || !validIsoDate($date)) {
+            $orphans++;
+        } elseif ($date < $today && (string) ($entry['status'] ?? '') === '' && trim((string) ($entry['note'] ?? '')) === '' && trim((string) ($entry['game'] ?? '')) === '') {
+            $empty++;
+        } else {
+            continue;
+        }
+        if ($apply) {
+            unset($store['availability'][$key]);
+        }
+    }
+    $note('availability_orphans', 'Kalendereinträge von gelöschten Spielern', $orphans);
+    $note('availability_empty', 'Leere Kalendereinträge („Offen“) vergangener Tage', $empty);
+
+    $oldDates = array_values(array_filter($store['custom_dates'], static fn(string $date): bool => $date < $monthAgo));
+    if ($apply) {
+        $store['custom_dates'] = array_values(array_diff($store['custom_dates'], $oldDates));
+    }
+    $note('custom_dates', 'Zusätzliche Spieltage, die mehr als 30 Tage vorbei sind', count($oldDates));
+
+    // Verweise auf gelöschte Konten bzw. Spieler
+    $copy = $store;
+    $netzjeRemoved = pruneNetzjeUsers($copy, $userIds);
+    if ($apply) {
+        $store = $copy;
+    }
+    $note('netzje', 'Netzje-Einträge gelöschter Konten (Plätze, Anfragen, Anmeldungen, Archiv)', $netzjeRemoved);
+
+    $links = 0;
+    foreach ($store['players'] as $index => $player) {
+        if ($player['user_id'] !== null && !isset($users[(int) $player['user_id']])) {
+            $links++;
+            if ($apply) {
+                $store['players'][$index]['user_id'] = null;
+            }
+        }
+    }
+    foreach ($store['users'] as $index => $user) {
+        if ($user['player_id'] !== null && !isset($players[(int) $user['player_id']])) {
+            $links++;
+            if ($apply) {
+                $store['users'][$index]['player_id'] = null;
+            }
+        }
+    }
+    $note('links', 'Verknüpfungen zwischen Spieler und Konto, deren Gegenstück fehlt', $links);
+
+    $tokens = count(array_filter($store['remember_tokens'], static fn(array $token): bool => !isset($users[(int) $token['user_id']])));
+    if ($apply) {
+        $store['remember_tokens'] = array_values(array_filter($store['remember_tokens'], static fn(array $token): bool => isset($users[(int) $token['user_id']])));
+    }
+    $note('tokens', '„Angemeldet bleiben“-Schlüssel gelöschter Konten', $tokens);
+
+    $playerNames = [];
+    foreach ($store['players'] as $player) {
+        $playerNames[textLower((string) $player['name'])] = true;
+    }
+    $adminNames = array_values(array_filter($store['settings']['admin_player_names'], static fn($name): bool => isset($playerNames[textLower((string) $name)])));
+    $note('admin_names', 'Admin-Namen ohne passenden Spieler (geben keine Rechte)', count($store['settings']['admin_player_names']) - count($adminNames));
+    if ($apply) {
+        $store['settings']['admin_player_names'] = $adminNames;
+    }
+
+    // Veraltete Felder früherer Versionen (alles, was die Website nicht mehr liest)
+    $fields = 0;
+    $known = array_flip(array_merge(array_keys(defaultStore()), ['schema_version']));
+    foreach (array_keys($store) as $key) {
+        if (!isset($known[$key])) {
+            $fields++;
+            if ($apply) {
+                unset($store[$key]);
+            }
+        }
+    }
+    $knownSettings = array_flip(array_keys(defaultStore()['settings']));
+    foreach (array_keys($store['settings']) as $key) {
+        if (!isset($knownSettings[$key])) {
+            $fields++;
+            if ($apply) {
+                unset($store['settings'][$key]);
+            }
+        }
+    }
+    $knownUser = array_flip(['id', 'username', 'password_hash', 'player_id', 'must_change_password', 'is_author', 'session_version',
+        'default_weekdays', 'avatar', 'steam_name', 'defaults_effective_from', 'created_at', 'updated_at']);
+    foreach ($store['users'] as $index => $user) {
+        foreach (array_keys($user) as $key) {
+            if (!isset($knownUser[$key])) {
+                $fields++;
+                if ($apply) {
+                    unset($store['users'][$index][$key]);
+                }
+            }
+        }
+    }
+    $knownPlayer = ['id' => true, 'name' => true, 'user_id' => true];
+    foreach ($store['players'] as $index => $player) {
+        foreach (array_keys($player) as $key) {
+            if (!isset($knownPlayer[$key])) {
+                $fields++;
+                if ($apply) {
+                    unset($store['players'][$index][$key]);
+                }
+            }
+        }
+    }
+    $note('fields', 'Veraltete Datenfelder früherer Versionen', $fields);
+
+    // Dateien: nur, worauf nichts mehr verweist und was nicht gerade erst entstanden ist
+    $files = [];
+    $referenced = [];
+    foreach ($store['impressions'] as $item) {
+        $referenced[$item['file']] = true;
+        $referenced[$item['thumb']] = true;
+    }
+    $files['impressions'] = ['Galerie-Bilder ohne Eintrag', cleanupFiles(impressionsDirectory(), 3600, static fn(string $name): bool => !isset($referenced[$name]))];
+
+    $mediaUsed = [];
+    foreach ([gameIconIndex(), discordAvatarIndex()] as $index) {
+        foreach ($index as $entry) {
+            if (is_array($entry) && is_string($entry['file'] ?? null)) {
+                $mediaUsed[$entry['file']] = true;
+            }
+        }
+    }
+    $mediaUsed[$store['netzje']['background']] = true;
+    $files['media'] = ['Heruntergeladene Bilder ohne Verwendung (Spiele-Symbole, Profilbilder, Netzje-Hintergründe)',
+        cleanupFiles(mediaDirectory(), 3600, static fn(string $name): bool => !isset($mediaUsed[$name]))];
+
+    // Zwischenspeicher: was 30 Tage nicht erneuert wurde, braucht niemand mehr (wird bei Bedarf neu geholt).
+    // Die Verzeichnisse der Symbole/Profilbilder und die festen Steam-IDs bleiben.
+    $keepCache = static fn(string $name): bool => in_array($name, [GAME_ICON_INDEX_FILE, DISCORD_AVATAR_INDEX_FILE, THROTTLE_FILE], true) || str_starts_with($name, 'steam-id-');
+    $files['cache'] = ['Veraltete Zwischenspeicher-Dateien (älter als 30 Tage)',
+        cleanupFiles(achievementsCacheDirectory(), 30 * 86400, static fn(string $name): bool => !$keepCache($name))];
+
+    $blogText = implode("\n", array_column($store['blog_posts'], 'content_html'));
+    $files['blog'] = ['Blog-Bilder, die in keinem Beitrag (auch keinem Entwurf) vorkommen',
+        cleanupFiles(__DIR__ . '/assets/blog', 86400, static fn(string $name): bool => preg_match('/\.(?:png|jpe?g|gif|webp)$/i', $name) === 1 && !str_contains($blogText, 'assets/blog/' . $name))];
+
+    $legacy = storageDirectory() . DIRECTORY_SEPARATOR . 'store-before-accounts-backup.php';
+    $files['legacy'] = ['Alte Sicherung von vor der Umstellung auf Benutzerkonten', is_file($legacy) ? [$legacy => (int) filesize($legacy)] : []];
+
+    foreach ($files as $key => [$label, $paths]) {
+        if ($apply) {
+            foreach (array_keys($paths) as $path) {
+                @unlink($path);
+            }
+        }
+        $note('files_' . $key, $label, count($paths), array_sum($paths));
+    }
+    return $items;
+}
+
 function bootstrapResponse(array $store): array
 {
     $eventDates = buildEventDates($store);
@@ -4060,6 +4430,7 @@ if ($action === 'gameservers') {
 
 if ($action === 'gameservers_config') {
     // Wird vom Discord-Bot abgefragt: welche Server er prüfen soll. Ohne Passwörter.
+    requireBotToken();
     session_write_close();
     $configStore = readStore();
     respond(['ok' => true, 'servers' => array_map(static fn(array $server): array => [
@@ -4074,6 +4445,7 @@ if ($action === 'gameservers_config') {
 
 if ($action === 'stats_exclusions') {
     // Wird vom Discord-Bot abgefragt, damit /statistik dieselben Spieler ausblendet.
+    requireBotToken();
     session_write_close();
     respond(['ok' => true, 'ids' => statsExcludedIds(readStore())]);
 }
@@ -4563,9 +4935,33 @@ if ($action === 'logout') {
     });
 }
 
+if ($action === 'login') {
+    // Erst ohne Schreibsperre prüfen: Fehlversuche werden gezählt und gebremst, ohne dass sie
+    // andere Anfragen aufhalten. Die eigentliche Anmeldung folgt unten (case 'login').
+    $loginName = validateUsername($payload['username'] ?? '');
+    if (loginBlocked($loginName)) {
+        respond(['ok' => false, 'code' => 'too_many_attempts', 'error' => 'Zu viele Fehlversuche. Bitte warte 15 Minuten und versuche es dann erneut.'], 429);
+    }
+    $loginStore = readStore();
+    $loginIndex = findUserIndexByUsername($loginStore['users'], $loginName);
+    $loginPassword = (string) ($payload['password'] ?? '');
+    // Auch bei unbekanntem Namen einen Hash prüfen, damit die Antwortzeit nicht verrät, ob es ihn gibt
+    $loginHash = $loginIndex === null ? LOGIN_DUMMY_HASH : (string) $loginStore['users'][$loginIndex]['password_hash'];
+    if (!password_verify($loginPassword, $loginHash) || $loginIndex === null || $loginPassword === '') {
+        loginFailed($loginName);
+        session_write_close();
+        usleep(350000);
+        respond(['ok' => false, 'error' => 'Benutzername oder Passwort ist falsch.'], 401);
+    }
+    loginSucceeded($loginName);
+}
+
 withWritableStore(function (array &$store) use ($action, $payload): array {
     switch ($action) {
         case 'register':
+            if (registerBlocked()) {
+                return [['ok' => false, 'code' => 'too_many_registrations', 'error' => 'Von hier wurden gerade schon mehrere Konten angelegt. Bitte versuche es später noch einmal.'], 429, false];
+            }
             $username = validateUsername($payload['username'] ?? '');
             $playerName = validateName($payload['player_name'] ?? '');
             $password = validatePassword($payload['password'] ?? '', $payload['password_confirmation'] ?? null);
@@ -4611,6 +5007,7 @@ withWritableStore(function (array &$store) use ($action, $payload): array {
                 $store['settings']['admin_player_names'] = [$actualPlayerIndex === null ? $playerName : (string) $store['players'][$actualPlayerIndex]['name']];
             }
 
+            registerCounted();
             session_regenerate_id(true);
             $_SESSION['user_id'] = $userId;
             $_SESSION['auth_version'] = 1;
@@ -4624,7 +5021,7 @@ withWritableStore(function (array &$store) use ($action, $payload): array {
             $password = (string) ($payload['password'] ?? '');
             $index = findUserIndexByUsername($store['users'], $username);
             if ($index === null || $password === '' || !password_verify($password, (string) $store['users'][$index]['password_hash'])) {
-                usleep(350000);
+                // Nur möglich, wenn sich das Passwort genau zwischen Vorprüfung und hier geändert hat
                 return [['ok' => false, 'error' => 'Benutzername oder Passwort ist falsch.'], 401, false];
             }
             if (password_needs_rehash((string) $store['users'][$index]['password_hash'], PASSWORD_DEFAULT)) {
@@ -4934,6 +5331,8 @@ withWritableStore(function (array &$store) use ($action, $payload): array {
             }
             array_splice($store['users'], $targetIndex, 1);
             revokeAllRememberTokensForUser($store, $targetId);
+            // Sonst belegt das gelöschte Konto weiter einen Netzje-Platz (Zähler „x von y bestätigt“)
+            pruneNetzjeUsers($store, array_map(static fn(array $user): int => (int) $user['id'], $store['users']));
             $deletingSelf = (int) $actingUser['id'] === $targetId;
             if ($deletingSelf) {
                 unset($_SESSION['user_id']);
@@ -5585,6 +5984,13 @@ withWritableStore(function (array &$store) use ($action, $payload): array {
             }
             $store['settings']['theme'] = validateThemeValue($payload['theme'] ?? ($store['settings']['theme'] ?? 'default'));
             return [bootstrapResponse($store), 200, true];
+
+        case 'admin_cleanup':
+            // Admin-Seite „Daten aufräumen“: apply = false zeigt nur, was weg könnte; apply = true räumt auf
+            requireAdmin($store);
+            $apply = !empty($payload['apply']);
+            $items = cleanupData($store, $apply);
+            return [['ok' => true, 'applied' => $apply, 'items' => $items, 'store_bytes' => is_file(storagePath()) ? (int) filesize(storagePath()) : 0], 200, $apply];
 
         default:
             return [['ok' => false, 'error' => 'Unbekannte Aktion.'], 400, false];

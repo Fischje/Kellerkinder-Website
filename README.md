@@ -169,16 +169,31 @@ Enthalten sind unter anderem:
 
 Die Datei beginnt mit einer PHP-Sperre und liefert bei einem direkten Aufruf HTTP 403. Sie darf trotzdem niemals in das öffentliche GitHub-Repository eingecheckt werden.
 
-## Prüfung
+## Daten aufräumen
 
-Über `check.php` lässt sich prüfen, ob:
+Auf der Admin-Seite (`admin.php`) gibt es den Bereich **„Daten aufräumen“**. „Prüfen“ listet auf, was sich
+angesammelt hat und auf das nichts mehr verweist; erst „Jetzt aufräumen“ entfernt es:
 
-- PHP in ausreichender Version läuft,
-- Passwort-Hashing und Sitzungen verfügbar sind,
-- der Ordner `data` beschreibbar ist,
-- die Datendatei und das neue Datenschema erkannt werden.
+- Kalendereinträge gelöschter Spieler und leere Einträge („Offen“ ohne Hinweis) vergangener Tage,
+- zusätzliche Spieltage, die mehr als 30 Tage vorbei sind,
+- Netzje-Einträge gelöschter Konten (Plätze, Anfragen, Anmeldungen, Sitzplan, Archiv),
+- Verknüpfungen Spieler ↔ Konto ohne Gegenstück, „Angemeldet bleiben“-Schlüssel gelöschter Konten,
+  Admin-Namen ohne Spieler und Datenfelder früherer Versionen,
+- Galerie-Bilder ohne Eintrag, nicht mehr benutzte Spiele-Symbole, Profilbilder und Netzje-Hintergründe,
+  Zwischenspeicher-Dateien, die 30 Tage nicht erneuert wurden, und Blog-Bilder, die in keinem Beitrag vorkommen,
+- die alte Sicherung `data/store-before-accounts-backup.php` von der Umstellung auf Benutzerkonten.
 
-`check.php` sollte nach erfolgreicher Prüfung vom Produktivserver entfernt werden.
+Kalenderdaten, Blog-Beiträge, Galerie, Netzje-Archiv und die Spielzeit bleiben erhalten.
+
+## Sicherheit
+
+- Anmelden: Nach 8 Fehlversuchen in 15 Minuten (je Netz und Benutzername) bzw. 30 Fehlversuchen
+  (je Benutzername insgesamt) ist die Anmeldung für 15 Minuten gesperrt. Von einem Netz lassen sich
+  höchstens 5 Konten pro Stunde registrieren. Die Zähler liegen als Hashes in `data/cache/login-throttle.json`.
+- Bot-Schnittstellen: `api.php?action=gameservers_config` (enthält interne Adressen) und `stats_exclusions`
+  (enthält Discord-IDs) fragt nur der Discord-Bot ab. Mit `const BOT_SHARED_TOKEN = '…';` in `config.php`
+  sind sie nur noch mit diesem Schlüssel erreichbar; der Bot schickt ihn mit, wenn in seiner `.env`
+  derselbe Wert als `WEBSITE_API_TOKEN` steht. Ohne Eintrag bleiben sie offen (wie bisher).
 
 ## Aktualisieren
 
@@ -206,6 +221,7 @@ Die Laufzeitdateien unter `data/store.php*` werden von Git ignoriert und dadurch
 │   ├── logo/          (Logo als PNG 300 × 300: eckig, rund, transparent)
 │   ├── sidebar.js      (füllt die Seitenleiste „Kurz & knapp“)
 │   ├── pull-refresh.js (Herunterziehen zum Neuladen in der installierten App, alle Seiten)
+│   ├── nav-scroll.js   (Pfeile am Hauptmenü, wenn es nicht auf den Bildschirm passt)
 │   └── smartphone-install.svg
 ├── data/
 │   ├── .htaccess
@@ -232,16 +248,14 @@ Die Laufzeitdateien unter `data/store.php*` werden von Git ignoriert und dadurch
 ├── steam-refresh.php   (Cron: Steam-Erfolge, Spiele-Symbole, Profilbilder holen)
 ├── media.php           (liefert Spiele-Symbole und Profilbilder aus data/media aus; ist data nicht beschreibbar: Temp-Ordner als Ersatz)
 ├── feed.php
-├── check.php
 ├── index.php
-├── admin.php           (zentrale Admin-Seite: Schalter, Netzje-Anfragen, Benutzerverwaltung)
+├── admin.php           (zentrale Admin-Seite: Schalter, Netzje-Anfragen, Benutzerverwaltung, Daten aufräumen)
 ├── spieler.php         (Spielerliste; mit ?name= das Spielerprofil)
 ├── jahresrueckblick.php (Jahresrückblick der Spiele-Statistik)
 ├── eindruecke.php      (Galerie, nur für Angemeldete)
 ├── manifest.webmanifest
 ├── service-worker.js
 ├── CHANGELOG.md
-├── GITHUB_SETUP.md
 ├── README.md
 └── VERSION
 ```

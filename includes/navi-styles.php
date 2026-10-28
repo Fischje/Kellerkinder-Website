@@ -99,8 +99,8 @@ if (!isset($backgroundImages) || !is_array($backgroundImages)) { $backgroundImag
         }
 
         /* Fest eingestellte weiße Schrift aus älteren Schichten → dunkel */
-        .page-shell :is(.section-title, .board-heading, .card-title, .post-card h2, .post-body h2, .post-body h3, .post-body h4,
-            .blog-head h1, .sidebar-box h2, .achievement-card-head h3, .achievements-head h2, .account-summary strong,
+        .page-shell :is(.section-title, .board-heading, .post-card h2, .post-body h2, .post-body h3, .post-body h4,
+            .blog-head h1, .achievement-card-head h3, .achievements-head h2,
             .stats-tile strong, .stats-section, .stats-name, .server-title h3, .server-rows dd, .netzje-when,
             .netzje-box h3, .netzje-list h3, .netzje-day, .netzje-row .game, .netzje-chip.me, .netzje-block,
             .steam-achievement-text strong, .achievement-links-head, .steam-missing strong, .stats-admin code,
@@ -109,11 +109,10 @@ if (!isset($backgroundImages) || !is_array($backgroundImages)) { $backgroundImag
         dialog :is(.modal-title, label, .admin-user-card strong, .install-steps li, .editing-note, .instruction-item p,
             .discord-note h3, .discord-note p, .discord-note code) { color: var(--text); }
 
-        .page-shell :is(.account-summary, .empty-state, .loading, .discord-note p, .widget-loading, .widget-empty),
+        .page-shell :is(.empty-state, .loading, .discord-note p, .widget-loading, .widget-empty),
         dialog :is(.modal-subtitle, .field-help, .remember-row, .remember-row span) { color: var(--muted); }
 
-        .page-shell .empty-state strong,
-        dialog .section-heading { color: var(--accent-text); }
+        .page-shell .empty-state strong { color: var(--accent-text); }
 
         /* ===== Spalte: Infoleiste, Kopfband, Rahmen (Inhalt + Seitenleiste), Fußzeile ===== */
         .topbar,
@@ -402,7 +401,6 @@ if (!isset($backgroundImages) || !is_array($backgroundImages)) { $backgroundImag
             letter-spacing: .14em;
         }
 
-
         .page-hero-title {
             max-width: none;
             color: var(--text);
@@ -449,7 +447,6 @@ if (!isset($backgroundImages) || !is_array($backgroundImages)) { $backgroundImag
             background: linear-gradient(transparent 60%, rgba(var(--accent-rgb), .9) 60%);
         }
 
-        .card-title,
         .modal-title,
         .post-card h2,
         .achievement-card-head h3 {
@@ -458,27 +455,24 @@ if (!isset($backgroundImages) || !is_array($backgroundImages)) { $backgroundImag
             letter-spacing: 0;
         }
 
-        .card-title,
         .modal-title,
         .post-card h2 { padding-left: 0; }
 
-        .card-title::before,
         .modal-title::before,
         .post-card h2::before { display: none; }
 
         .modal-title { font-size: 1.4rem; text-transform: uppercase; }
 
         /* ===== Eckige Formen überall ===== */
-        .primary-button, .secondary-button, .danger-button, .compact-button,
-        .tag-chip, .blog-teaser-label, .section-cta, .info-icon-button, .stats-period, .stats-avatar,
-        .board, .achievements, .account-strip, .blog-panel, .games-panel, .sidebar-box,
+        .primary-button, .secondary-button, .danger-button,
+        .tag-chip, .blog-teaser-label, .info-icon-button, .stats-period, .stats-avatar,
+        .board, .achievements, .blog-panel, .games-panel,
         .post-card, .achievement-card, dialog, .blog-teaser { clip-path: none; border-radius: 0; }
 
         /* ===== Buttons ===== */
         .primary-button,
         .secondary-button,
-        .danger-button,
-        .compact-button {
+        .danger-button {
             border-radius: 0;
             font-family: var(--font-ui);
             font-size: .78rem;
@@ -494,15 +488,13 @@ if (!isset($backgroundImages) || !is_array($backgroundImages)) { $backgroundImag
         body[data-theme="summer"] .primary-button:hover,
         body[data-theme="winter"] .primary-button:hover { color: var(--accent-ink); background: var(--accent-hover); }
 
-        .secondary-button,
-        .compact-button {
+        .secondary-button {
             color: var(--text);
             background: #fff;
             box-shadow: inset 0 0 0 1px var(--line-strong);
         }
 
-        .secondary-button:hover,
-        .compact-button:hover {
+        .secondary-button:hover {
             color: var(--text);
             background: rgba(var(--accent-rgb), .18);
             box-shadow: inset 0 0 0 2px var(--accent);
@@ -516,11 +508,9 @@ if (!isset($backgroundImages) || !is_array($backgroundImages)) { $backgroundImag
 
         .danger-button:hover { color: #fff; background: var(--red); }
 
-        .compact-button { font-size: .72rem; }
-
         /* ===== Flächen ===== */
         /* Kasten-Flächen: weiß mit feinem Rahmen */
-        .board, .account-strip, .sidebar-box, .netzje-panel {
+        .board, .netzje-panel {
             border: 1px solid var(--line);
             border-radius: 0;
             background: #fff;
@@ -561,10 +551,6 @@ if (!isset($backgroundImages) || !is_array($backgroundImages)) { $backgroundImag
         }
 
         .netzje-box { border: 1px solid var(--line); border-radius: 0; background: var(--panel-strong); }
-
-        /* ===== Konto-Leiste ===== */
-        .account-strip { padding: 14px 18px; }
-        .account-summary strong { font-family: var(--font-ui); font-size: 1rem; font-weight: 800; }
 
         .avatar, .avatar-placeholder { border-radius: 0; }
         .avatar-placeholder { color: var(--accent-ink); background: var(--accent); font-family: var(--font-ui); font-weight: 800; }
@@ -760,7 +746,6 @@ if (!isset($backgroundImages) || !is_array($backgroundImages)) { $backgroundImag
 
         dialog .achievement-edit-row input { color: var(--text); background: #f6f7f9; border-color: var(--line-strong); }
         dialog .admin-user-card { background: var(--panel-strong); }
-        dialog .separator { background: var(--line); }
 
         .instruction-number { color: var(--accent-ink); background: var(--accent); font-family: var(--font-ui); }
         .instruction-item strong { color: var(--accent-text); }
@@ -848,9 +833,6 @@ if (!isset($backgroundImages) || !is_array($backgroundImages)) { $backgroundImag
 
         .tag-chip:hover { color: var(--text); background: rgba(var(--accent-rgb), .18); }
         .tag-chip.active { color: var(--accent-ink); background: var(--accent); box-shadow: none; }
-
-        .sidebar-box { padding: 22px; }
-        .sidebar-box h2.card-title { font-size: 1.15rem; text-transform: uppercase; }
 
         .editor-toolbar { border-radius: 0; background: var(--panel-soft); }
         .editor-toolbar button { border-radius: 0; color: var(--text); }
@@ -1227,6 +1209,14 @@ if (!isset($backgroundImages) || !is_array($backgroundImages)) { $backgroundImag
         :is(.page-shell, dialog) textarea { font: inherit; }
         .admin-names .admin-help { margin: 0 0 10px; }
         .admin-names-actions { display: flex; justify-content: flex-end; margin-top: 10px; }
+
+        /* Daten aufräumen */
+        .cleanup-list { display: grid; gap: 6px; margin: 0 0 14px; padding: 0; list-style: none; }
+        .cleanup-item { display: grid; grid-template-columns: minmax(2.5ch, auto) minmax(0, 1fr) auto; align-items: baseline; gap: 10px; padding: 9px 12px; border: 1px solid var(--line); background: var(--panel-strong); }
+        .cleanup-count { color: var(--accent-text); font-weight: 900; text-align: right; }
+        .cleanup-size { color: var(--muted); font-size: .82rem; white-space: nowrap; }
+        .cleanup-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+        .cleanup-actions .admin-help { margin: 0; }
 
         /* Tablet & Handy: keine schmale Leiste – die Kästen rutschen als Karten unter den Inhalt.
            Tablet: nebeneinander, Handy: untereinander in voller Breite. */

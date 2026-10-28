@@ -1,4 +1,4 @@
-const APP_VERSION = '2.34.3';
+const APP_VERSION = '2.35.0';
 const CACHE_NAME = 'kellerkinder-static-v' + APP_VERSION;
 // Logo und Icons mit ?v=Version, wie sie die Seiten einbinden: so holt ein neuer
 // Service-Worker sie frisch (auch an Cloudflare vorbei) statt eine alte Kopie zu behalten.

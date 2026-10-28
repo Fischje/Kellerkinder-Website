@@ -1,5 +1,26 @@
 # Änderungsprotokoll
 
+## 2.35.0 — Sicherheits-Durchsicht, Aufräumen, „Daten aufräumen“ für Admins
+
+**Sicherheit**
+- **Schutz vor Passwort-Raten:** Nach 8 Fehlversuchen in 15 Minuten (je Netz und Benutzername) bzw. 30 (je Benutzername insgesamt) ist die Anmeldung 15 Minuten gesperrt. Fehlversuche halten die Datendatei nicht mehr gesperrt (vorher wartete jeder Fehlversuch 0,35 s mit Schreibsperre – damit ließ sich das Speichern für alle ausbremsen). Bei unbekannten Benutzernamen dauert die Antwort genauso lange wie bei bekannten
+- **Registrieren:** höchstens 5 neue Konten pro Stunde und Netz
+- **`check.php` entfernt:** Die Diagnose-Seite war öffentlich erreichbar und zeigte PHP-Version, Server-Pfade und die Zahl der Konten
+- **Bot-Schnittstellen absicherbar:** `gameservers_config` (mit internen Server-Adressen) und `stats_exclusions` (mit Discord-IDs) lassen sich mit `BOT_SHARED_TOKEN` in der `config.php` auf den Discord-Bot beschränken (Bot ab 1.13.0 mit `WEBSITE_API_TOKEN`). Ohne Eintrag bleibt alles wie bisher
+- Raider.IO-Profillinks werden nur noch übernommen, wenn sie wirklich zu raider.io führen
+- Das Argument für den Hintergrundprozess (`steam-refresh.php`) wird jetzt immer maskiert
+
+**Fehler behoben**
+- Ein gelöschtes Konto belegte weiter einen Netzje-Platz („x von y bestätigt“) und stand weiter in Anfragen, Anmeldungen und im Sitzplan. Beim Löschen wird es jetzt überall aus der Netzje entfernt
+
+**Neu: „Daten aufräumen“ auf der Admin-Seite**
+- „Prüfen“ listet Reste auf, auf die nichts mehr verweist; „Jetzt aufräumen“ entfernt sie: Kalendereinträge gelöschter Spieler, leere „Offen“-Einträge vergangener Tage, zusätzliche Spieltage älter als 30 Tage, Netzje-Einträge gelöschter Konten, verwaiste Verknüpfungen Spieler ↔ Konto, „Angemeldet bleiben“-Schlüssel gelöschter Konten, Admin-Namen ohne Spieler, veraltete Datenfelder, Galerie-Bilder ohne Eintrag, ungenutzte Spiele-Symbole/Profilbilder/Netzje-Hintergründe, Zwischenspeicher älter als 30 Tage, Blog-Bilder ohne Beitrag und die alte Sicherung von der Konten-Umstellung. Kalender, Blog, Galerie, Netzje-Archiv und Spielzeit bleiben erhalten
+
+**Aufgeräumt**
+- 177 Zeilen ungenutztes CSS aus älteren Design-Schichten entfernt (Konto-Leiste, Karten-Titel, kleine Knöpfe u. a.) – alle Seiten per Pixelvergleich geprüft, unverändert
+- Alte Dateien entfernt: `GITHUB_SETUP.md` (Ersteinrichtung), `kellerkinder-pwa-pull-to-refresh-v2.2.1.patch`, das ungenutzte `assets/bg-scene-default.jpg` und eine wirkungslose `.gitignore` im Hintergrundordner
+- Ungenutzte Konstante entfernt, doppelte Bot-Adress-Ableitung zusammengeführt, verrutschten Kommentar korrigiert
+
 ## 2.34.3 — „.gg“ hinter dem Titel
 
 - Hinter „Kellerkinder“ im Kopfband steht jetzt ganz klein, grau „.gg“ (Vorbereitung auf den Umzug zu kellerkinder.gg)

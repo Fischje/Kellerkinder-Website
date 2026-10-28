@@ -1660,19 +1660,6 @@ if (!isset($backgroundImages) || !is_array($backgroundImages)) { $backgroundImag
             font-size: .74rem;
         }
 
-        .achievement-updated .mock-tag {
-            display: inline-block;
-            margin-left: 6px;
-            padding: 1px 7px;
-            border: 1px solid rgba(255,173,66,.4);
-            border-radius: 999px;
-            color: #ffd28d;
-            background-image: var(--sheen);
-            font-size: .68rem;
-            letter-spacing: .03em;
-            text-transform: uppercase;
-        }
-
         .widget-loading,
         .widget-empty {
             padding: 14px 10px;
@@ -1697,35 +1684,6 @@ if (!isset($backgroundImages) || !is_array($backgroundImages)) { $backgroundImag
 
         [hidden] { display: none !important; }
 
-        .account-strip {
-            display: flex;
-            flex-wrap: wrap;
-            align-items: center;
-            justify-content: space-between;
-            gap: 12px;
-            margin: 18px 0 0;
-            padding: 13px 15px;
-            border: 1px solid rgba(135,151,197,.25);
-            border-radius: 14px;
-            background: rgba(10,13,24,.56);
-            box-shadow: inset 0 1px 0 rgba(255,255,255,.04);
-            backdrop-filter: blur(12px);
-        }
-
-        .account-summary {
-            display: grid;
-            grid-template-columns: auto minmax(0, 1fr);
-            gap: 10px;
-            align-items: center;
-            min-width: 0;
-            color: #cdd4e8;
-            line-height: 1.38;
-        }
-
-        .account-summary-text { min-width: 0; }
-        .account-summary strong { color: #fff; }
-        .account-summary small { display: block; margin-top: 2px; color: var(--muted); }
-
         .avatar,
         .avatar-placeholder {
             flex: 0 0 auto;
@@ -1743,11 +1701,6 @@ if (!isset($backgroundImages) || !is_array($backgroundImages)) { $backgroundImag
             color: var(--primary-hover);
             font-size: .78rem;
             font-weight: 800;
-        }
-
-        .account-avatar {
-            width: 42px;
-            height: 42px;
         }
 
         .player-title {
@@ -1789,29 +1742,6 @@ if (!isset($backgroundImages) || !is_array($backgroundImages)) { $backgroundImag
             border-radius: 10px;
             color: #dbe6ff;
             background: #090d19;
-        }
-
-        .account-actions {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            justify-content: flex-end;
-        }
-
-        .compact-button {
-            min-height: 39px;
-            padding: 8px 12px;
-            border: 1px solid rgba(135,151,197,.34);
-            border-radius: 10px;
-            color: #edf2ff;
-            background: linear-gradient(180deg, rgba(34,42,68,.94), rgba(17,22,38,.96));
-            cursor: pointer;
-            font-size: .92rem;
-            font-weight: 800;
-        }
-
-        .compact-button:hover {
-            border-color: var(--primary);
         }
 
         .account-badge,
@@ -1982,7 +1912,6 @@ if (!isset($backgroundImages) || !is_array($backgroundImages)) { $backgroundImag
             accent-color: #35e7ff;
             cursor: pointer;
         }
-        .section-heading { margin: 5px 0 0; color: #a9ecff; font-size: 1.02rem; }
 
         input[type="text"],
         input[type="password"],
@@ -2053,15 +1982,6 @@ if (!isset($backgroundImages) || !is_array($backgroundImages)) { $backgroundImag
             background: var(--primary);
         }
 
-        .admin-toolbar {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 9px;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 13px;
-        }
-
         .admin-user-list {
             display: grid;
             gap: 9px;
@@ -2085,12 +2005,6 @@ if (!isset($backgroundImages) || !is_array($backgroundImages)) { $backgroundImag
         .admin-user-card small { display: block; margin-top: 3px; color: var(--muted); }
         .admin-user-card button { flex: 0 0 auto; }
 
-        .separator {
-            height: 1px;
-            margin: 20px 0;
-            background: rgba(135,151,197,.2);
-        }
-
         .forced-password-note {
             margin: 0 0 15px;
             padding: 11px 12px;
@@ -2100,7 +2014,6 @@ if (!isset($backgroundImages) || !is_array($backgroundImages)) { $backgroundImag
             background: rgba(80,46,11,.48);
             line-height: 1.45;
         }
-
 
         @media (max-width: 680px) {
             .page-shell { padding: calc(10px + env(safe-area-inset-top)) calc(8px + env(safe-area-inset-right)) calc(30px + env(safe-area-inset-bottom)) calc(8px + env(safe-area-inset-left)); }
@@ -2118,11 +2031,6 @@ if (!isset($backgroundImages) || !is_array($backgroundImages)) { $backgroundImag
             .brand-name { font-size: 1.1rem; }
             .subtitle { font-size: .66rem; }
             .nav-link { font-size: .84rem; }
-            .subtitle-group { margin-top: 12px; gap: 5px; }
-            .account-strip { align-items: stretch; padding: 12px; }
-            .account-actions { width: 100%; justify-content: stretch; }
-            .account-actions > button { flex: 1 1 130px; }
-            .account-summary { width: 100%; }
             .form-row { grid-template-columns: 1fr; }
             .weekday-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
             .admin-user-card { align-items: flex-start; flex-wrap: wrap; }
