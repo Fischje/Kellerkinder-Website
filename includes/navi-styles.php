@@ -763,6 +763,8 @@ if (!isset($backgroundImages) || !is_array($backgroundImages)) { $backgroundImag
         .info-icon-button:hover { color: var(--accent-ink); background: var(--accent-hover); }
 
         .toast { border-left: 4px solid var(--accent); }
+        /* Hinweis innerhalb eines offenen Dialogs (dort gelten helle Farben): dunkel lassen */
+        dialog .toast { color: #fff; background: #1c1f25; border-color: #1c1f25; border-left-color: var(--accent); }
 
         /* ===== Fußzeile: dunkles Band über die Breite der Spalte ===== */
         .site-footer {

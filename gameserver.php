@@ -139,6 +139,9 @@ require __DIR__ . '/includes/site-header.php';
     let toastTimer = null;
     function showToast(message) {
         const toast = byId('toast');
+        // Ein offenes Dialogfenster liegt über allem: den Hinweis dort hinein, sonst bleibt er unsichtbar
+        const host = document.querySelector('dialog[open]') || document.body;
+        if (toast.parentElement !== host) host.append(toast);
         toast.textContent = message;
         toast.classList.add('show');
         clearTimeout(toastTimer);

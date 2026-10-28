@@ -1,5 +1,13 @@
 # Änderungsprotokoll
 
+## 2.35.1 — Blog: Beiträge mit Bildern lassen sich wieder posten
+
+- **Fehler behoben:** Ein per Strg+V eingefügtes Bild landete als riesiger Text (data-URL) im Beitrag → „Der Beitrag ist zu lang“. Jetzt werden eingefügte und hineingezogene Bilder wie beim Knopf „Bild“ hochgeladen; noch eingebettete Bilder werden beim Speichern hochgeladen. Bilder von fremden Websites werden vor dem Speichern gemeldet
+- **Fehler behoben:** Blog-Bilder wurden nach `assets/blog` geschrieben – ein Programmordner, in den PHP auf dem Server oft nicht schreiben darf. Neue Bilder liegen in `data/media` (Auslieferung über `media.php`); alte Bilder unter `assets/blog` gelten weiter
+- Bilder werden schon im Browser auf höchstens 1600 px verkleinert und unter ~700 KB gehalten (Handyfotos waren zu groß für den Upload)
+- **Fehler behoben:** Im Blog waren Hinweise nie sichtbar (falsche CSS-Klasse), und auf allen Seiten verschwanden Hinweise hinter offenen Dialogen (Editor, Login usw.). Fehlermeldungen erscheinen jetzt immer
+- „Daten aufräumen“ lässt Blog-Bilder in `data/media` stehen, solange ein Beitrag oder Entwurf sie zeigt
+
 ## 2.35.0 — Sicherheits-Durchsicht, Aufräumen, „Daten aufräumen“ für Admins
 
 **Sicherheit**

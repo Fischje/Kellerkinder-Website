@@ -294,8 +294,9 @@ function sanitizeBlogNode(DOMNode $node): void
                 $child->setAttribute('target', '_blank');
                 $child->setAttribute('rel', 'noopener noreferrer');
             } elseif ($name === 'src') {
-                // Nur eigene Uploads und YouTube-Vorschaubilder zulassen.
-                $isLocalUpload = preg_match('#^assets/blog/[A-Za-z0-9._-]+$#', $value) === 1;
+                // Nur eigene Uploads (neu: data/media über media.php, früher: assets/blog) und YouTube-Vorschaubilder zulassen.
+                $isLocalUpload = preg_match('#^assets/blog/[A-Za-z0-9._-]+$#', $value) === 1
+                    || preg_match('#^media\.php\?f=blog-[a-z0-9-]+\.(?:png|jpg|gif|webp)$#', $value) === 1;
                 $isYoutubeThumb = preg_match('#^https://i\.ytimg\.com/vi/[A-Za-z0-9_-]{6,20}/[a-z0-9]+\.jpg$#', $value) === 1;
                 if (!$isLocalUpload && !$isYoutubeThumb) {
                     $child->removeAttribute('src');
@@ -4181,8 +4182,16 @@ function cleanupData(array &$store, bool $apply): array
         }
     }
     $mediaUsed[$store['netzje']['background']] = true;
-    $files['media'] = ['Heruntergeladene Bilder ohne Verwendung (Spiele-Symbole, Profilbilder, Netzje-Hintergründe)',
-        cleanupFiles(mediaDirectory(), 3600, static fn(string $name): bool => !isset($mediaUsed[$name]))];
+    $blogText = implode("\n", array_column($store['blog_posts'], 'content_html'));
+    $mediaDir = mediaDirectory();
+    $files['media'] = ['Bilder ohne Verwendung (Spiele-Symbole, Profilbilder, Netzje-Hintergründe, Blog-Bilder)',
+        cleanupFiles($mediaDir, 3600, static function (string $name) use ($mediaUsed, $blogText, $mediaDir): bool {
+            if (str_starts_with($name, 'blog-')) {
+                // Blog-Bilder: gebraucht, solange ein Beitrag (auch ein Entwurf) sie zeigt; neue erst nach einem Tag
+                return !str_contains($blogText, 'media.php?f=' . $name) && time() - (int) filemtime($mediaDir . DIRECTORY_SEPARATOR . $name) > 86400;
+            }
+            return !isset($mediaUsed[$name]);
+        })];
 
     // Zwischenspeicher: was 30 Tage nicht erneuert wurde, braucht niemand mehr (wird bei Bedarf neu geholt).
     // Die Verzeichnisse der Symbole/Profilbilder und die festen Steam-IDs bleiben.
@@ -4190,7 +4199,6 @@ function cleanupData(array &$store, bool $apply): array
     $files['cache'] = ['Veraltete Zwischenspeicher-Dateien (älter als 30 Tage)',
         cleanupFiles(achievementsCacheDirectory(), 30 * 86400, static fn(string $name): bool => !$keepCache($name))];
 
-    $blogText = implode("\n", array_column($store['blog_posts'], 'content_html'));
     $files['blog'] = ['Blog-Bilder, die in keinem Beitrag (auch keinem Entwurf) vorkommen',
         cleanupFiles(__DIR__ . '/assets/blog', 86400, static fn(string $name): bool => preg_match('/\.(?:png|jpe?g|gif|webp)$/i', $name) === 1 && !str_contains($blogText, 'assets/blog/' . $name))];
 
@@ -5453,16 +5461,14 @@ withWritableStore(function (array &$store) use ($action, $payload): array {
             if (!isset($extensionByType[$imageInfo[2]])) {
                 return [['ok' => false, 'error' => 'Dieses Bildformat wird nicht unterstützt.'], 422, false];
             }
-            $uploadDirectory = __DIR__ . '/assets/blog';
-            if (!is_dir($uploadDirectory) && !@mkdir($uploadDirectory, 0750, true) && !is_dir($uploadDirectory)) {
-                return [['ok' => false, 'error' => 'Der Bilderordner konnte nicht angelegt werden.'], 500, false];
-            }
+            // Ablage in data/media (dort darf PHP immer schreiben; der Programmordner assets/blog gehört auf
+            // dem Server oft einem anderen Benutzer). Ausgeliefert über media.php.
             $binary = downscaleBlogImage($binary, $imageInfo);
-            $fileName = date('Ymd') . '-' . bin2hex(random_bytes(8)) . '.' . $extensionByType[$imageInfo[2]];
-            if (@file_put_contents($uploadDirectory . '/' . $fileName, $binary) === false) {
-                return [['ok' => false, 'error' => 'Das Bild konnte nicht gespeichert werden.'], 500, false];
+            $fileName = mediaStore($binary, 'blog-' . date('Ymd') . '-' . bin2hex(random_bytes(8)) . '.' . $extensionByType[$imageInfo[2]]);
+            if ($fileName === null) {
+                return [['ok' => false, 'error' => 'Das Bild konnte nicht gespeichert werden (Schreibrechte für data/media?).'], 500, false];
             }
-            return [['ok' => true, 'url' => 'assets/blog/' . $fileName], 200, false];
+            return [['ok' => true, 'url' => 'media.php?f=' . $fileName], 200, false];
 
         case 'admin_save_achievement':
             requireAdmin($store);
