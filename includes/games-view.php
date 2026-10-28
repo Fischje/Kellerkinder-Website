@@ -64,6 +64,11 @@ require __DIR__ . '/site-header.php';
 
 <main class="page-shell">
 
+    <?php
+    // Spieler: Rangliste und daneben „Unsere Erfolge“ (Steam, ggf. WoW), wenn auf admin.php eingeschaltet
+    $showAchievements = $gamesView === 'players' && siteFeatures()['home']['achievements'];
+    ?>
+    <?php if ($showAchievements): ?><div class="players-layout"><?php endif; ?>
     <section class="games-panel">
         <div class="games-head">
             <?php if ($gamesView === 'all'): ?>
@@ -84,6 +89,10 @@ require __DIR__ . '/site-header.php';
 
         <div id="statsBody"><p class="widget-loading">Wird geladen …</p></div>
     </section>
+    <?php if ($showAchievements): ?>
+    <?php require __DIR__ . '/achievements-section.php'; ?>
+    </div>
+    <?php endif; ?>
 
     <?php if ($gamesView === 'players'): ?>
     <section class="games-panel stats-admin" id="statsAdmin" hidden>

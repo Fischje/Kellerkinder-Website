@@ -69,7 +69,7 @@ require __DIR__ . '/includes/site-header.php';
             </section>
 
             <section class="admin-panel">
-                <h2 class="section-title"><span class="accent">Home</span> &amp; Kalender</h2>
+                <h2 class="section-title"><span class="accent">Seiten</span>-Inhalte</h2>
                 <div class="admin-switches" id="homeSwitches"></div>
             </section>
 

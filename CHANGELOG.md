@@ -1,5 +1,12 @@
 # Änderungsprotokoll
 
+## 2.37.0 — Erfolge auf der Spieler-Seite, WoW-Wertungen abschaltbar
+
+- **„Unsere Erfolge“ zieht vom Kalender in die Spiele-Statistik:** Auf der Unterseite **Spieler** steht links die Rangliste, rechts daneben die Erfolge (auf schmalen Bildschirmen darunter). Die Kästen stehen untereinander, kein automatisches Durchwechseln mehr
+- **World of Warcraft (M+-Wertungen über Raider.IO)** ist jetzt ein Schalter auf der Admin-Seite und **standardmäßig aus**. Ist er aus, fragt die Website Raider.IO gar nicht erst
+- Admin-Seite: Abschnitt „Seiten-Inhalte“ (Home: Neu im Blog, Spieler: Erfolge, Erfolge: WoW)
+- Code: Erfolge-Logik als `assets/achievements.js`, Markup als `includes/achievements-section.php`
+
 ## 2.36.0 — Neue Startseite „Home“, Kalender auf eigener Seite, Seitenleiste je Seite einstellbar
 
 - **Neue Startseite „Home“** (`index.php`, erster Menüpunkt): Text, den Admins mit dem Blog-Editor bearbeiten („Text bearbeiten“, inkl. Bilder, Links, YouTube). Vorlage: kurze Beschreibung aller Menüpunkte (außer Admin); „Vorlage wiederherstellen“ setzt sie zurück. Darunter **„Neu im Blog“** mit den drei neuesten Beiträgen – ein Klick springt zum Beitrag im Blog

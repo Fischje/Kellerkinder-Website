@@ -223,6 +223,7 @@ Die Laufzeitdateien unter `data/store.php*` werden von Git ignoriert und dadurch
 │   ├── pull-refresh.js (Herunterziehen zum Neuladen in der installierten App, alle Seiten)
 │   ├── nav-scroll.js   (Pfeile am Hauptmenü, wenn es nicht auf den Bildschirm passt)
 │   ├── rich-editor.js  (Text-Editor für Blog und Home: Format, Links, Bilder, YouTube)
+│   ├── achievements.js (Erfolge auf der Spieler-Seite: Steam, optional WoW)
 │   └── smartphone-install.svg
 ├── data/
 │   ├── .htaccess
@@ -234,6 +235,7 @@ Die Laufzeitdateien unter `data/store.php*` werden von Git ignoriert und dadurch
 │   ├── site-footer.php (Seitenleiste und Fußzeile, schließt den Seitenrahmen)
 │   ├── features.php    (Schalter der Admin-Seite: Standardwerte, Lesen für die Seiten)
 │   ├── rich-editor.php (Markup des Text-Editors)
+│   ├── achievements-section.php (Abschnitt „Unsere Erfolge“ für die Spieler-Seite)
 │   ├── review-styles.php (Jahresrückblick und Spielerprofil)
 │   ├── gallery-styles.php (Seite „Eindrücke“)
 │   ├── games-view.php  (gemeinsame Ansicht von games.php und alle-spiele.php)

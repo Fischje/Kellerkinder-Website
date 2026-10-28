@@ -2,6 +2,13 @@
 // Ergänzende Styles nur für die Statistik-Seite (Spielzeit der Kellerkinder).
 ?>
     <style>
+        /* Spieler: Rangliste links, „Unsere Erfolge“ rechts (schmaler Bildschirm: untereinander) */
+        .players-layout { display: grid; gap: 34px; }
+        .players-layout > .games-panel { min-width: 0; margin: 0; }
+        .achievement-stack { display: grid; gap: 14px; }
+        @media (min-width: 1200px) {
+            .players-layout { grid-template-columns: minmax(0, 1.35fr) minmax(300px, 1fr); align-items: start; }
+        }
         .games-panel {
             margin-top: 19px;
             padding: 22px;

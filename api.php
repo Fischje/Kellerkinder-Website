@@ -4380,7 +4380,10 @@ if ($action === 'achievements') {
     session_write_close();
 
     $achievementsStore = readStore();
-    $wow = achievementsWowData();
+    // WoW-Kasten auf admin.php aus: Raider.IO gar nicht erst fragen
+    $wow = normalizeFeatures($achievementsStore['settings']['features'] ?? [])['home']['wow_mplus']
+        ? achievementsWowData()
+        : ['configured' => false, 'runs' => [], 'updated_at' => null];
     $wowMeta = $achievementsStore['achievements_manual']['wow'] ?? ['title' => null, 'links_title' => null, 'links' => []];
     $wow['title'] = $wowMeta['title'] ?? null;
     $wow['links_title'] = $wowMeta['links_title'] ?? null;

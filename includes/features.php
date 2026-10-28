@@ -51,16 +51,19 @@ const FEATURE_PAGES = [
     'impressions' => 'Eindrücke (nur für Angemeldete)',
 ];
 
-/** Teile der Seiten Home und Kalender (Schlüssel bleiben aus Kompatibilität gleich). */
+/** Inhalte einzelner Seiten (Gruppe heißt aus Kompatibilität weiter „home“). */
 const FEATURE_HOME = [
     'blog_teaser' => 'Home: „Neu im Blog“ (die drei neuesten Beiträge) unter dem Starttext',
-    'achievements' => 'Kalender: Abschnitt „Unsere Erfolge“',
+    'achievements' => 'Spieler: „Unsere Erfolge“ neben der Rangliste',
+    'wow_mplus' => 'Erfolge: World of Warcraft – M+-Wertungen (Raider.IO)',
 ];
+/** Diese Inhalte sind anfangs aus (WoW spielen wir gerade nicht). */
+const FEATURE_HOME_OFF = ['wow_mplus'];
 
 /**
  * Bringt gespeicherte Schalter in eine feste Form:
  * sidebar = Liste [box, enabled] in Anzeige-Reihenfolge (unbekannte fallen weg, fehlende kommen hinten dazu),
- * pages / home = [schlüssel => bool], fehlende Werte sind eingeschaltet.
+ * pages / home = [schlüssel => bool], fehlende Werte sind eingeschaltet (außer FEATURE_HOME_OFF).
  */
 function normalizeFeatures($value): array
 {
@@ -83,18 +86,18 @@ function normalizeFeatures($value): array
     $pinned = $sidebar[FEATURE_SIDEBAR_PINNED];
     unset($sidebar[FEATURE_SIDEBAR_PINNED]);
     $sidebar = [FEATURE_SIDEBAR_PINNED => $pinned] + $sidebar;
-    $flags = static function ($raw, array $keys): array {
+    $flags = static function ($raw, array $keys, array $offByDefault = []): array {
         $raw = is_array($raw) ? $raw : [];
         $result = [];
         foreach ($keys as $key) {
-            $result[$key] = array_key_exists($key, $raw) ? (bool) $raw[$key] : true;
+            $result[$key] = array_key_exists($key, $raw) ? (bool) $raw[$key] : !in_array($key, $offByDefault, true);
         }
         return $result;
     };
     return [
         'sidebar' => array_values($sidebar),
         'pages' => $flags($value['pages'] ?? null, array_keys(FEATURE_PAGES)),
-        'home' => $flags($value['home'] ?? null, array_keys(FEATURE_HOME)),
+        'home' => $flags($value['home'] ?? null, array_keys(FEATURE_HOME), FEATURE_HOME_OFF),
     ];
 }
 
