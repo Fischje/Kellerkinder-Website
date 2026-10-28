@@ -1,5 +1,10 @@
 # Änderungsprotokoll
 
+## 2.37.1 — Schönere Links in Texten
+
+- Verlinkte Überschriften (Home, Blog) sind jetzt klickbare Kacheln: weiß, grüner Rand links, Pfeil rechts, beim Drüberfahren hellgrün – statt grün unterstrichener Schrift
+- Links im Fließtext: dunkel und fett mit grüner Linie darunter, beim Drüberfahren grün
+
 ## 2.37.0 — Erfolge auf der Spieler-Seite, WoW-Wertungen abschaltbar
 
 - **„Unsere Erfolge“ zieht vom Kalender in die Spiele-Statistik:** Auf der Unterseite **Spieler** steht links die Rangliste, rechts daneben die Erfolge (auf schmalen Bildschirmen darunter). Die Kästen stehen untereinander, kein automatisches Durchwechseln mehr

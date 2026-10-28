@@ -817,7 +817,25 @@ if (!isset($backgroundImages) || !is_array($backgroundImages)) { $backgroundImag
             letter-spacing: .12em;
         }
 
-        .post-body a { color: var(--accent-text); }
+        /* Links in Texten aus dem Editor (Home, Blog) */
+        /* Überschrift mit Link = klickbare Kachel: weiß, grüner Rand links, Pfeil rechts */
+        .post-body :is(h2, h3, h4):has(> a) {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 22px 0 8px;
+            padding: 10px 14px;
+            border: 1px solid var(--line);
+            border-left: 4px solid var(--accent);
+            background: #fff;
+            transition: background-color .15s ease;
+        }
+        .post-body :is(h2, h3, h4):has(> a:hover, > a:focus-visible) { background: rgba(var(--accent-rgb), .18); }
+        .post-body :is(h2, h3, h4) > a { flex: 1; display: flex; align-items: center; justify-content: space-between; gap: 10px; color: var(--text); text-decoration: none; outline: none; }
+        .post-body :is(h2, h3, h4) > a::after { content: "→"; color: var(--accent-text); font-weight: 900; }
+        /* Links im Fließtext */
+        .post-body :is(p, li, blockquote) a { color: var(--text); font-weight: 700; text-decoration: none; border-bottom: 2px solid var(--accent); }
+        .post-body :is(p, li, blockquote) a:hover, .post-body :is(p, li, blockquote) a:focus-visible { color: var(--accent-text); }
         .post-body blockquote { border-left-color: var(--accent); background: var(--panel-strong); }
         .post-body pre { background: var(--panel-soft); color: var(--text); }
 
