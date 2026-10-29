@@ -65,7 +65,7 @@ $showBlogTeasers = siteFeatures()['home']['blog_teaser'] && featurePageEnabled('
 <?php
 $activeNav = 'home';
 $pageKicker = 'Home';
-$pageTitle = 'Willkommen im Keller';
+$pageTitle = 'Willkommen in unserer Community';
 $pageLead = 'Online-Gaming mit Freu(n)den – schön, dass du da bist.';
 $showInstall = false;
 require __DIR__ . '/includes/site-header.php';

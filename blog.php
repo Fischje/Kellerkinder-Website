@@ -41,7 +41,7 @@ require __DIR__ . '/includes/bootstrap.php';
 <?php
 $activeNav = 'blog';
 $pageKicker = 'Blog';
-$pageTitle = 'Aus dem Keller';
+$pageTitle = 'Neues von den Kellerkindern';
 $pageLead = 'Spielerlebnisse, Erfolge und News der Kellerkinder.';
 $showInstall = false;
 require __DIR__ . '/includes/site-header.php';

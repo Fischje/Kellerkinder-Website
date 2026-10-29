@@ -1,5 +1,10 @@
 # Änderungsprotokoll
 
+## 2.37.3 — Kein „Keller“ mehr in den Überschriften
+
+- „Kellerkinder“ ist ein Spruch, kein Ort: Startseite heißt jetzt „Willkommen in unserer Community“ statt „Willkommen im Keller“, der Blog „Neues von den Kellerkindern“ statt „Aus dem Keller“
+- Vorlagetexte der Startseite ohne „LAN-Party im Keller“ und „Neuigkeiten aus dem Keller“ (wirkt nur, solange der Home-Text nicht selbst bearbeitet wurde)
+
 ## 2.37.2 — Links im Fließtext mit Symbol
 
 - Links in Texten (Blog, Home) sind grün und fett; dahinter zeigt „↗“ eine andere Website (öffnet im neuen Tab), „→“ eine Seite der Kellerkinder. Unterstrichen nur beim Drüberfahren

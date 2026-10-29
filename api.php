@@ -4231,12 +4231,12 @@ function defaultHomeHtml(): string
 {
     return <<<'HTML'
 <h2>Wer wir sind</h2>
-<p>Wir sind eine Truppe, die gerne zusammen zockt – meistens online, ab und zu bei einer LAN-Party im Keller. Hier findest du alles rund um unsere Spieleabende.</p>
+<p>Wir sind eine Truppe, die gerne zusammen zockt – meistens online, ab und zu bei einer LAN-Party. Hier findest du alles rund um unsere Spieleabende.</p>
 <h2>Was du hier findest</h2>
 <h3>📅 <a href="kalender.php">Kalender</a></h3>
 <p>Wer zockt wann? Trag ein, an welchen Tagen du online bist, später kommst, verhindert oder im Urlaub bist – und was du spielen willst. Feste Spieltage hinterlegst du einmal in deinem Konto.</p>
 <h3>📝 <a href="blog.php">Blog</a></h3>
-<p>Spielerlebnisse, Erfolge und Neuigkeiten aus dem Keller – mit Bildern und Videos.</p>
+<p>Spielerlebnisse, Erfolge und Neuigkeiten aus unserer Community – mit Bildern und Videos.</p>
 <h3>📊 <a href="games.php">Spiele-Statistik</a></h3>
 <p>Was wir wirklich spielen, automatisch erfasst von unserem Discord-Bot:</p>
 <ul>
