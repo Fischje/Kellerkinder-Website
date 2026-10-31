@@ -231,7 +231,7 @@ require __DIR__ . '/includes/site-header.php';
         </div>
         <div>
             <label for="registerPlayerName">Spielername</label>
-            <input type="text" id="registerPlayerName" maxlength="40" autocomplete="nickname" required>
+            <input type="text" id="registerPlayerName" data-bwignore data-1p-ignore data-lpignore="true" maxlength="40" autocomplete="nickname" required>
             <p class="field-help">Existiert dieser Spieler bereits ohne Account, wird er mit deinem neuen Account verbunden.</p>
         </div>
         <div>
@@ -279,7 +279,7 @@ require __DIR__ . '/includes/site-header.php';
                 <h3 class="account-section-title">Profil</h3>
                 <div class="account-field">
                     <label for="profilePlayerName">Spielername</label>
-                    <input type="text" id="profilePlayerName" maxlength="40" autocomplete="nickname" required>
+                    <input type="text" id="profilePlayerName" data-bwignore data-1p-ignore data-lpignore="true" maxlength="40" autocomplete="nickname" required>
                 </div>
                 <div class="account-field">
                     <label for="profileAvatarInput">Profilbild</label>
@@ -295,7 +295,7 @@ require __DIR__ . '/includes/site-header.php';
                 </div>
                 <div class="account-field">
                     <label for="profileSteamName">Steam-Name <span class="account-optional">optional</span></label>
-                    <input type="text" id="profileSteamName" maxlength="120" autocomplete="off" placeholder="z. B. fischje oder steamcommunity.com/id/fischje">
+                    <input type="text" id="profileSteamName" data-bwignore data-1p-ignore data-lpignore="true" maxlength="120" autocomplete="off" placeholder="z. B. fischje oder steamcommunity.com/id/fischje">
                     <p class="field-help">Profilname, SteamID oder Profil-Link. Für die Steam-Erfolge müssen Profil und Spieldetails auf Steam öffentlich sein.</p>
                 </div>
             </section>
@@ -304,7 +304,7 @@ require __DIR__ . '/includes/site-header.php';
                 <h3 class="account-section-title">Anmeldung</h3>
                 <div class="account-field">
                     <label for="profileEmail">E-Mail-Adresse <span class="account-optional">optional</span></label>
-                    <input type="email" id="profileEmail" maxlength="190" autocomplete="email" placeholder="name@beispiel.de">
+                    <input type="email" id="profileEmail" data-bwignore data-1p-ignore data-lpignore="true" maxlength="190" autocomplete="email" placeholder="name@beispiel.de">
                     <p class="field-help">Für „Passwort vergessen“. Andere Mitglieder sehen sie nicht.</p>
                 </div>
                 <div class="account-field">
@@ -332,11 +332,11 @@ require __DIR__ . '/includes/site-header.php';
                 <div class="account-vacation">
                     <div class="account-field">
                         <label for="vacationFrom">Von</label>
-                        <input type="date" id="vacationFrom">
+                        <input type="date" id="vacationFrom" data-bwignore data-1p-ignore data-lpignore="true">
                     </div>
                     <div class="account-field">
                         <label for="vacationTo">Bis</label>
-                        <input type="date" id="vacationTo">
+                        <input type="date" id="vacationTo" data-bwignore data-1p-ignore data-lpignore="true">
                     </div>
                     <button class="secondary-button" id="setVacationButton" type="button">Eintragen</button>
                     <button class="secondary-button" id="clearVacationButton" type="button">Entfernen</button>
@@ -389,7 +389,7 @@ require __DIR__ . '/includes/site-header.php';
         <p class="modal-subtitle" id="playerDialogSubtitle">Trage den Charakternamen ein.</p>
         <input type="hidden" id="playerId">
         <label for="playerName">Spielername</label>
-        <input type="text" id="playerName" maxlength="40" autocomplete="off" required>
+        <input type="text" id="playerName" data-bwignore data-1p-ignore data-lpignore="true" maxlength="40" autocomplete="off" required>
         <div class="modal-actions">
             <button class="danger-button" id="deletePlayerButton" type="button" hidden>Spieler löschen</button>
             <button class="secondary-button" type="button" data-close-dialog="playerDialog">Abbrechen</button>
@@ -403,7 +403,7 @@ require __DIR__ . '/includes/site-header.php';
         <h2 class="modal-title">Spieltag hinzufügen</h2>
         <p class="modal-subtitle">Wähle einen zusätzlichen Spieltag. Tage, an denen jemand einen festen Wochentag hinterlegt oder bereits einen Status gesetzt hat, erscheinen ohnehin automatisch.</p>
         <label for="eventDateInput">Datum</label>
-        <input type="date" id="eventDateInput" required>
+        <input type="date" id="eventDateInput" data-bwignore data-1p-ignore data-lpignore="true" required>
         <div class="modal-actions">
             <button class="secondary-button" type="button" data-close-dialog="dateDialog">Abbrechen</button>
             <button class="primary-button" type="submit">Spieltag anlegen</button>
@@ -429,13 +429,13 @@ require __DIR__ . '/includes/site-header.php';
 
         <div>
             <label for="statusGame">Was möchtest du spielen? <small>(optional)</small></label>
-            <input type="text" id="statusGame" list="gameOptions" maxlength="60" placeholder="z. B. WoW, Diablo 4 oder Factorio" autocomplete="off">
+            <input type="text" id="statusGame" data-bwignore data-1p-ignore data-lpignore="true" list="gameOptions" maxlength="60" placeholder="z. B. WoW, Diablo 4 oder Factorio" autocomplete="off">
             <datalist id="gameOptions"></datalist>
             <p class="field-help">Du kannst ein neues Spiel eintragen oder einen bereits genannten Titel aus der Liste auswählen.</p>
         </div>
 
         <label for="statusNote">Hinweis <small>(optional)</small></label>
-        <input type="text" id="statusNote" maxlength="60" placeholder="z. B. ab 21:00 Uhr" autocomplete="off">
+        <input type="text" id="statusNote" data-bwignore data-1p-ignore data-lpignore="true" maxlength="60" placeholder="z. B. ab 21:00 Uhr" autocomplete="off">
 
         <div class="modal-actions">
             <button class="secondary-button" type="button" data-close-dialog="statusDialog">Abbrechen</button>

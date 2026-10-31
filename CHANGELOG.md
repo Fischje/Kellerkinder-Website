@@ -1,5 +1,9 @@
 # Änderungsprotokoll
 
+## 2.38.2 — Keine Bitwarden-Warnung mehr in „Mein Account“
+
+- Bitwarden zeigte beim Öffnen von „Mein Account“ „Diese Seite beeinträchtigt die Nutzung von Bitwarden“: Es hielt „Spielername“ für ein Login-Feld, öffnete dort sein Ausfüll-Menü, und das Fenster der Seite lag darüber. Felder ohne Login-Bezug (Spielername, Steam, E-Mail im Account, Urlaub, Spielwunsch, Hinweis, Spieltag, Admin-Benutzerdialog) sind jetzt für Passwort-Manager als „nicht ausfüllen“ markiert (`data-bwignore`, für 1Password und LastPass ebenso). Anmelden, Registrieren und Passwort ändern füllt Bitwarden weiter aus
+
 ## 2.38.1 — „Mein Account“ neu gestaltet
 
 - **Fenster „Mein Account“** auf dem PC breit und in Bereiche gegliedert: Profil (Spielername, Profilbild, Steam), Anmeldung (E-Mail, Passwort ändern), Online-Tage in einer Reihe, Urlaub mit Von/Bis und Knöpfen in einer Zeile. „Abbrechen“ und „Profil speichern“ bleiben unten stehen, auch beim Scrollen

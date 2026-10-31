@@ -130,29 +130,29 @@ require __DIR__ . '/includes/site-header.php';
         <input type="hidden" id="adminUserId">
         <div>
             <label for="adminUsername">Benutzername</label>
-            <input type="text" id="adminUsername" autocomplete="off" required>
+            <input type="text" id="adminUsername" data-bwignore data-1p-ignore data-lpignore="true" autocomplete="off" required>
         </div>
         <div>
             <label for="adminUserPlayerName">Spielername</label>
-            <input type="text" id="adminUserPlayerName" maxlength="40" autocomplete="off" required>
+            <input type="text" id="adminUserPlayerName" data-bwignore data-1p-ignore data-lpignore="true" maxlength="40" autocomplete="off" required>
         </div>
         <div>
             <label for="adminUserEmail">E-Mail-Adresse (optional)</label>
-            <input type="email" id="adminUserEmail" maxlength="190" autocomplete="off">
+            <input type="email" id="adminUserEmail" data-bwignore data-1p-ignore data-lpignore="true" maxlength="190" autocomplete="off">
             <p class="field-help">Für „Passwort vergessen“. Nur Admins und der Benutzer selbst sehen sie.</p>
         </div>
         <div id="adminUserSteamRow">
             <label for="adminUserSteamName">Steam-Name (optional)</label>
-            <input type="text" id="adminUserSteamName" maxlength="120" autocomplete="off" placeholder="Profilname, SteamID oder Profil-Link">
+            <input type="text" id="adminUserSteamName" data-bwignore data-1p-ignore data-lpignore="true" maxlength="120" autocomplete="off" placeholder="Profilname, SteamID oder Profil-Link">
         </div>
         <div class="form-row">
             <div>
                 <label for="adminUserPassword" id="adminUserPasswordLabel">Vorläufiges Passwort</label>
-                <input type="password" id="adminUserPassword" minlength="8" autocomplete="new-password">
+                <input type="password" id="adminUserPassword" data-bwignore data-1p-ignore data-lpignore="true" minlength="8" autocomplete="new-password">
             </div>
             <div>
                 <label for="adminUserPasswordConfirmation">Passwort wiederholen</label>
-                <input type="password" id="adminUserPasswordConfirmation" minlength="8" autocomplete="new-password">
+                <input type="password" id="adminUserPasswordConfirmation" data-bwignore data-1p-ignore data-lpignore="true" minlength="8" autocomplete="new-password">
             </div>
         </div>
         <p class="field-help" id="adminPasswordHelp"></p>
