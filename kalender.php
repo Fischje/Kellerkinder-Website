@@ -162,10 +162,59 @@ require __DIR__ . '/includes/site-header.php';
             <input type="checkbox" id="loginRemember">
             <span>Angemeldet bleiben auf diesem Gerät</span>
         </label>
+        <p class="login-register-hint"><button class="text-button" id="loginForgotButton" type="button">Passwort vergessen?</button></p>
         <p class="login-register-hint">Noch keinen Account? <button class="text-button" id="loginToRegisterButton" type="button">Account anlegen</button></p>
         <div class="modal-actions">
             <button class="secondary-button" type="button" data-close-dialog="loginDialog">Abbrechen</button>
             <button class="primary-button" type="submit">Anmelden</button>
+        </div>
+    </form>
+</dialog>
+
+<dialog id="forgotDialog">
+    <form class="modal-content form-stack" id="forgotForm" method="dialog">
+        <div>
+            <h2 class="modal-title">Passwort vergessen</h2>
+            <p class="modal-subtitle">Gib die E-Mail-Adresse deines Accounts ein. Du bekommst einen Link, mit dem du ein neues Passwort festlegst. Er ist 60 Minuten gültig.</p>
+        </div>
+        <div>
+            <label for="forgotEmail">E-Mail-Adresse</label>
+            <input type="email" id="forgotEmail" maxlength="190" autocomplete="email" required>
+            <p class="field-help">Keine E-Mail-Adresse in deinem Account hinterlegt? Dann kann dir ein Admin ein vorläufiges Passwort geben.</p>
+        </div>
+        <div class="modal-actions">
+            <button class="secondary-button" type="button" data-close-dialog="forgotDialog">Abbrechen</button>
+            <button class="primary-button" type="submit">Link schicken</button>
+        </div>
+    </form>
+</dialog>
+
+<dialog id="resetDialog">
+    <form class="modal-content form-stack" id="resetForm" method="dialog">
+        <div>
+            <h2 class="modal-title">Neues Passwort festlegen</h2>
+            <p class="modal-subtitle">Danach meldest du dich mit dem neuen Passwort an. Auf anderen Geräten wirst du abgemeldet.</p>
+        </div>
+        <div class="form-row">
+            <div>
+                <label for="resetPassword">Neues Passwort</label>
+                <input type="password" id="resetPassword" minlength="8" autocomplete="new-password" required>
+            </div>
+            <div>
+                <label for="resetPasswordConfirmation">Passwort wiederholen</label>
+                <input type="password" id="resetPasswordConfirmation" minlength="8" autocomplete="new-password" required>
+            </div>
+        </div>
+        <ul class="password-checklist" id="resetPasswordChecklist">
+            <li data-rule="length">Mindestens 8 Zeichen</li>
+            <li data-rule="letter">Mindestens ein Buchstabe</li>
+            <li data-rule="number">Mindestens eine Zahl</li>
+            <li data-rule="special">Mindestens ein Sonderzeichen (z. B. <code>! ? # + - _ @ €</code>)</li>
+            <li data-rule="match">Beide Passwörter stimmen überein</li>
+        </ul>
+        <div class="modal-actions">
+            <button class="secondary-button" type="button" data-close-dialog="resetDialog">Abbrechen</button>
+            <button class="primary-button" type="submit">Passwort speichern</button>
         </div>
     </form>
 </dialog>
@@ -184,6 +233,11 @@ require __DIR__ . '/includes/site-header.php';
             <label for="registerPlayerName">Spielername</label>
             <input type="text" id="registerPlayerName" maxlength="40" autocomplete="nickname" required>
             <p class="field-help">Existiert dieser Spieler bereits ohne Account, wird er mit deinem neuen Account verbunden.</p>
+        </div>
+        <div>
+            <label for="registerEmail">E-Mail-Adresse (optional)</label>
+            <input type="email" id="registerEmail" maxlength="190" autocomplete="email">
+            <p class="field-help">Nur für „Passwort vergessen“. Sie ist für andere nicht sichtbar.</p>
         </div>
         <div class="form-row">
             <div>
@@ -226,6 +280,11 @@ require __DIR__ . '/includes/site-header.php';
         <div>
             <label for="profilePlayerName">Spielername</label>
             <input type="text" id="profilePlayerName" maxlength="40" autocomplete="nickname" required>
+        </div>
+        <div>
+            <label for="profileEmail">E-Mail-Adresse (optional)</label>
+            <input type="email" id="profileEmail" maxlength="190" autocomplete="email">
+            <p class="field-help">Damit kannst du dir bei „Passwort vergessen“ einen Link schicken lassen. Sie ist für andere nicht sichtbar.</p>
         </div>
         <div>
             <label for="profileSteamName">Steam-Name (optional)</label>
@@ -418,6 +477,9 @@ require __DIR__ . '/includes/site-header.php';
     const infoDialog = byId('infoDialog');
     const loginDialog = byId('loginDialog');
     const registerDialog = byId('registerDialog');
+    const forgotDialog = byId('forgotDialog');
+    const resetDialog = byId('resetDialog');
+    let resetToken = '';
     const profileDialog = byId('profileDialog');
     const passwordDialog = byId('passwordDialog');
     const playerDialog = byId('playerDialog');
@@ -991,6 +1053,15 @@ require __DIR__ . '/includes/site-header.php';
     window.kkAccount = { open: openAccountKind };
 
     function openDialogFromHash() {
+        // Link aus der Mail „Passwort vergessen“: kalender.php#passwort-neu=<token>
+        const resetMatch = window.location.hash.match(/^#passwort-neu=([a-f0-9]{64})$/i);
+        if (resetMatch) {
+            // Der Link bleibt in der Adresszeile, bis der Dialog zu ist: so übersteht er ein Neuladen der Seite.
+            if (resetDialog.open && resetToken === resetMatch[1].toLowerCase()) return;
+            document.querySelectorAll('dialog[open]').forEach(dialog => dialog.close());
+            openResetDialog(resetMatch[1]);
+            return;
+        }
         const kind = { '#anmelden': 'login', '#registrieren': 'register', '#account': 'profile' }[window.location.hash];
         if (!kind || document.querySelector('dialog[open]')) return;
         history.replaceState(null, '', window.location.pathname + window.location.search);
@@ -1003,6 +1074,20 @@ require __DIR__ . '/includes/site-header.php';
         byId('loginForm').reset();
         loginDialog.showModal();
         requestAnimationFrame(() => byId('loginUsername').focus());
+    }
+
+    function openForgotDialog() {
+        byId('forgotForm').reset();
+        forgotDialog.showModal();
+        requestAnimationFrame(() => byId('forgotEmail').focus());
+    }
+
+    function openResetDialog(token) {
+        resetToken = token.toLowerCase();
+        byId('resetForm').reset();
+        resetPasswordChecklist('reset');
+        resetDialog.showModal();
+        requestAnimationFrame(() => byId('resetPassword').focus());
     }
 
     function openRegisterDialog() {
@@ -1022,6 +1107,7 @@ require __DIR__ . '/includes/site-header.php';
         byId('profileUsername').value = user.username || '';
         byId('profilePlayerName').value = user.player_name || '';
         byId('profileSteamName').value = user.steam_profile || '';
+        byId('profileEmail').value = user.email || '';
         byId('profileAvatarInput').value = '';
         profileAvatarData = user.avatar || '';
         setAvatarPreview(profileAvatarData, user.player_name || user.username || '');
@@ -1055,6 +1141,21 @@ require __DIR__ . '/includes/site-header.php';
     byId('infoButton').addEventListener('click', () => infoDialog.showModal());
     // Anmelden/Abmelden/Account laufen über den Account-Knopf in der Kopfleiste (assets/sidebar.js)
     byId('setupRegisterButton').addEventListener('click', openRegisterDialog);
+    byId('loginForgotButton').addEventListener('click', () => {
+        const typed = byId('loginUsername').value.trim();
+        loginDialog.close();
+        openForgotDialog();
+        if (typed.includes('@')) byId('forgotEmail').value = typed;
+    });
+    resetDialog.addEventListener('close', () => {
+        resetToken = '';
+        if (/^#passwort-neu=/i.test(window.location.hash)) history.replaceState(null, '', window.location.pathname + window.location.search);
+    });
+    ['resetPassword', 'resetPasswordConfirmation'].forEach(id => byId(id).addEventListener('input', () => {
+        const rules = updatePasswordChecklist('reset');
+        if (rules.length && rules.letter && rules.number && rules.special) byId('resetPassword').classList.remove('field-invalid');
+        if (rules.match) byId('resetPasswordConfirmation').classList.remove('field-invalid');
+    }));
     byId('loginToRegisterButton').addEventListener('click', () => {
         loginDialog.close();
         openRegisterDialog();
@@ -1166,6 +1267,47 @@ require __DIR__ . '/includes/site-header.php';
         } catch (error) { handleApiError(error); }
     });
 
+    byId('forgotForm').addEventListener('submit', async event => {
+        event.preventDefault();
+        try {
+            const data = await api('password_forgot', { email: byId('forgotEmail').value });
+            forgotDialog.close();
+            showToast(`${data.message || 'Die E-Mail ist unterwegs.'} Schau auch im Spam-Ordner nach.`);
+        } catch (error) { handleApiError(error); }
+    });
+
+    byId('resetForm').addEventListener('submit', async event => {
+        event.preventDefault();
+        const password = byId('resetPassword').value;
+        const passwordConfirmation = byId('resetPasswordConfirmation').value;
+        const rules = updatePasswordChecklist('reset', true);
+        const complexityOk = rules.length && rules.letter && rules.number && rules.special;
+        byId('resetPassword').classList.toggle('field-invalid', !complexityOk);
+        byId('resetPasswordConfirmation').classList.toggle('field-invalid', !rules.match);
+        if (!complexityOk || !rules.match) {
+            showToast('Bitte prüfe die rot markierten Passwort-Anforderungen.');
+            (complexityOk ? byId('resetPasswordConfirmation') : byId('resetPassword')).focus();
+            return;
+        }
+        try {
+            const data = await api('password_reset', { token: resetToken, password, password_confirmation: passwordConfirmation });
+            resetDialog.close();
+            await loadPlan();
+            if (!state.auth.logged_in) {
+                openLoginDialog();
+                byId('loginUsername').value = data.username || '';
+                requestAnimationFrame(() => byId('loginPassword').focus());
+            }
+            showToast('Dein neues Passwort ist gespeichert. Melde dich jetzt damit an.');
+        } catch (error) {
+            if (error.code === 'reset_invalid') {
+                resetDialog.close();
+                openForgotDialog();
+            }
+            handleApiError(error);
+        }
+    });
+
     byId('registerForm').addEventListener('submit', async event => {
         event.preventDefault();
         const password = byId('registerPassword').value;
@@ -1186,6 +1328,7 @@ require __DIR__ . '/includes/site-header.php';
             const data = await api('register', {
                 username: byId('registerUsername').value,
                 player_name: byId('registerPlayerName').value,
+                email: byId('registerEmail').value,
                 password,
                 password_confirmation: passwordConfirmation,
                 remember: byId('registerRemember').checked
@@ -1204,7 +1347,8 @@ require __DIR__ . '/includes/site-header.php';
                 player_name: byId('profilePlayerName').value,
                 default_weekdays: weekdays,
                 avatar: profileAvatarData,
-                steam_name: byId('profileSteamName').value
+                steam_name: byId('profileSteamName').value,
+                email: byId('profileEmail').value
             });
             profileDialog.close();
             applyData(data);
@@ -1286,7 +1430,7 @@ require __DIR__ . '/includes/site-header.php';
         if (passwordChangeForced) event.preventDefault();
     });
 
-    [installDialog, infoDialog, loginDialog, registerDialog, profileDialog, passwordDialog, playerDialog, dateDialog, statusDialog].forEach(dialog => {
+    [installDialog, infoDialog, loginDialog, forgotDialog, resetDialog, registerDialog, profileDialog, passwordDialog, playerDialog, dateDialog, statusDialog].forEach(dialog => {
         dialog.addEventListener('click', event => {
             if (event.target !== dialog) return;
             if (dialog === passwordDialog && passwordChangeForced) return;
@@ -1315,9 +1459,12 @@ require __DIR__ . '/includes/site-header.php';
         // einem Update), Seite automatisch neu laden — sonst bekommen
         // Nutzer:innen ohne manuellen Hard-Refresh (Strg+F5) weiterhin die
         // alten Inhalte zu sehen.
+        // Beim allerersten Besuch übernimmt der Service Worker ebenfalls die Kontrolle; dann ist nichts
+        // veraltet und ein Neuladen würde nur offene Dialoge (z. B. aus einem #-Link) wieder schließen.
+        const hadServiceWorker = Boolean(navigator.serviceWorker.controller);
         let reloadedForUpdate = false;
         navigator.serviceWorker.addEventListener('controllerchange', () => {
-            if (reloadedForUpdate) return;
+            if (reloadedForUpdate || !hadServiceWorker) return;
             reloadedForUpdate = true;
             window.location.reload();
         });

@@ -136,6 +136,11 @@ require __DIR__ . '/includes/site-header.php';
             <label for="adminUserPlayerName">Spielername</label>
             <input type="text" id="adminUserPlayerName" maxlength="40" autocomplete="off" required>
         </div>
+        <div>
+            <label for="adminUserEmail">E-Mail-Adresse (optional)</label>
+            <input type="email" id="adminUserEmail" maxlength="190" autocomplete="off">
+            <p class="field-help">Für „Passwort vergessen“. Nur Admins und der Benutzer selbst sehen sie.</p>
+        </div>
         <div id="adminUserSteamRow">
             <label for="adminUserSteamName">Steam-Name (optional)</label>
             <input type="text" id="adminUserSteamName" maxlength="120" autocomplete="off" placeholder="Profilname, SteamID oder Profil-Link">
@@ -404,7 +409,7 @@ require __DIR__ . '/includes/site-header.php';
             const title = el('strong', '', user.username);
             if (user.is_admin) title.append(el('span', 'account-badge admin', 'Admin'));
             else if (user.is_author) title.append(el('span', 'account-badge', 'Autor'));
-            info.append(title, el('small', '', `Spieler: ${user.player_name || 'nicht zugeordnet'}${user.must_change_password ? ' · Passwortänderung offen' : ''}`));
+            info.append(title, el('small', '', `Spieler: ${user.player_name || 'nicht zugeordnet'}${user.email ? '' : ' · ohne E-Mail'}${user.must_change_password ? ' · Passwortänderung offen' : ''}`));
             const edit = el('button', 'secondary-button', 'Bearbeiten');
             edit.type = 'button';
             edit.addEventListener('click', () => openUserDialog(user));
@@ -423,6 +428,7 @@ require __DIR__ . '/includes/site-header.php';
         byId('adminUserPlayerName').value = user ? user.player_name : '';
         byId('adminUserIsAuthor').checked = Boolean(user && user.is_author);
         byId('adminUserSteamName').value = user ? user.steam_profile || '' : '';
+        byId('adminUserEmail').value = user ? user.email || '' : '';
         // Den Steam-Namen trägt beim Anlegen der Spieler selbst ein
         byId('adminUserSteamRow').hidden = !editMode;
         byId('adminUserDialogTitle').textContent = editMode ? 'Benutzer bearbeiten' : 'Benutzer anlegen';
@@ -469,6 +475,7 @@ require __DIR__ . '/includes/site-header.php';
                 player_name: byId('adminUserPlayerName').value,
                 is_author: byId('adminUserIsAuthor').checked,
                 steam_name: editMode ? byId('adminUserSteamName').value : undefined,
+                email: byId('adminUserEmail').value,
                 password,
                 password_confirmation: confirmation,
             });

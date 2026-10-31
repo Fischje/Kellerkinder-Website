@@ -104,6 +104,10 @@ const ACHIEVEMENT_LINK_LABEL_MAX = 30;
 const ACHIEVEMENT_LINK_URL_MAX = 200;
 const ACHIEVEMENT_LINKS_MAX = 6;
 const REMEMBER_ME_SECONDS = 60 * 60 * 24 * 30; // 30 Tage
+const EMAIL_MAX = 190;
+const PASSWORD_RESET_SECONDS = 3600;         // Reset-Link aus der Mail gilt 60 Minuten
+const PASSWORD_RESET_MAX_PER_CLIENT = 5;     // Anfragen je Netz/Gerät und Stunde
+const PASSWORD_RESET_MAX_PER_ADDRESS = 3;    // Anfragen je E-Mail-Adresse und Stunde
 
 const BLOG_TITLE_MAX = 120;
 const BLOG_TAG_MAX = 24;
@@ -1761,6 +1765,126 @@ function registerCounted(): void
     });
 }
 
+// ---------- Passwort vergessen: E-Mail mit Reset-Link ----------
+//
+// Versand über PHPs mail(), also über das Mailprogramm des Servers (dort msmtp, wie bei Strahlemännkes).
+// Absender und Basisadresse lassen sich in config.php setzen: MAIL_FROM, MAIL_FROM_NAME, SITE_URL.
+
+function passwordResetThrottleKeys(string $email): array
+{
+    return ['client' => 'p:' . hash('sha256', clientAddress()), 'address' => 'pa:' . hash('sha256', strtolower($email))];
+}
+
+function passwordResetBlocked(string $email): bool
+{
+    $keys = passwordResetThrottleKeys($email);
+    $data = throttleUpdate();
+    return throttleCount($data, $keys['client'], 3600) >= PASSWORD_RESET_MAX_PER_CLIENT
+        || throttleCount($data, $keys['address'], 3600) >= PASSWORD_RESET_MAX_PER_ADDRESS;
+}
+
+function passwordResetCounted(string $email): void
+{
+    $keys = passwordResetThrottleKeys($email);
+    throttleUpdate(static function (array $data) use ($keys): array {
+        $data[$keys['client']][] = time();
+        $data[$keys['address']][] = time();
+        return $data;
+    });
+}
+
+/** Leere Eingabe ist erlaubt (Feld ist freiwillig), sonst muss es eine gültige Adresse sein. */
+function validateEmail($value, bool $allowEmpty = true): string
+{
+    $email = trim((string) $value);
+    if ($email === '') {
+        if ($allowEmpty) {
+            return '';
+        }
+        respond(['ok' => false, 'error' => 'Bitte gib deine E-Mail-Adresse ein.'], 422);
+    }
+    if (strlen($email) > EMAIL_MAX || filter_var($email, FILTER_VALIDATE_EMAIL) === false) {
+        respond(['ok' => false, 'error' => 'Bitte gib eine gültige E-Mail-Adresse ein.'], 422);
+    }
+    return $email;
+}
+
+function findUserIndexByEmail(array $users, string $email): ?int
+{
+    $wanted = strtolower(trim($email));
+    if ($wanted === '') {
+        return null;
+    }
+    foreach ($users as $index => $user) {
+        if (strtolower((string) ($user['email'] ?? '')) === $wanted) {
+            return (int) $index;
+        }
+    }
+    return null;
+}
+
+function ensureUniqueEmail(array $users, string $email, ?int $exceptId = null): void
+{
+    $index = findUserIndexByEmail($users, $email);
+    if ($index !== null && (int) $users[$index]['id'] !== $exceptId) {
+        respond(['ok' => false, 'error' => 'Diese E-Mail-Adresse gehört schon zu einem anderen Account.'], 409);
+    }
+}
+
+/** Speichert die Adresse; ändert sie sich, verfällt ein offener Reset-Link. */
+function setUserEmail(array &$store, int $userIndex, string $email): void
+{
+    $old = strtolower((string) ($store['users'][$userIndex]['email'] ?? ''));
+    $store['users'][$userIndex]['email'] = $email;
+    if ($old !== strtolower($email)) {
+        unset($store['users'][$userIndex]['reset_token_hash'], $store['users'][$userIndex]['reset_expires_at']);
+    }
+}
+
+/** Öffentliche Adresse der Seite für Links in Mails: SITE_URL aus config.php, sonst aus der Anfrage. */
+function siteBaseUrl(): string
+{
+    if (defined('SITE_URL') && trim((string) SITE_URL) !== '') {
+        return rtrim(trim((string) SITE_URL), '/');
+    }
+    $host = (string) ($_SERVER['HTTP_HOST'] ?? 'localhost');
+    $basePath = rtrim(str_replace('\\', '/', dirname((string) ($_SERVER['SCRIPT_NAME'] ?? '/'))), '/');
+    // Hinter Cloudflare/NPMplus/Caddy kommt oft nicht an, dass von außen HTTPS benutzt wird. Öffentliche
+    // Namen bekommen deshalb immer https, nur lokale Tests (localhost, IP-Adresse) bleiben bei http.
+    $hostName = str_starts_with($host, '[') ? substr($host, 1, max(0, (int) strpos($host, ']') - 1)) : (string) preg_replace('/:\d+$/', '', $host);
+    $local = $hostName === 'localhost' || filter_var($hostName, FILTER_VALIDATE_IP) !== false;
+    return (isHttpsRequest() || !$local ? 'https' : 'http') . '://' . $host . $basePath;
+}
+
+function sendPasswordResetMail(string $email, string $username, string $resetUrl): bool
+{
+    $from = defined('MAIL_FROM') && (string) MAIL_FROM !== '' ? (string) MAIL_FROM : 'fischje@fischje.de';
+    $fromName = defined('MAIL_FROM_NAME') && (string) MAIL_FROM_NAME !== '' ? (string) MAIL_FROM_NAME : 'Kellerkinder';
+    $encode = static fn(string $text): string => function_exists('mb_encode_mimeheader') ? mb_encode_mimeheader($text, 'UTF-8') : $text;
+    $subject = $encode('Kellerkinder – Passwort zurücksetzen');
+    $minutes = intdiv(PASSWORD_RESET_SECONDS, 60);
+    $body = "Hallo {$username},\n\n"
+        . "über diesen Link kannst du ein neues Passwort für die Kellerkinder-Seite festlegen:\n{$resetUrl}\n\n"
+        . "Der Link ist {$minutes} Minuten gültig und funktioniert nur einmal. "
+        . "Falls du das nicht angefordert hast, kannst du diese E-Mail einfach ignorieren.\n\n"
+        . "Deine Kellerkinder";
+    $domain = substr(strrchr($from, '@') ?: '@localhost', 1);
+    // Vollständige Kopfzeilen: sonst zeigen manche Mailprogramme Umlaute falsch an oder sortieren die Mail als Spam ein.
+    $headers = [
+        'From: ' . $encode($fromName) . ' <' . $from . '>',
+        'Date: ' . date(DATE_RFC2822),
+        'Message-ID: <' . bin2hex(random_bytes(16)) . '@' . $domain . '>',
+        'MIME-Version: 1.0',
+        'Content-Type: text/plain; charset=UTF-8',
+        'Content-Transfer-Encoding: 8bit',
+    ];
+    $sent = function_exists('mail') && @mail($email, $subject, $body, implode("\r\n", $headers));
+    if (!$sent) {
+        error_log('Kellerkinder: Passwort-Reset-Mail konnte nicht verschickt werden (mail() fehlgeschlagen).');
+    }
+    return $sent;
+}
+
 /**
  * Schnittstellen nur für den Discord-Bot (gameservers_config mit internen Adressen, stats_exclusions mit
  * Discord-IDs). Steht in config.php BOT_SHARED_TOKEN, muss der Bot denselben Wert im Kopf X-Bot-Token
@@ -2971,6 +3095,13 @@ function normalizeStore(array $store): array
         $user['defaults_effective_from'] = validIsoDate((string) ($user['defaults_effective_from'] ?? ''))
             ? (string) $user['defaults_effective_from']
             : (new DateTimeImmutable('today', new DateTimeZone('Europe/Berlin')))->format('Y-m-d');
+        $email = trim((string) ($user['email'] ?? ''));
+        $user['email'] = strlen($email) <= EMAIL_MAX && filter_var($email, FILTER_VALIDATE_EMAIL) !== false ? $email : '';
+        // Abgelaufene oder kaputte Reset-Links wegräumen
+        $resetExpires = strtotime((string) ($user['reset_expires_at'] ?? ''));
+        if (!preg_match('/^[a-f0-9]{64}$/', (string) ($user['reset_token_hash'] ?? '')) || $resetExpires === false || $resetExpires <= time()) {
+            unset($user['reset_token_hash'], $user['reset_expires_at']);
+        }
         $user['created_at'] = (string) ($user['created_at'] ?? gmdate('c'));
         $user['updated_at'] = (string) ($user['updated_at'] ?? $user['created_at']);
         $maxUserId = max($maxUserId, $user['id']);
@@ -4150,7 +4281,7 @@ function cleanupData(array &$store, bool $apply): array
         }
     }
     $knownUser = array_flip(['id', 'username', 'password_hash', 'player_id', 'must_change_password', 'is_author', 'session_version',
-        'default_weekdays', 'avatar', 'steam_name', 'defaults_effective_from', 'created_at', 'updated_at']);
+        'default_weekdays', 'avatar', 'steam_name', 'email', 'reset_token_hash', 'reset_expires_at', 'defaults_effective_from', 'created_at', 'updated_at']);
     foreach ($store['users'] as $index => $user) {
         foreach (array_keys($user) as $key) {
             if (!isset($knownUser[$key])) {
@@ -4316,6 +4447,7 @@ function bootstrapResponse(array $store): array
             'avatar' => (string) ($currentUser['avatar'] ?? ''),
             'steam_name' => (string) ($currentUser['steam_name'] ?? ''),
             'steam_profile' => steamProfileUrl((string) ($currentUser['steam_name'] ?? '')),
+            'email' => (string) ($currentUser['email'] ?? ''),
             'default_weekdays' => normalizeWeekdays($currentUser['default_weekdays'] ?? []),
         ],
     ];
@@ -4347,6 +4479,7 @@ function bootstrapResponse(array $store): array
                 'is_author' => !empty($user['is_author']),
                 'steam_name' => (string) ($user['steam_name'] ?? ''),
                 'steam_profile' => steamProfileUrl((string) ($user['steam_name'] ?? '')),
+                'email' => (string) ($user['email'] ?? ''),
             ];
         }
         usort($adminUsers, static fn(array $a, array $b): int => strcasecmp($a['username'], $b['username']));
@@ -5029,8 +5162,79 @@ if ($action === 'login') {
     loginSucceeded($loginName);
 }
 
+if ($action === 'password_forgot') {
+    // Antwort immer gleich, damit niemand herausfinden kann, welche Adressen hinterlegt sind.
+    $forgotEmail = validateEmail($payload['email'] ?? '', false);
+    if (passwordResetBlocked($forgotEmail)) {
+        respond(['ok' => false, 'code' => 'too_many_resets', 'error' => 'Zu viele Anfragen. Bitte warte eine Stunde und versuche es dann erneut.'], 429);
+    }
+    passwordResetCounted($forgotEmail);
+    $pendingResetMail = null;
+    // Die Mail geht erst nach der Antwort raus: der Datenspeicher ist dann wieder frei, und die
+    // Antwortzeit verrät nicht, ob eine Mail verschickt wurde.
+    register_shutdown_function(static function () use (&$pendingResetMail): void {
+        if ($pendingResetMail === null) {
+            return;
+        }
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            session_write_close();
+        }
+        if (function_exists('fastcgi_finish_request')) {
+            fastcgi_finish_request();
+        }
+        sendPasswordResetMail($pendingResetMail['email'], $pendingResetMail['username'], $pendingResetMail['url']);
+    });
+    withWritableStore(function (array &$store) use ($forgotEmail, &$pendingResetMail): array {
+        $response = ['ok' => true, 'message' => 'Wenn die Adresse zu einem Account gehört, ist eine E-Mail mit einem Link unterwegs. Er ist 60 Minuten gültig.'];
+        $index = findUserIndexByEmail($store['users'], $forgotEmail);
+        if ($index === null) {
+            return [$response, 200, false];
+        }
+        $token = bin2hex(random_bytes(32));
+        $store['users'][$index]['reset_token_hash'] = hash('sha256', $token);
+        $store['users'][$index]['reset_expires_at'] = gmdate('c', time() + PASSWORD_RESET_SECONDS);
+        // Token steht hinter #, damit es nicht in Server-Logs oder als Referrer landet.
+        $pendingResetMail = [
+            'email' => (string) $store['users'][$index]['email'],
+            'username' => (string) $store['users'][$index]['username'],
+            'url' => siteBaseUrl() . '/kalender.php#passwort-neu=' . $token,
+        ];
+        return [$response, 200, true];
+    });
+}
+
 withWritableStore(function (array &$store) use ($action, $payload): array {
     switch ($action) {
+        case 'password_reset':
+            $resetToken = strtolower(trim((string) ($payload['token'] ?? '')));
+            $resetIndex = null;
+            if (preg_match('/^[a-f0-9]{64}$/', $resetToken)) {
+                $resetHash = hash('sha256', $resetToken);
+                foreach ($store['users'] as $index => $user) {
+                    $expires = strtotime((string) ($user['reset_expires_at'] ?? ''));
+                    if (hash_equals((string) ($user['reset_token_hash'] ?? ''), $resetHash) && $expires !== false && $expires > time()) {
+                        $resetIndex = (int) $index;
+                        break;
+                    }
+                }
+            }
+            if ($resetIndex === null) {
+                return [['ok' => false, 'code' => 'reset_invalid', 'error' => 'Der Link ist ungültig oder abgelaufen. Fordere bitte einen neuen an.'], 410, false];
+            }
+            $newPassword = validatePassword($payload['password'] ?? '', $payload['password_confirmation'] ?? null);
+            $hash = password_hash($newPassword, PASSWORD_DEFAULT);
+            if ($hash === false) {
+                return [['ok' => false, 'error' => 'Das Passwort konnte nicht gespeichert werden.'], 500, false];
+            }
+            $store['users'][$resetIndex]['password_hash'] = $hash;
+            $store['users'][$resetIndex]['must_change_password'] = false;
+            // Alle bisherigen Anmeldungen (auch "Angemeldet bleiben") werden ungültig
+            $store['users'][$resetIndex]['session_version'] = max(1, (int) ($store['users'][$resetIndex]['session_version'] ?? 1)) + 1;
+            unset($store['users'][$resetIndex]['reset_token_hash'], $store['users'][$resetIndex]['reset_expires_at']);
+            $store['users'][$resetIndex]['updated_at'] = gmdate('c');
+            revokeAllRememberTokensForUser($store, (int) $store['users'][$resetIndex]['id']);
+            return [['ok' => true, 'username' => (string) $store['users'][$resetIndex]['username'], 'csrf_token' => csrfToken()], 200, true];
+
         case 'register':
             if (registerBlocked()) {
                 return [['ok' => false, 'code' => 'too_many_registrations', 'error' => 'Von hier wurden gerade schon mehrere Konten angelegt. Bitte versuche es später noch einmal.'], 429, false];
@@ -5038,7 +5242,11 @@ withWritableStore(function (array &$store) use ($action, $payload): array {
             $username = validateUsername($payload['username'] ?? '');
             $playerName = validateName($payload['player_name'] ?? '');
             $password = validatePassword($payload['password'] ?? '', $payload['password_confirmation'] ?? null);
+            $email = validateEmail($payload['email'] ?? '');
             ensureUniqueUsername($store['users'], $username);
+            if ($email !== '') {
+                ensureUniqueEmail($store['users'], $email);
+            }
 
             $firstUser = count($store['users']) === 0;
             if (!$firstUser) {
@@ -5065,6 +5273,7 @@ withWritableStore(function (array &$store) use ($action, $payload): array {
                 'player_id' => null,
                 'must_change_password' => false,
                 'session_version' => 1,
+                'email' => $email,
                 'default_weekdays' => [],
                 'avatar' => '',
                 'defaults_effective_from' => (new DateTimeImmutable('today', new DateTimeZone('Europe/Berlin')))->format('Y-m-d'),
@@ -5144,6 +5353,11 @@ withWritableStore(function (array &$store) use ($action, $payload): array {
             $avatar = validateAvatarData($payload['avatar'] ?? '');
             if (array_key_exists('steam_name', $payload)) {
                 $store['users'][$userIndex]['steam_name'] = validateSteamName($payload['steam_name']);
+            }
+            if (array_key_exists('email', $payload)) {
+                $email = validateEmail($payload['email']);
+                ensureUniqueEmail($store['users'], $email, (int) $user['id']);
+                setUserEmail($store, $userIndex, $email);
             }
             renameOrAssignUserPlayer($store, $userIndex, $playerName, false);
             $store['users'][$userIndex]['default_weekdays'] = $weekdays;
@@ -5317,7 +5531,11 @@ withWritableStore(function (array &$store) use ($action, $payload): array {
             $username = validateUsername($payload['username'] ?? '');
             $playerName = validateName($payload['player_name'] ?? '');
             $password = validatePassword($payload['password'] ?? '', $payload['password_confirmation'] ?? null);
+            $email = validateEmail($payload['email'] ?? '');
             ensureUniqueUsername($store['users'], $username);
+            if ($email !== '') {
+                ensureUniqueEmail($store['users'], $email);
+            }
             $existingPlayerIndex = findPlayerIndexByName($store['players'], $playerName);
             if ($existingPlayerIndex !== null && $store['players'][$existingPlayerIndex]['user_id'] !== null) {
                 return [['ok' => false, 'error' => 'Dieser Spieler ist bereits mit einem Account verbunden.'], 409, false];
@@ -5337,6 +5555,7 @@ withWritableStore(function (array &$store) use ($action, $payload): array {
                 'must_change_password' => true,
                 'is_author' => !empty($payload['is_author']),
                 'session_version' => 1,
+                'email' => $email,
                 'default_weekdays' => [],
                 'avatar' => '',
                 'defaults_effective_from' => (new DateTimeImmutable('today', new DateTimeZone('Europe/Berlin')))->format('Y-m-d'),
@@ -5363,6 +5582,11 @@ withWritableStore(function (array &$store) use ($action, $payload): array {
             $store['users'][$targetIndex]['is_author'] = !empty($payload['is_author']);
             if (array_key_exists('steam_name', $payload)) {
                 $store['users'][$targetIndex]['steam_name'] = validateSteamName($payload['steam_name']);
+            }
+            if (array_key_exists('email', $payload)) {
+                $email = validateEmail($payload['email']);
+                ensureUniqueEmail($store['users'], $email, $targetId);
+                setUserEmail($store, $targetIndex, $email);
             }
 
             $newPassword = (string) ($payload['password'] ?? '');

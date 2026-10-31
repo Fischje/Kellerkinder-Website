@@ -1,5 +1,13 @@
 # Änderungsprotokoll
 
+## 2.38.0 — Passwort vergessen per E-Mail
+
+- **„Passwort vergessen?“** im Anmelde-Fenster: E-Mail-Adresse eingeben, eine Mail mit Link kommt. Der Link ist 60 Minuten gültig, funktioniert nur einmal und öffnet direkt das Fenster für das neue Passwort. Danach sind alle anderen Anmeldungen des Accounts beendet
+- **E-Mail-Adresse im Account** (freiwillig): bei der Registrierung, unter „Mein Account“ und für Admins im Benutzer-Dialog. Die Admin-Liste zeigt „ohne E-Mail“ bei Accounts ohne Adresse
+- Versand wie bei Strahlemännkes über das Mailprogramm des Servers (`mail()` → msmtp). Absender und Link-Adresse optional in `config.php` (`MAIL_FROM`, `MAIL_FROM_NAME`, `SITE_URL`)
+- Schutz: immer dieselbe Antwort (verrät nicht, welche Adressen es gibt), höchstens 3 Anfragen je Adresse und 5 je Netz pro Stunde, im Speicher steht nur ein Hash des Links
+- Behoben: Beim allerersten Besuch lud der Service Worker die Seite einmal neu und schloss dabei ein über einen Link geöffnetes Fenster (z. B. `#registrieren`). Jetzt wird nur noch nach einem echten Update neu geladen
+
 ## 2.37.3 — Kein „Keller“ mehr in den Überschriften
 
 - „Kellerkinder“ ist ein Spruch, kein Ort: Startseite heißt jetzt „Willkommen in unserer Community“ statt „Willkommen im Keller“, der Blog „Neues von den Kellerkindern“ statt „Aus dem Keller“

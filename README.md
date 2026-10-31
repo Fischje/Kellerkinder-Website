@@ -21,7 +21,7 @@ Mobiloptimierter PHP-Kalender zur Planung gemeinsamer Spielabende mit Benutzerko
 - Optionaler Hinweis, beispielsweise „ab 21:00 Uhr“
 - Als Progressive Web App auf dem Home-Bildschirm von iPhone und Android installierbar
 - Automatische Versionsanzeige im Footer
-- Passwortänderung ohne E-Mail-Funktion
+- „Passwort vergessen“ per E-Mail: Link zum Zurücksetzen, 60 Minuten gültig, nur einmal nutzbar (E-Mail-Adresse im Account ist freiwillig, siehe „Passwort vergessen (E-Mail)“)
 - Setzt ein Admin ein neues Passwort, wird die bestehende Sitzung ungültig und der Benutzer muss das vorläufige Passwort nach der nächsten Anmeldung erneut ändern
 - Seite „Netzje“: LAN-Party mit Termin, begrenzten Plätzen (Zusagen sind Anfragen, ein Admin bestätigt oder lehnt ab), Ort (nur für Angemeldete), Mitbringliste, Teilnehmerliste, Stundenplan als Zeitleiste mit Anmeldung (Platzlimit und Warteliste), Spielvorschlägen und eingebettetem Twitch-/YouTube-Stream
 - Seite „Server“: Gameserver im Kartenraster mit Spiele-Logo, IP, Passwort (nur für Angemeldete lesbar, sonst Sternchen) und Online-/Offline-Status vom Discord-Bot; Admins pflegen die Server direkt auf der Seite
@@ -134,6 +134,26 @@ Zusätzliche Spieltage können von allen angemeldeten Benutzern angelegt werden.
 - Status, Spielwünsche und Hinweise aller Spieler ändern.
 
 Beim Löschen eines Benutzerkontos bleibt der zugehörige Spieler samt Kalenderhistorie bestehen und wird lediglich vom Account getrennt. Ein Spieler kann anschließend separat gelöscht oder erneut einem Account zugeordnet werden.
+
+## Passwort vergessen (E-Mail)
+
+Im Anmelde-Fenster führt „Passwort vergessen?“ zu einem Formular für die E-Mail-Adresse. Gehört sie zu einem
+Account, bekommt die Person eine Mail mit einem Link (`kalender.php#passwort-neu=…`), der 60 Minuten gültig ist
+und nur einmal funktioniert. Danach sind alle bisherigen Anmeldungen dieses Accounts ungültig.
+
+- Die E-Mail-Adresse ist freiwillig: bei der Registrierung, unter „Mein Account“ oder durch einen Admin auf der
+  Admin-Seite. Andere Mitglieder sehen sie nicht. Wer keine Adresse hinterlegt hat, bekommt wie bisher vom Admin
+  ein vorläufiges Passwort.
+- Die Antwort ist immer gleich, egal ob die Adresse bekannt ist. Je Adresse höchstens 3, je Netz höchstens
+  5 Anfragen pro Stunde.
+- **Versand:** über PHPs `mail()`, also über das Mailprogramm des Servers (auf dem Caddy-Server `msmtp`, wie bei
+  Strahlemännkes). Fehler landen im PHP-Fehlerlog. Optional in `config.php`:
+
+```php
+const MAIL_FROM = 'fischje@fischje.de';      // Absender (Standard), muss zum SMTP-Konto in msmtp passen
+const MAIL_FROM_NAME = 'Kellerkinder';       // Anzeigename
+const SITE_URL = 'https://kellerkinder.gg';  // Adresse für den Link; ohne Angabe die aufgerufene Adresse (immer https)
+```
 
 ## Spielwünsche
 
