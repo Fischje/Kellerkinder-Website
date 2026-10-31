@@ -238,8 +238,11 @@
         const menu = el('ul', 'topbar-menu');
         menu.id = 'topbarAccountMenu';
         menu.hidden = true;
-        const item = (label, href, onClick, badge) => {
-            const li = el('li');
+        const head = el('li', 'topbar-menu-head');
+        head.append(el('small', '', 'Angemeldet als'), el('strong', '', user.name || 'Account'));
+        menu.appendChild(head);
+        const item = (label, href, onClick, badge, className) => {
+            const li = el('li', className);
             const link = el(href ? 'a' : 'button', 'topbar-menu-item', label);
             if (href) link.href = href; else link.type = 'button';
             if (badge) link.appendChild(el('span', 'nav-badge', badge));
@@ -249,7 +252,7 @@
         };
         item(user.must_change_password ? 'Passwort ändern' : 'Mein Account', 'kalender.php#account', (event) => openAccountDialog('profile', event));
         if (data.is_admin) item('Adminbereich', 'admin.php', null, Number(data.netzje_requests) || 0);
-        item('Abmelden', null, logout);
+        item('Abmelden', null, logout, null, 'topbar-menu-logout');
 
         toggle.addEventListener('click', () => {
             const open = menu.hidden;

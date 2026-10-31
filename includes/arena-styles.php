@@ -724,6 +724,7 @@
         .remember-row span { font-family: var(--font-body); font-size: .92rem; letter-spacing: 0; text-transform: none; font-weight: 600; }
 
         input[type="text"],
+        input[type="email"],
         input[type="password"],
         input[type="date"],
         select,

@@ -267,74 +267,85 @@ require __DIR__ . '/includes/site-header.php';
     </form>
 </dialog>
 
-<dialog id="profileDialog">
-    <form class="modal-content form-stack" id="profileForm" method="dialog">
-        <div>
+<dialog id="profileDialog" class="account-dialog">
+    <form class="modal-content account-form" id="profileForm" method="dialog">
+        <header class="account-head">
             <h2 class="modal-title">Mein Account</h2>
-            <p class="modal-subtitle">Verwalte deinen Spielernamen und deine üblichen Online-Tage.</p>
-        </div>
-        <div>
-            <label>Benutzername</label>
-            <input type="text" id="profileUsername" disabled>
-        </div>
-        <div>
-            <label for="profilePlayerName">Spielername</label>
-            <input type="text" id="profilePlayerName" maxlength="40" autocomplete="nickname" required>
-        </div>
-        <div>
-            <label for="profileEmail">E-Mail-Adresse (optional)</label>
-            <input type="email" id="profileEmail" maxlength="190" autocomplete="email">
-            <p class="field-help">Damit kannst du dir bei „Passwort vergessen“ einen Link schicken lassen. Sie ist für andere nicht sichtbar.</p>
-        </div>
-        <div>
-            <label for="profileSteamName">Steam-Name (optional)</label>
-            <input type="text" id="profileSteamName" maxlength="120" autocomplete="off" placeholder="z. B. fischje oder steamcommunity.com/id/fischje">
-            <p class="field-help">Profilname, SteamID oder Link zum Steam-Profil. Für die Steam-Erfolge müssen Profil und Spieldetails auf Steam öffentlich sein (Steam → Profil bearbeiten → Privatsphäre).</p>
-        </div>
-        <div>
-            <label for="profileAvatarInput">Profilbild / Avatar</label>
-            <div class="avatar-upload-row">
-                <span class="avatar-placeholder avatar-preview" id="profileAvatarPreview" aria-hidden="true">?</span>
-                <div>
-                    <input type="file" id="profileAvatarInput" accept="image/png,image/jpeg,image/gif,image/webp">
-                    <p class="field-help">PNG, JPG, GIF oder WebP. Wird automatisch auf maximal 50 × 50 Pixel verkleinert und in der Tabelle klein neben deinem Namen angezeigt.</p>
-                    <button class="secondary-button" id="removeAvatarButton" type="button">Avatar entfernen</button>
+            <p class="modal-subtitle">Angemeldet als <strong id="profileUsername"></strong></p>
+        </header>
+
+        <div class="account-grid">
+            <section class="account-section">
+                <h3 class="account-section-title">Profil</h3>
+                <div class="account-field">
+                    <label for="profilePlayerName">Spielername</label>
+                    <input type="text" id="profilePlayerName" maxlength="40" autocomplete="nickname" required>
                 </div>
-            </div>
-        </div>
-        <div>
-            <label>Normalerweise online an</label>
-            <div class="weekday-grid" id="profileWeekdays">
-                <label class="weekday-choice"><input type="checkbox" value="1"><span>Mo</span></label>
-                <label class="weekday-choice"><input type="checkbox" value="2"><span>Di</span></label>
-                <label class="weekday-choice"><input type="checkbox" value="3"><span>Mi</span></label>
-                <label class="weekday-choice"><input type="checkbox" value="4"><span>Do</span></label>
-                <label class="weekday-choice"><input type="checkbox" value="5"><span>Fr</span></label>
-                <label class="weekday-choice"><input type="checkbox" value="6"><span>Sa</span></label>
-                <label class="weekday-choice"><input type="checkbox" value="7"><span>So</span></label>
-            </div>
-            <p class="field-help">Künftige Spieltage an diesen Wochentagen werden automatisch als „Online“ angezeigt. Ein einzelner Termin kann jederzeit überschrieben werden.</p>
-        </div>
-        <div>
-            <label>Urlaub eintragen</label>
-            <div class="form-row">
-                <div>
-                    <label for="vacationFrom" class="field-sublabel">Von</label>
-                    <input type="date" id="vacationFrom">
+                <div class="account-field">
+                    <label for="profileAvatarInput">Profilbild</label>
+                    <div class="account-avatar-row">
+                        <span class="avatar-placeholder avatar-preview" id="profileAvatarPreview" aria-hidden="true">?</span>
+                        <div class="account-avatar-buttons">
+                            <input type="file" id="profileAvatarInput" class="visually-hidden" accept="image/png,image/jpeg,image/gif,image/webp">
+                            <label class="secondary-button account-file-button" for="profileAvatarInput">Bild wählen</label>
+                            <button class="secondary-button" id="removeAvatarButton" type="button">Entfernen</button>
+                        </div>
+                    </div>
+                    <p class="field-help">PNG, JPG, GIF oder WebP, wird automatisch verkleinert.</p>
                 </div>
-                <div>
-                    <label for="vacationTo" class="field-sublabel">Bis</label>
-                    <input type="date" id="vacationTo">
+                <div class="account-field">
+                    <label for="profileSteamName">Steam-Name <span class="account-optional">optional</span></label>
+                    <input type="text" id="profileSteamName" maxlength="120" autocomplete="off" placeholder="z. B. fischje oder steamcommunity.com/id/fischje">
+                    <p class="field-help">Profilname, SteamID oder Profil-Link. Für die Steam-Erfolge müssen Profil und Spieldetails auf Steam öffentlich sein.</p>
                 </div>
-            </div>
-            <div class="vacation-actions">
-                <button class="secondary-button" id="setVacationButton" type="button">Urlaub eintragen</button>
-                <button class="secondary-button" id="clearVacationButton" type="button">Urlaub entfernen</button>
-            </div>
-            <p class="field-help">Setzt alle Spieltage im gewählten Zeitraum auf „Urlaub“ — aber nur die, die aktuell im Kalender sichtbar sind. „Urlaub entfernen“ nimmt im selben Zeitraum nur deine Urlaubseinträge zurück; andere Angaben bleiben bestehen.</p>
+            </section>
+
+            <section class="account-section">
+                <h3 class="account-section-title">Anmeldung</h3>
+                <div class="account-field">
+                    <label for="profileEmail">E-Mail-Adresse <span class="account-optional">optional</span></label>
+                    <input type="email" id="profileEmail" maxlength="190" autocomplete="email" placeholder="name@beispiel.de">
+                    <p class="field-help">Für „Passwort vergessen“. Andere Mitglieder sehen sie nicht.</p>
+                </div>
+                <div class="account-field">
+                    <label for="openPasswordButton">Passwort</label>
+                    <button class="secondary-button account-wide-button" id="openPasswordButton" type="button">Passwort ändern</button>
+                </div>
+            </section>
+
+            <section class="account-section account-section-wide">
+                <h3 class="account-section-title">Normalerweise online an</h3>
+                <div class="weekday-grid account-weekdays" id="profileWeekdays">
+                    <label class="weekday-choice"><input type="checkbox" value="1"><span>Mo</span></label>
+                    <label class="weekday-choice"><input type="checkbox" value="2"><span>Di</span></label>
+                    <label class="weekday-choice"><input type="checkbox" value="3"><span>Mi</span></label>
+                    <label class="weekday-choice"><input type="checkbox" value="4"><span>Do</span></label>
+                    <label class="weekday-choice"><input type="checkbox" value="5"><span>Fr</span></label>
+                    <label class="weekday-choice"><input type="checkbox" value="6"><span>Sa</span></label>
+                    <label class="weekday-choice"><input type="checkbox" value="7"><span>So</span></label>
+                </div>
+                <p class="field-help">An diesen Tagen stehst du bei künftigen Spieltagen automatisch auf „Online“. Einzelne Termine kannst du jederzeit ändern.</p>
+            </section>
+
+            <section class="account-section account-section-wide">
+                <h3 class="account-section-title">Urlaub</h3>
+                <div class="account-vacation">
+                    <div class="account-field">
+                        <label for="vacationFrom">Von</label>
+                        <input type="date" id="vacationFrom">
+                    </div>
+                    <div class="account-field">
+                        <label for="vacationTo">Bis</label>
+                        <input type="date" id="vacationTo">
+                    </div>
+                    <button class="secondary-button" id="setVacationButton" type="button">Eintragen</button>
+                    <button class="secondary-button" id="clearVacationButton" type="button">Entfernen</button>
+                </div>
+                <p class="field-help">Setzt alle sichtbaren Spieltage im Zeitraum auf „Urlaub“. „Entfernen“ nimmt nur deine Urlaubseinträge zurück.</p>
+            </section>
         </div>
-        <div class="modal-actions">
-            <button class="secondary-button" id="openPasswordButton" type="button">Passwort ändern</button>
+
+        <div class="modal-actions account-actions">
             <button class="secondary-button" type="button" data-close-dialog="profileDialog">Abbrechen</button>
             <button class="primary-button" type="submit">Profil speichern</button>
         </div>
@@ -1104,7 +1115,7 @@ require __DIR__ . '/includes/site-header.php';
     function openProfileDialog() {
         if (!state.auth.logged_in || state.auth.must_change_password) return;
         const user = state.auth.user || {};
-        byId('profileUsername').value = user.username || '';
+        byId('profileUsername').textContent = user.username || '';
         byId('profilePlayerName').value = user.player_name || '';
         byId('profileSteamName').value = user.steam_profile || '';
         byId('profileEmail').value = user.email || '';

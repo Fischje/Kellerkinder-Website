@@ -263,6 +263,13 @@ if (!isset($backgroundImages) || !is_array($backgroundImages)) { $backgroundImag
         .topbar-menu-item:hover,
         .topbar-menu-item:focus-visible { outline: none; background: rgba(var(--accent-rgb), .18); }
         .topbar-menu li + li { border-top: 1px solid #eceef1; }
+        .topbar-menu-head { padding: 10px 16px 12px; border-bottom: 1px solid #eceef1; }
+        .topbar-menu-head small { display: block; color: var(--muted); font-size: .72rem; }
+        .topbar-menu-head strong { display: block; overflow: hidden; color: #1a1d23; font-family: var(--font-ui); font-size: .95rem; text-overflow: ellipsis; white-space: nowrap; }
+        .topbar-menu li + li.topbar-menu-logout { border-top-color: var(--line-strong); }
+        .topbar-menu-logout .topbar-menu-item { color: var(--red); }
+        .topbar-menu-logout .topbar-menu-item:hover,
+        .topbar-menu-logout .topbar-menu-item:focus-visible { background: rgba(214, 48, 49, .1); }
 
         /* Anmelde-Dialog: Weg zum Registrieren (die Konto-Leiste über dem Kalender gibt es nicht mehr) */
         .login-register-hint { margin: 0; color: var(--muted); font-size: .92rem; }
@@ -710,7 +717,7 @@ if (!isset($backgroundImages) || !is_array($backgroundImages)) { $backgroundImag
 
         label { font-family: var(--font-ui); font-size: .72rem; font-weight: 800; letter-spacing: .1em; }
 
-        :is(.page-shell, dialog) :is(input[type="text"], input[type="password"], input[type="date"],
+        :is(.page-shell, dialog) :is(input[type="text"], input[type="email"], input[type="password"], input[type="date"],
             input[type="datetime-local"], input[type="file"], input[type="number"], select, textarea) {
             border: 0;
             border-radius: 0;
@@ -1327,5 +1334,104 @@ if (!isset($backgroundImages) || !is_array($backgroundImages)) { $backgroundImag
             .topbar-account-name { max-width: 90px; }
             .topbar-account-button { padding: 0 9px; letter-spacing: .08em; }
             .sidebar-row { min-height: 60px; padding: 10px 12px; }
+        }
+
+        /* ===== Dialog „Mein Account“: auf dem PC breit mit Bereichen, auf dem Handy untereinander ===== */
+        .visually-hidden,
+        input.visually-hidden {
+            position: absolute !important;
+            width: 1px !important;
+            height: 1px !important;
+            min-height: 0 !important;
+            padding: 0 !important;
+            margin: -1px;
+            overflow: hidden;
+            border: 0 !important;
+            clip: rect(0 0 0 0);
+            white-space: nowrap;
+        }
+
+        dialog.account-dialog { width: min(880px, calc(100% - 32px)); }
+        .account-form { display: grid; gap: 20px; padding: 28px 30px 0; }
+        .account-head { display: grid; gap: 4px; padding-bottom: 18px; border-bottom: 1px solid var(--line); }
+        .account-head .modal-subtitle { margin: 0; }
+        .account-head strong { color: var(--text); }
+
+        .account-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+        .account-section {
+            display: grid;
+            align-content: start;
+            gap: 16px;
+            min-width: 0;
+            padding: 20px;
+            background: var(--panel-strong);
+            box-shadow: inset 0 0 0 1px var(--line);
+        }
+        .account-section-wide { grid-column: 1 / -1; }
+        .account-section-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 0;
+            color: var(--text);
+            font-family: var(--font-ui);
+            font-size: .86rem;
+            font-weight: 800;
+            letter-spacing: .12em;
+            text-transform: uppercase;
+        }
+        .account-section-title::before { content: ""; width: 16px; height: 4px; background: var(--accent); }
+
+        .account-field { display: grid; gap: 7px; min-width: 0; }
+        .account-field label { margin: 0; }
+        .account-optional { margin-left: 4px; color: var(--muted); font-weight: 600; letter-spacing: .04em; text-transform: none; }
+        .account-dialog .field-help { margin: 0; font-size: .82rem; }
+        .account-dialog :is(input[type="text"], input[type="email"], input[type="date"]) { background: #fff; }
+
+        .account-avatar-row { display: flex; align-items: center; gap: 14px; }
+        .account-dialog .avatar-preview { width: 58px; height: 58px; flex: none; font-size: 1.3rem; object-fit: cover; }
+        .account-avatar-buttons { position: relative; display: flex; flex-wrap: wrap; gap: 8px; }
+        .account-avatar-buttons > * { min-height: 42px; padding: 0 16px; }
+        .account-file-button { display: inline-flex; align-items: center; justify-content: center; cursor: pointer; text-transform: uppercase; }
+        .account-avatar-buttons input:focus-visible + .account-file-button { box-shadow: inset 0 0 0 2px var(--accent), 0 0 0 3px rgba(var(--accent-rgb), .25); }
+        .account-wide-button { width: 100%; min-height: 47px; }
+
+        .account-dialog .account-weekdays { grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; }
+        .account-dialog .weekday-choice span { min-height: 46px; background: #fff; }
+
+        .account-vacation { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto auto; gap: 10px; align-items: end; }
+        .account-vacation > button { min-height: 47px; padding: 0 18px; }
+        .account-vacation input[type="date"] { min-width: 0; max-width: 100%; }
+
+        .account-actions {
+            position: sticky;
+            bottom: 0;
+            z-index: 2;
+            margin: 0 -30px;
+            padding: 14px 30px;
+            border-top: 1px solid var(--line);
+            background: #fff;
+            box-shadow: 0 -12px 24px rgba(0, 0, 0, .06);
+        }
+        .account-actions > button { min-width: 150px; }
+
+        @media (max-width: 720px) {
+            dialog.account-dialog { width: calc(100% - 16px); max-height: calc(100dvh - 16px); }
+            .account-form { gap: 16px; padding: 22px 18px 0; }
+            .account-grid { grid-template-columns: 1fr; gap: 12px; }
+            .account-section { gap: 14px; padding: 16px; }
+            .account-dialog .account-weekdays { gap: 5px; }
+            .account-dialog .weekday-choice span { min-height: 42px; font-size: .76rem; }
+            .account-vacation { grid-template-columns: 1fr 1fr; }
+            .account-avatar-buttons { flex: 1 1 auto; flex-direction: column; }
+            .account-avatar-buttons > :not(input) { width: 100%; }
+            .account-vacation input[type="date"] { padding-left: 10px; padding-right: 8px; }
+            .account-actions > .primary-button { letter-spacing: .06em; }
+        }
+
+        @media (max-width: 420px) {
+            .account-vacation > .account-field { grid-column: 1 / -1; }
+            .account-actions { margin: 0 -18px; padding: 12px 18px; }
+            .account-actions > button { min-width: 0; flex: 1 1 0; }
         }
     </style>

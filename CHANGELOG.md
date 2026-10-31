@@ -1,5 +1,13 @@
 # Änderungsprotokoll
 
+## 2.38.1 — „Mein Account“ neu gestaltet
+
+- **Fenster „Mein Account“** auf dem PC breit und in Bereiche gegliedert: Profil (Spielername, Profilbild, Steam), Anmeldung (E-Mail, Passwort ändern), Online-Tage in einer Reihe, Urlaub mit Von/Bis und Knöpfen in einer Zeile. „Abbrechen“ und „Profil speichern“ bleiben unten stehen, auch beim Scrollen
+- Auf dem Handy liegen die Bereiche untereinander, die Wochentage passen in eine Zeile
+- Profilbild: eigener Knopf „Bild wählen“ statt des unformatierten Datei-Feldes, größere Vorschau
+- Menü oben rechts zeigt, wer angemeldet ist; „Abmelden“ ist rot abgesetzt
+- Behoben: E-Mail-Felder (Mein Account, Registrieren, Passwort vergessen, Admin) hatten kein Design
+
 ## 2.38.0 — Passwort vergessen per E-Mail
 
 - **„Passwort vergessen?“** im Anmelde-Fenster: E-Mail-Adresse eingeben, eine Mail mit Link kommt. Der Link ist 60 Minuten gültig, funktioniert nur einmal und öffnet direkt das Fenster für das neue Passwort. Danach sind alle anderen Anmeldungen des Accounts beendet

@@ -1914,6 +1914,7 @@ if (!isset($backgroundImages) || !is_array($backgroundImages)) { $backgroundImag
         }
 
         input[type="text"],
+        input[type="email"],
         input[type="password"],
         input[type="date"],
         select,
