@@ -27,7 +27,7 @@ Mobiloptimierter PHP-Kalender zur Planung gemeinsamer Spielabende mit Benutzerko
 - Seite „Server“: Gameserver im Kartenraster mit Spiele-Logo, IP, Passwort (nur für Angemeldete lesbar, sonst Sternchen) und Online-/Offline-Status vom Discord-Bot; Admins pflegen die Server direkt auf der Seite
 - Discord-Abfrage über `/kalender`
 - Rubrik „Spiele-Statistik“: Spiele, Spieler mit Spielerprofilen (Abzeichen, Lieblingsspiele, Kalender, Netzje) und Jahresrückblick mit Jahresauswahl
-- Seitenleisten-Widget „Gerade online“ (nur sichtbar, wenn jemand spielt; Daten vom Discord-Bot)
+- Seitenleisten-Widget „Gerade online“: wer in welchem Discord-Sprachkanal sitzt (mit Spiel) und wer gerade spielt; nur sichtbar, wenn jemand da ist, Daten vom Discord-Bot (Sprachkanäle ab Bot 1.14.0)
 - Netzje-Sitzplan: Admin legt den Raum an, bestätigte Teilnehmer wählen ihren Platz oder bekommen ihn zugewiesen
 - Seite „Eindrücke“: Fotos und Clips, nur für Angemeldete
 - Zentrale Admin-Seite `admin.php`: Kästen der Seitenleiste an/aus und Reihenfolge, Seiten im Menü ein-/ausblenden, Teile der Startseite, Style für alle, offene Netzje-Anfragen und Benutzerverwaltung (Konten, Admins). Menüpunkt „Admin“ nur für Admins, mit Zahl offener Anfragen

@@ -1,5 +1,15 @@
 # Änderungsprotokoll
 
+## 2.39.0 — „Gerade online“ zeigt den Discord-Sprachkanal
+
+- **Wie früher das TeamSpeak-Widget:** Der Kasten „Gerade online“ zeigt jetzt, wer in welchem Discord-Sprachkanal sitzt – je Kanal eine Zwischenüberschrift, darunter die Leute mit Profilbild. Spielt jemand nebenbei, steht das Spiel mit „seit …“ darunter, sonst „im Sprachkanal“
+- Symbole hinter dem Namen: 🔇 Mikro aus, 🙉 Ton aus, **LIVE** = streamt gerade, 📷 Kamera an
+- Wer spielt, ohne im Sprachkanal zu sein, steht darunter unter „Spielt gerade“. Die Zahl im Titel zählt alle zusammen
+- Aktualisierung alle 15 Minuten (vorher jede Minute); die „seit …“-Angaben laufen trotzdem minütlich mit. Kommt man nach längerer Zeit zurück in den Tab, wird sofort neu geladen
+- Fehlende Profilbilder von Leuten, die bisher nur im Sprachkanal waren, werden im Hintergrund geholt
+- Braucht den Discord-Bot ab 1.14.0. Mit einem älteren Bot erscheint wie bisher nur, wer spielt
+- Nicht angezeigt werden Bots, der AFK-Kanal, Kanäle, die nicht für alle sichtbar sind, und auf der Seite „Statistik“ ausgeblendete Spieler
+
 ## 2.38.2 — Keine Bitwarden-Warnung mehr in „Mein Account“
 
 - Bitwarden zeigte beim Öffnen von „Mein Account“ „Diese Seite beeinträchtigt die Nutzung von Bitwarden“: Es hielt „Spielername“ für ein Login-Feld, öffnete dort sein Ausfüll-Menü, und das Fenster der Seite lag darüber. Felder ohne Login-Bezug (Spielername, Steam, E-Mail im Account, Urlaub, Spielwunsch, Hinweis, Spieltag, Admin-Benutzerdialog) sind jetzt für Passwort-Manager als „nicht ausfüllen“ markiert (`data-bwignore`, für 1Password und LastPass ebenso). Anmelden, Registrieren und Passwort ändern füllt Bitwarden weiter aus

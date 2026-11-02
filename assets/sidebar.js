@@ -301,7 +301,11 @@
     // kalender.php ruft das nach Anmelden/Abmelden auf, damit die Kopfleiste stimmt
     window.kkRefreshAccount = loadAccount;
 
-    // „Gerade online“: nur sichtbar, solange jemand spielt; jede Minute neu abfragen
+    // „Gerade online“: wer sitzt in welchem Discord-Sprachkanal (mit Spiel, falls jemand spielt)
+    // und wer spielt, ohne im Sprachkanal zu sein. Nur sichtbar, solange jemand da ist.
+    // Die Daten werden alle 15 Minuten neu geholt, die „seit …“-Angaben jede Minute neu berechnet.
+    const NOW_REFRESH_MS = 15 * 60_000;
+
     function sinceText(iso) {
         const minutes = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
         if (!Number.isFinite(minutes)) return '';
@@ -312,32 +316,86 @@
         return `seit ${hours} Std.${rest ? ` ${rest} Min.` : ''}`;
     }
 
-    async function loadNow() {
+    function gamesText(games) {
+        if (!Array.isArray(games) || games.length === 0) return '';
+        const since = sinceText(games[0].since);
+        return `${games.map((game) => game.name).join(', ')}${since ? ` · ${since}` : ''}`;
+    }
+
+    // Symbole hinter dem Namen: Mikro aus, Ton aus, Stream, Kamera
+    function voiceBadges(member) {
+        const badges = [];
+        if (member.deafened) badges.push(['🙉', 'Ton aus']);
+        else if (member.muted) badges.push(['🔇', 'Mikro aus']);
+        if (member.streaming) badges.push(['LIVE', 'streamt gerade']);
+        if (member.video) badges.push(['📷', 'Kamera an']);
+        return badges.map(([symbol, label]) => {
+            const badge = el('span', symbol === 'LIVE' ? 'voice-badge live' : 'voice-badge', symbol);
+            badge.title = label;
+            badge.setAttribute('aria-label', label);
+            return badge;
+        });
+    }
+
+    function personRow(person, sub, dot, badges = []) {
+        const item = row({
+            href: `spieler.php?name=${encodeURIComponent(person.name)}`,
+            image: person.avatar || '',
+            placeholder: (person.name || '?').slice(0, 1).toUpperCase(),
+            title: person.name,
+            sub,
+            dot,
+        });
+        if (badges.length) item.querySelector('.sidebar-row-text strong').append(...badges);
+        return item;
+    }
+
+    let nowData = null;
+    let nowLoadedAt = 0;
+
+    function renderNow() {
         const section = box('now');
         if (!section) return;
-        const data = await getJson('now_playing');
-        const players = data && Array.isArray(data.players) ? data.players : [];
+        const channels = nowData && Array.isArray(nowData.channels) ? nowData.channels : [];
+        const players = nowData && Array.isArray(nowData.players) ? nowData.players : [];
         const list = section.querySelector('[data-list]');
         list.replaceChildren();
-        for (const player of players) {
-            const games = player.games.map((game) => game.name).join(', ');
-            list.appendChild(row({
-                href: `spieler.php?name=${encodeURIComponent(player.name)}`,
-                image: player.avatar || '',
-                placeholder: (player.name || '?').slice(0, 1).toUpperCase(),
-                title: player.name,
-                sub: `${games} · ${sinceText(player.games[0].since)}`,
-                dot: 'online',
-            }));
+        for (const channel of channels) {
+            list.appendChild(el('li', 'sidebar-group', `🔊 ${channel.name}`));
+            for (const member of channel.members) {
+                list.appendChild(personRow(member, gamesText(member.games) || 'im Sprachkanal', 'voice', voiceBadges(member)));
+            }
         }
-        section.querySelector('[data-count]').textContent = players.length ? `(${players.length})` : '';
-        section.hidden = players.length === 0;
-        if (players.length) sidebar.classList.add('has-content');
+        if (players.length) {
+            if (channels.length) list.appendChild(el('li', 'sidebar-group', '🎮 Spielt gerade'));
+            for (const player of players) {
+                list.appendChild(personRow(player, gamesText(player.games), 'online'));
+            }
+        }
+        const count = Number(nowData && nowData.count) || 0;
+        section.querySelector('[data-count]').textContent = count ? `(${count})` : '';
+        section.hidden = count === 0;
+        if (count) sidebar.classList.add('has-content');
+    }
+
+    async function loadNow() {
+        if (!box('now')) return;
+        nowLoadedAt = Date.now();
+        nowData = await getJson('now_playing');
+        renderNow();
     }
 
     if (box('now')) {
         loadNow();
-        setInterval(() => { if (!document.hidden) loadNow(); }, 60_000);
+        setInterval(() => {
+            if (document.hidden) return;
+            if (Date.now() - nowLoadedAt >= NOW_REFRESH_MS) loadNow();
+            else renderNow();
+        }, 60_000);
+        // Nach längerer Zeit im Hintergrund gleich frisch holen
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden && Date.now() - nowLoadedAt >= NOW_REFRESH_MS) loadNow();
+        });
     }
 
     const loaders = { games: loadGames, netzje: loadNetzje, blog: loadBlog, servers: loadServers };

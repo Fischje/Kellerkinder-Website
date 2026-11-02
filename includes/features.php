@@ -6,7 +6,7 @@
 // Startseite) eingebunden. Die Seiten lesen die Datendatei nur lesend.
 
 /** Kästen der Seitenleiste in Standard-Reihenfolge (die nächste Netzje steht unten).
- *  „Gerade online“ steht immer ganz oben und erscheint nur, wenn jemand spielt. */
+ *  „Gerade online“ steht immer ganz oben und erscheint nur, wenn jemand spielt oder im Discord-Sprachkanal ist. */
 const FEATURE_SIDEBAR_PINNED = 'now';
 const FEATURE_SIDEBAR_BOXES = [
     'now' => 'Gerade online',

@@ -1093,6 +1093,11 @@ if (!isset($backgroundImages) || !is_array($backgroundImages)) { $backgroundImag
         .live-dot { width: 10px; height: 10px; flex: none; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 0 rgba(var(--accent-rgb), .6); animation: livePulse 1.8s ease-out infinite; }
         @keyframes livePulse { 0% { box-shadow: 0 0 0 0 rgba(var(--accent-rgb), .6); } 80%, 100% { box-shadow: 0 0 0 9px rgba(var(--accent-rgb), 0); } }
         .sidebar-row-media.placeholder { font-weight: 900; }
+        /* Zwischenüberschriften (Sprachkanal bzw. „Spielt gerade“) und Discord-Symbole */
+        .sidebar-group { padding: 7px 14px; background: var(--panel-soft); color: var(--muted); font-family: var(--font-ui); font-size: .72rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .sidebar-dot.voice { background: var(--online); border-radius: 50%; }
+        .voice-badge { margin-left: 6px; font-size: .8em; font-weight: 400; }
+        .voice-badge.live { padding: 0 4px; background: var(--accent); color: #fff; font-family: var(--font-ui); font-size: .62rem; font-weight: 900; letter-spacing: .08em; vertical-align: middle; }
 
         /* Belegung der Netzje-Plätze in der dunklen Karte */
         .sidebar-seatbar { display: block; height: 6px; margin: 8px 0 2px; background: rgba(255, 255, 255, .12); }

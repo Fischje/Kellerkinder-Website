@@ -2586,7 +2586,7 @@ function botCachedJson(string $url, string $cacheFile, int $ttl): ?array
     return $stale;
 }
 
-/** Wer spielt gerade was (Bot ab 1.12.0, 30 Sekunden zwischengespeichert). */
+/** Wer spielt gerade was und wer ist im Sprachkanal (Bot ab 1.12.0 bzw. 1.14.0, 30 Sekunden zwischengespeichert). */
 function botNowPlaying(): ?array
 {
     $url = botApiUrl('now');
@@ -4747,42 +4747,113 @@ if ($action === 'impression_file') {
 }
 
 if ($action === 'now_playing') {
-    // Widget „Gerade online“: wer spielt gerade was. Ohne Discord-IDs; Profilbilder als lokale Kopie.
+    // Kasten „Gerade online“: wer sitzt in welchem Discord-Sprachkanal (Bot ab 1.14.0) und wer spielt
+    // was. Wer spielt, ohne im Sprachkanal zu sein, steht unter `players`. Ohne Discord-IDs;
+    // Profilbilder als lokale Kopie.
     session_write_close();
     $now = botNowPlaying();
     if ($now === null) {
-        respond(['ok' => true, 'configured' => botApiUrl('now') !== null, 'players' => []]);
+        respond(['ok' => true, 'configured' => botApiUrl('now') !== null, 'channels' => [], 'players' => [], 'count' => 0]);
     }
     $avatarIndex = discordAvatarIndex();
     $iconIndex = gameIconIndex();
-    $players = [];
     // Veraltete Daten (Bot nicht erreichbar) zeigen niemanden als online
-    foreach (!empty($now['stale']) ? [] : (is_array($now['players'] ?? null) ? $now['players'] : []) as $player) {
+    $stale = !empty($now['stale']);
+    $avatarSources = [];
+    $gameNames = [];
+
+    // Spiele je Discord-ID
+    $gamesById = [];
+    $namesById = [];
+    foreach ($stale ? [] : (is_array($now['players'] ?? null) ? $now['players'] : []) as $player) {
         if (!is_array($player)) {
             continue;
         }
+        $id = (string) ($player['id'] ?? '');
         $games = [];
         foreach (is_array($player['games'] ?? null) ? $player['games'] : [] as $game) {
             $gameName = mb_substr((string) ($game['name'] ?? ''), 0, 100, 'UTF-8');
             if ($gameName === '') {
                 continue;
             }
+            $gameNames[] = $gameName;
             $games[] = [
                 'name' => $gameName,
                 'since' => (string) ($game['since'] ?? ''),
                 'icon' => gameIconUrl($iconIndex[gameIconKey($gameName)] ?? null),
             ];
         }
-        if ($games === []) {
+        if ($id === '' || $games === []) {
+            continue;
+        }
+        $gamesById[$id] = array_slice($games, 0, 3);
+        $namesById[$id] = mb_substr((string) ($player['name'] ?? ''), 0, 60, 'UTF-8');
+        $avatarSources[$id] = $player['avatar'] ?? null;
+    }
+
+    // Sprachkanäle mit ihren Leuten (und deren Spielen)
+    $channels = [];
+    $inVoice = [];
+    foreach ($stale ? [] : (is_array($now['voice'] ?? null) ? $now['voice'] : []) as $channel) {
+        if (!is_array($channel)) {
+            continue;
+        }
+        $members = [];
+        foreach (is_array($channel['members'] ?? null) ? $channel['members'] : [] as $member) {
+            if (!is_array($member)) {
+                continue;
+            }
+            $id = (string) ($member['id'] ?? '');
+            if ($id === '' || isset($inVoice[$id])) {
+                continue;
+            }
+            $inVoice[$id] = true;
+            $avatarSources[$id] ??= $member['avatar'] ?? null;
+            $members[] = [
+                'name' => mb_substr((string) ($member['name'] ?? ''), 0, 60, 'UTF-8'),
+                'avatar' => discordAvatarLocal($id, $avatarIndex),
+                'muted' => !empty($member['muted']),
+                'deafened' => !empty($member['deafened']),
+                'streaming' => !empty($member['streaming']),
+                'video' => !empty($member['video']),
+                'games' => $gamesById[$id] ?? [],
+            ];
+        }
+        if ($members !== []) {
+            $channels[] = [
+                'name' => mb_substr((string) ($channel['name'] ?? ''), 0, 60, 'UTF-8'),
+                'members' => array_slice($members, 0, 30),
+            ];
+        }
+    }
+
+    // Wer nur spielt (nicht im Sprachkanal)
+    $players = [];
+    foreach ($gamesById as $id => $games) {
+        if (isset($inVoice[$id])) {
             continue;
         }
         $players[] = [
-            'name' => mb_substr((string) ($player['name'] ?? ''), 0, 60, 'UTF-8'),
-            'avatar' => discordAvatarLocal((string) ($player['id'] ?? ''), $avatarIndex),
-            'games' => array_slice($games, 0, 3),
+            'name' => $namesById[$id],
+            'avatar' => discordAvatarLocal((string) $id, $avatarIndex),
+            'games' => $games,
         ];
     }
-    respond(['ok' => true, 'configured' => true, 'players' => array_slice($players, 0, 30)]);
+
+    $out = [
+        'ok' => true,
+        'configured' => true,
+        'channels' => array_slice($channels, 0, 10),
+        'players' => array_slice($players, 0, 30),
+        'count' => count($inVoice) + count($players),
+    ];
+    // Fehlende Profilbilder (z. B. Leute, die bisher nur im Sprachkanal waren) und Spiele-Symbole
+    // im Hintergrund holen; die Antwort geht sofort raus.
+    $avatarSources = array_filter($avatarSources, static fn($url): bool => validDiscordAvatarUrl($url) !== null);
+    if (gameIconsMissing($gameNames) || discordAvatarsMissing($avatarSources)) {
+        gameIconsInBackground(array_values(array_unique($gameNames)), $out, $avatarSources);
+    }
+    respond($out);
 }
 
 if ($action === 'year_review') {
