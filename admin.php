@@ -60,7 +60,7 @@ require __DIR__ . '/includes/site-header.php';
                 <h2 class="section-title"><span class="accent">Heroes</span> of the Storm – Builds</h2>
                 <a class="primary-button" href="admin-builds.php">Builds verwalten</a>
             </div>
-            <p class="admin-help">Deine eigenen Builds je Held. Der Discord-Bot gibt sie mit <code>/build</code> aus, wenn jemand nach einem Helden fragt.</p>
+            <p class="admin-help">Deine eigenen Builds je Held. Der Discord-Bot gibt sie mit <code>/hotsbuild</code> aus, wenn jemand nach einem Helden fragt.</p>
         </section>
 
         <form id="featuresForm" class="admin-settings">

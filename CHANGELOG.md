@@ -1,5 +1,9 @@
 # Änderungsprotokoll
 
+## 2.40.1 — Befehl heißt jetzt /hotsbuild
+
+- Hinweistexte im Adminbereich und auf der Seite „Heroes of the Storm – Builds“: Der Discord-Befehl für die Builds heißt jetzt `/hotsbuild` (statt `/build`, ab Discord-Bot 1.16.1). An den Daten und der Funktion ändert sich nichts
+
 ## 2.40.0 — Admin-Unterseite „Heroes of the Storm – Builds“
 
 - **Neue Admin-Unterseite `admin-builds.php`** (Link im Adminbereich, nur für Admins): Pro Held lassen sich beliebig viele eigene Builds hinterlegen – mit Namen (z. B. „Allround“), optionaler Notiz und dem **Import-Text aus dem Spiel** (z. B. `[T2222324,Kerrigan]`). Builds lassen sich bearbeiten, löschen und in der Reihenfolge verschieben

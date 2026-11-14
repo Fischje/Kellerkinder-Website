@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 // Admin-Unterseite „Heroes of the Storm – Builds“: Helden verwalten und je Held eigene Builds
-// hinterlegen (Titel, Notiz, Import-Text aus dem Spiel). Der Discord-Bot gibt sie mit /build aus.
+// hinterlegen (Titel, Notiz, Import-Text aus dem Spiel). Der Discord-Bot gibt sie mit /hotsbuild aus.
 // Daten: api.php?action=hots_builds (lesen, öffentlich), admin_hots_save_hero / admin_hots_delete_hero /
 // admin_hots_save_build / admin_hots_delete_build / admin_hots_move_build (speichern, nur Admins).
 // Nur Admins sehen die Bedienung; die API prüft die Rechte bei jedem Speichern selbst.
@@ -32,7 +32,7 @@ require __DIR__ . '/includes/bootstrap.php';
 $activeNav = 'admin';
 $pageKicker = 'Admin';
 $pageTitle = 'Heroes of the Storm – Builds';
-$pageLead = 'Deine eigenen Builds je Held. Der Discord-Bot gibt sie mit /build aus, wenn jemand nach dem Helden fragt.';
+$pageLead = 'Deine eigenen Builds je Held. Der Discord-Bot gibt sie mit /hotsbuild aus, wenn jemand nach dem Helden fragt.';
 $showInstall = false;
 require __DIR__ . '/includes/site-header.php';
 ?>

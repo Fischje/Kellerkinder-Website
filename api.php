@@ -2926,7 +2926,7 @@ function storageIsWritable(): bool
 
 // ===== Heroes of the Storm: Helden und eigene Builds =====
 // Ein Admin pflegt auf admin-builds.php je Held beliebig viele Builds (Titel, Notiz, Import-Text aus dem Spiel).
-// Der Discord-Bot liest sie öffentlich über api.php?action=hots_builds (Befehl /build).
+// Der Discord-Bot liest sie öffentlich über api.php?action=hots_builds (Befehl /hotsbuild).
 // Die Heldenliste kommt beim ersten Zugriff aus includes/hots-heroes-seed.json und lässt sich im Admin ändern.
 
 const HOTS_HEROES_MAX = 200;
