@@ -2924,6 +2924,245 @@ function storageIsWritable(): bool
     return is_dir($directory) && is_writable($directory);
 }
 
+// ===== Heroes of the Storm: Helden und eigene Builds =====
+// Ein Admin pflegt auf admin-builds.php je Held beliebig viele Builds (Titel, Notiz, Import-Text aus dem Spiel).
+// Der Discord-Bot liest sie öffentlich über api.php?action=hots_builds (Befehl /build).
+// Die Heldenliste kommt beim ersten Zugriff aus includes/hots-heroes-seed.json und lässt sich im Admin ändern.
+
+const HOTS_HEROES_MAX = 200;
+const HOTS_BUILDS_MAX = 40;
+const HOTS_NAME_MAX = 40;
+const HOTS_IMPORT_NAME_MAX = 30;
+const HOTS_ALIAS_MAX = 40;
+const HOTS_ALIASES_MAX = 30;
+const HOTS_TITLE_MAX = 60;
+const HOTS_NOTE_MAX = 200;
+// Import-Text des Spiels: [T + 7 Ziffern (eine je Talentstufe 1, 4, 7, 10, 13, 16, 20; 0 = nicht gewählt) + , + Heldenname + ]
+const HOTS_CODE_PATTERN = '/^\[T[0-9]{7},[A-Za-z0-9]{1,30}\]$/';
+const HOTS_ACCENTS = [
+    'á' => 'a', 'à' => 'a', 'â' => 'a', 'ä' => 'a', 'ã' => 'a', 'å' => 'a', 'é' => 'e', 'è' => 'e', 'ê' => 'e', 'ë' => 'e',
+    'í' => 'i', 'ì' => 'i', 'î' => 'i', 'ï' => 'i', 'ó' => 'o', 'ò' => 'o', 'ô' => 'o', 'ö' => 'o', 'õ' => 'o',
+    'ú' => 'u', 'ù' => 'u', 'û' => 'u', 'ü' => 'u', 'ñ' => 'n', 'ç' => 'c', 'ß' => 'ss',
+    'Á' => 'A', 'À' => 'A', 'Â' => 'A', 'Ä' => 'A', 'É' => 'E', 'È' => 'E', 'Ê' => 'E', 'Í' => 'I', 'Ó' => 'O', 'Ö' => 'O', 'Ú' => 'U', 'Ü' => 'U',
+];
+
+/** Schreibweise ohne Akzente und Sonderzeichen, nur Buchstaben und Ziffern (Groß-/Kleinschreibung bleibt). */
+function hotsAscii(string $text): string
+{
+    return (string) preg_replace('/[^A-Za-z0-9]/', '', strtr($text, HOTS_ACCENTS));
+}
+
+/** Vergleichsschlüssel: wie hotsAscii, aber klein geschrieben ("E.T.C." = "etc", "Lúcio" = "lucio"). */
+function hotsFold(string $text): string
+{
+    return strtolower(hotsAscii(mb_strtolower($text, 'UTF-8')));
+}
+
+function hotsCleanText($value, int $max): string
+{
+    return mb_substr(trim((string) preg_replace('/\s+/u', ' ', (string) $value)), 0, $max, 'UTF-8');
+}
+
+/** Import-Text säubern: Leerraum, Anführungszeichen oder Backticks drumherum (Copy & Paste) entfernen. */
+function hotsNormalizeCode($value): string
+{
+    return trim((string) $value, " \t\n\r\0\x0B\"'`„“”‚‘’");
+}
+
+function hotsImportNameFromName(string $name): string
+{
+    return substr(hotsAscii($name), 0, HOTS_IMPORT_NAME_MAX);
+}
+
+/** Heldenname im Import-Text ("[T2222324,Kerrigan]" -> "Kerrigan"), sonst null. */
+function hotsCodeHeroName(string $code): ?string
+{
+    return preg_match(HOTS_CODE_PATTERN, $code) === 1 ? substr($code, 10, -1) : null;
+}
+
+/** Vorlage der Heldenliste (ohne IDs) aus includes/hots-heroes-seed.json. */
+function hotsSeedHeroes(): array
+{
+    $file = __DIR__ . '/includes/hots-heroes-seed.json';
+    $seed = is_file($file) ? json_decode((string) file_get_contents($file), true) : null;
+    $heroes = [];
+    foreach (is_array($seed) ? $seed : [] as $entry) {
+        if (!is_array($entry) || hotsCleanText($entry['name'] ?? '', HOTS_NAME_MAX) === '') {
+            continue;
+        }
+        $heroes[] = [
+            'name' => $entry['name'],
+            'name_de' => '',
+            'import_name' => $entry['import_name'] ?? '',
+            'aliases' => is_array($entry['aliases'] ?? null) ? $entry['aliases'] : [],
+            'builds' => [],
+        ];
+    }
+    return $heroes;
+}
+
+function hotsMaxId(array $heroes): int
+{
+    $max = 0;
+    foreach ($heroes as $hero) {
+        $max = max($max, (int) ($hero['id'] ?? 0));
+        foreach ($hero['builds'] ?? [] as $build) {
+            $max = max($max, (int) ($build['id'] ?? 0));
+        }
+    }
+    return $max;
+}
+
+/** Suchbegriffe: höchstens 30, je 40 Zeichen, ohne Doppelte und ohne den Namen selbst. */
+function normalizeHotsAliases($value, array $skipKeys): array
+{
+    $result = [];
+    $seen = array_fill_keys($skipKeys, true);
+    foreach (is_array($value) ? $value : [] as $alias) {
+        $text = hotsCleanText(is_scalar($alias) ? $alias : '', HOTS_ALIAS_MAX);
+        $key = hotsFold($text);
+        if ($text === '' || $key === '' || isset($seen[$key])) {
+            continue;
+        }
+        $seen[$key] = true;
+        $result[] = $text;
+    }
+    return array_slice($result, 0, HOTS_ALIASES_MAX);
+}
+
+/** Heldenliste prüfen und bereinigen. null = noch nie benutzt: Vorlage verwenden (IDs werden vergeben). */
+function normalizeHotsHeroes($value): array
+{
+    $source = is_array($value) ? $value : hotsSeedHeroes();
+    $nextId = hotsMaxId($source) + 1;
+    $usedIds = [];
+    $seenNames = [];
+    $heroes = [];
+
+    foreach ($source as $entry) {
+        if (!is_array($entry)) {
+            continue;
+        }
+        $name = hotsCleanText($entry['name'] ?? '', HOTS_NAME_MAX);
+        $nameKey = hotsFold($name);
+        if ($name === '' || $nameKey === '' || isset($seenNames[$nameKey])) {
+            continue;
+        }
+        $seenNames[$nameKey] = true;
+
+        $id = (int) ($entry['id'] ?? 0);
+        if ($id <= 0 || isset($usedIds[$id])) {
+            $id = $nextId++;
+        }
+        $usedIds[$id] = true;
+
+        $importName = hotsAscii(hotsCleanText($entry['import_name'] ?? '', HOTS_IMPORT_NAME_MAX));
+        if ($importName === '') {
+            $importName = hotsImportNameFromName($name);
+        }
+        $nameDe = hotsCleanText($entry['name_de'] ?? '', HOTS_NAME_MAX);
+
+        $builds = [];
+        foreach (is_array($entry['builds'] ?? null) ? $entry['builds'] : [] as $build) {
+            if (!is_array($build)) {
+                continue;
+            }
+            $title = hotsCleanText($build['title'] ?? '', HOTS_TITLE_MAX);
+            $code = hotsNormalizeCode($build['code'] ?? '');
+            if ($title === '' || preg_match(HOTS_CODE_PATTERN, $code) !== 1) {
+                continue;
+            }
+            $buildId = (int) ($build['id'] ?? 0);
+            if ($buildId <= 0 || isset($usedIds[$buildId])) {
+                $buildId = $nextId++;
+            }
+            $usedIds[$buildId] = true;
+            $builds[] = [
+                'id' => $buildId,
+                'title' => $title,
+                'note' => hotsCleanText($build['note'] ?? '', HOTS_NOTE_MAX),
+                'code' => $code,
+            ];
+        }
+
+        $heroes[] = [
+            'id' => $id,
+            'name' => $name,
+            'name_de' => $nameDe,
+            'import_name' => $importName,
+            'aliases' => normalizeHotsAliases($entry['aliases'] ?? [], [$nameKey, hotsFold($importName), hotsFold($nameDe)]),
+            'builds' => array_slice($builds, 0, HOTS_BUILDS_MAX),
+        ];
+    }
+    return array_slice($heroes, 0, HOTS_HEROES_MAX);
+}
+
+/** Antwort für Seite und Bot: alle Helden (auch ohne Builds, für die Vorschlagsliste) mit ihren Builds. */
+function hotsResponse(array $store): array
+{
+    return [
+        'ok' => true,
+        'updated_at' => is_string($store['hots_updated_at'] ?? null) ? $store['hots_updated_at'] : null,
+        // Ohne Datendatei liefert readStore() den unveränderten Standard (null): dann die Vorlage zeigen
+        'heroes' => array_values(is_array($store['hots_heroes'] ?? null) ? $store['hots_heroes'] : normalizeHotsHeroes(null)),
+    ];
+}
+
+function hotsHeroPosition(array $store, int $heroId): ?int
+{
+    foreach ($store['hots_heroes'] as $position => $hero) {
+        if ($hero['id'] === $heroId) {
+            return $position;
+        }
+    }
+    return null;
+}
+
+/** Heldendaten aus dem Formular prüfen; gibt [Daten, Fehlertext|null] zurück. */
+function validateHotsHeroInput(array $payload, array $store): array
+{
+    $name = hotsCleanText($payload['name'] ?? '', HOTS_NAME_MAX);
+    if ($name === '' || hotsFold($name) === '') {
+        return [null, 'Bitte einen Namen eingeben (höchstens ' . HOTS_NAME_MAX . ' Zeichen).'];
+    }
+    $ownId = (int) ($payload['id'] ?? 0);
+    foreach ($store['hots_heroes'] as $hero) {
+        if ($hero['id'] !== $ownId && hotsFold($hero['name']) === hotsFold($name)) {
+            return [null, 'Diesen Helden gibt es schon: ' . $hero['name'] . '.'];
+        }
+    }
+    $importRaw = hotsCleanText($payload['import_name'] ?? '', HOTS_IMPORT_NAME_MAX);
+    $importName = $importRaw === '' ? hotsImportNameFromName($name) : $importRaw;
+    if (preg_match('/^[A-Za-z0-9]{1,' . HOTS_IMPORT_NAME_MAX . '}$/', $importName) !== 1) {
+        return [null, 'Der Import-Name darf nur Buchstaben und Ziffern ohne Leerzeichen enthalten (z. B. ETC, Lucio, LostVikings).'];
+    }
+    $nameDe = hotsCleanText($payload['name_de'] ?? '', HOTS_NAME_MAX);
+    $aliasInput = $payload['aliases'] ?? [];
+    if (is_string($aliasInput)) {
+        $aliasInput = preg_split('/[,\n]+/u', $aliasInput) ?: [];
+    }
+    return [[
+        'name' => $name,
+        'name_de' => $nameDe,
+        'import_name' => $importName,
+        'aliases' => normalizeHotsAliases($aliasInput, [hotsFold($name), hotsFold($importName), hotsFold($nameDe)]),
+    ], null];
+}
+
+/** Build aus dem Formular prüfen; gibt [Daten, Fehlertext|null] zurück. */
+function validateHotsBuildInput(array $payload): array
+{
+    $title = hotsCleanText($payload['title'] ?? '', HOTS_TITLE_MAX);
+    if ($title === '') {
+        return [null, 'Bitte einen Namen für den Build eingeben (höchstens ' . HOTS_TITLE_MAX . ' Zeichen), z. B. „Allround“.'];
+    }
+    $code = hotsNormalizeCode($payload['code'] ?? '');
+    if (preg_match(HOTS_CODE_PATTERN, $code) !== 1) {
+        return [null, 'Der Import-Text sieht nicht richtig aus. Er muss so aussehen wie im Spiel kopiert, z. B. [T2222324,Kerrigan].'];
+    }
+    return [['title' => $title, 'note' => hotsCleanText($payload['note'] ?? '', HOTS_NOTE_MAX), 'code' => $code], null];
+}
+
 function defaultStore(): array
 {
     return [
@@ -2943,6 +3182,10 @@ function defaultStore(): array
         'netzje_history' => [],
         'impressions' => [],
         'next_impression_id' => 1,
+        // Heroes of the Storm: Helden mit Builds (null = noch nie benutzt, Vorlage wird übernommen)
+        'hots_heroes' => null,
+        'next_hots_id' => 1,
+        'hots_updated_at' => null,
         // Startseite „Home“: Text des Admins (HTML wie im Blog); leer = Vorlage defaultHomeHtml()
         'home' => ['html' => '', 'updated_at' => null],
         'settings' => [
@@ -3038,6 +3281,9 @@ function normalizeStore(array $store): array
         'html' => (string) ($store['home']['html'] ?? ''),
         'updated_at' => is_string($store['home']['updated_at'] ?? null) ? $store['home']['updated_at'] : null,
     ];
+    $store['hots_heroes'] = normalizeHotsHeroes($store['hots_heroes'] ?? null);
+    $store['next_hots_id'] = max(1, (int) ($store['next_hots_id'] ?? 1), 1 + hotsMaxId($store['hots_heroes']));
+    $store['hots_updated_at'] = is_string($store['hots_updated_at'] ?? null) ? $store['hots_updated_at'] : null;
     $store['next_impression_id'] = max(1, (int) ($store['next_impression_id'] ?? 1), 1 + max([0, ...array_map(static fn(array $item): int => $item['id'], $store['impressions'])]));
     $store['next_gameserver_id'] = max(
         1,
@@ -4579,6 +4825,13 @@ if ($action === 'netzje') {
     $netzjeOut = netzjeResponse($netzjeStore);
     session_write_close();
     respond($netzjeOut);
+}
+
+if ($action === 'hots_builds') {
+    // Öffentlich lesbar (der Discord-Bot fragt sie ohne Anmeldung ab): Helden mit den Builds, die der Admin hinterlegt hat
+    $hotsStore = readStore();
+    session_write_close();
+    respond(hotsResponse($hotsStore));
 }
 
 if ($action === 'gameservers') {
@@ -6368,6 +6621,133 @@ withWritableStore(function (array &$store) use ($action, $payload): array {
             }
             $store['home'] = ['html' => $safeHome, 'updated_at' => gmdate('c')];
             return [homeResponse($store), 200, true];
+
+        case 'admin_hots_save_hero':
+            // Held anlegen oder ändern (Name, deutscher Name, Import-Name, Suchbegriffe); Builds bleiben erhalten
+            requireAdmin($store);
+            [$heroInput, $heroError] = validateHotsHeroInput($payload, $store);
+            if ($heroError !== null) {
+                return [['ok' => false, 'error' => $heroError], 422, false];
+            }
+            $heroId = (int) ($payload['id'] ?? 0);
+            $heroPos = hotsHeroPosition($store, $heroId);
+            if ($heroId > 0 && $heroPos === null) {
+                return [['ok' => false, 'error' => 'Dieser Held existiert nicht mehr.'], 404, false];
+            }
+            if ($heroPos === null) {
+                if (count($store['hots_heroes']) >= HOTS_HEROES_MAX) {
+                    return [['ok' => false, 'error' => 'Es sind höchstens ' . HOTS_HEROES_MAX . ' Helden möglich.'], 422, false];
+                }
+                $heroId = (int) $store['next_hots_id'];
+                $store['next_hots_id'] = $heroId + 1;
+                $store['hots_heroes'][] = ['id' => $heroId] + $heroInput + ['builds' => []];
+            } else {
+                $store['hots_heroes'][$heroPos] = ['id' => $heroId] + $heroInput + ['builds' => $store['hots_heroes'][$heroPos]['builds']];
+            }
+            $store['hots_updated_at'] = gmdate('c');
+            return [hotsResponse($store) + ['id' => $heroId], 200, true];
+
+        case 'admin_hots_delete_hero':
+            requireAdmin($store);
+            $deleteHeroId = (int) ($payload['id'] ?? 0);
+            $remainingHeroes = array_values(array_filter($store['hots_heroes'], static fn(array $hero): bool => $hero['id'] !== $deleteHeroId));
+            if (count($remainingHeroes) === count($store['hots_heroes'])) {
+                return [['ok' => false, 'error' => 'Dieser Held existiert nicht mehr.'], 404, false];
+            }
+            $store['hots_heroes'] = $remainingHeroes;
+            $store['hots_updated_at'] = gmdate('c');
+            return [hotsResponse($store), 200, true];
+
+        case 'admin_hots_save_build':
+            // Build eines Helden anlegen oder ändern
+            requireAdmin($store);
+            $buildHeroPos = hotsHeroPosition($store, (int) ($payload['hero_id'] ?? 0));
+            if ($buildHeroPos === null) {
+                return [['ok' => false, 'error' => 'Dieser Held existiert nicht mehr.'], 404, false];
+            }
+            [$buildInput, $buildError] = validateHotsBuildInput($payload);
+            if ($buildError !== null) {
+                return [['ok' => false, 'error' => $buildError], 422, false];
+            }
+            $buildId = (int) ($payload['id'] ?? 0);
+            $buildPos = null;
+            foreach ($store['hots_heroes'][$buildHeroPos]['builds'] as $position => $existingBuild) {
+                if ($existingBuild['id'] === $buildId) {
+                    $buildPos = $position;
+                    break;
+                }
+            }
+            if ($buildId > 0 && $buildPos === null) {
+                return [['ok' => false, 'error' => 'Dieser Build existiert nicht mehr.'], 404, false];
+            }
+            if ($buildPos === null) {
+                if (count($store['hots_heroes'][$buildHeroPos]['builds']) >= HOTS_BUILDS_MAX) {
+                    return [['ok' => false, 'error' => 'Pro Held sind höchstens ' . HOTS_BUILDS_MAX . ' Builds möglich.'], 422, false];
+                }
+                $buildId = (int) $store['next_hots_id'];
+                $store['next_hots_id'] = $buildId + 1;
+                $store['hots_heroes'][$buildHeroPos]['builds'][] = ['id' => $buildId] + $buildInput;
+            } else {
+                $store['hots_heroes'][$buildHeroPos]['builds'][$buildPos] = ['id' => $buildId] + $buildInput;
+            }
+            $store['hots_updated_at'] = gmdate('c');
+            $codeHero = hotsCodeHeroName($buildInput['code']);
+            $heroImportName = $store['hots_heroes'][$buildHeroPos]['import_name'];
+            $buildResponse = hotsResponse($store) + ['id' => $buildId];
+            if ($codeHero !== null && strcasecmp($codeHero, $heroImportName) !== 0) {
+                // Nur ein Hinweis: gespeichert wird trotzdem (der Name im Text kann im Spiel anders lauten)
+                $buildResponse['warning'] = 'Im Import-Text steht „' . $codeHero . '“, der Import-Name des Helden ist „' . $heroImportName . '“. Falls das nicht stimmt, den Text oder den Import-Namen des Helden prüfen.';
+            }
+            return [$buildResponse, 200, true];
+
+        case 'admin_hots_delete_build':
+            requireAdmin($store);
+            $deleteBuildHeroPos = hotsHeroPosition($store, (int) ($payload['hero_id'] ?? 0));
+            if ($deleteBuildHeroPos === null) {
+                return [['ok' => false, 'error' => 'Dieser Held existiert nicht mehr.'], 404, false];
+            }
+            $deleteBuildId = (int) ($payload['id'] ?? 0);
+            $remainingBuilds = array_values(array_filter(
+                $store['hots_heroes'][$deleteBuildHeroPos]['builds'],
+                static fn(array $build): bool => $build['id'] !== $deleteBuildId
+            ));
+            if (count($remainingBuilds) === count($store['hots_heroes'][$deleteBuildHeroPos]['builds'])) {
+                return [['ok' => false, 'error' => 'Dieser Build existiert nicht mehr.'], 404, false];
+            }
+            $store['hots_heroes'][$deleteBuildHeroPos]['builds'] = $remainingBuilds;
+            $store['hots_updated_at'] = gmdate('c');
+            return [hotsResponse($store), 200, true];
+
+        case 'admin_hots_move_build':
+            // Reihenfolge der Builds eines Helden: direction = up | down
+            requireAdmin($store);
+            $moveHeroPos = hotsHeroPosition($store, (int) ($payload['hero_id'] ?? 0));
+            if ($moveHeroPos === null) {
+                return [['ok' => false, 'error' => 'Dieser Held existiert nicht mehr.'], 404, false];
+            }
+            $direction = (string) ($payload['direction'] ?? '');
+            if (!in_array($direction, ['up', 'down'], true)) {
+                return [['ok' => false, 'error' => 'Ungültige Richtung.'], 422, false];
+            }
+            $moveBuildId = (int) ($payload['id'] ?? 0);
+            $moveBuilds = $store['hots_heroes'][$moveHeroPos]['builds'];
+            $fromPos = null;
+            foreach ($moveBuilds as $position => $build) {
+                if ($build['id'] === $moveBuildId) {
+                    $fromPos = $position;
+                    break;
+                }
+            }
+            if ($fromPos === null) {
+                return [['ok' => false, 'error' => 'Dieser Build existiert nicht mehr.'], 404, false];
+            }
+            $toPos = $direction === 'up' ? $fromPos - 1 : $fromPos + 1;
+            if ($toPos >= 0 && $toPos < count($moveBuilds)) {
+                [$moveBuilds[$fromPos], $moveBuilds[$toPos]] = [$moveBuilds[$toPos], $moveBuilds[$fromPos]];
+                $store['hots_heroes'][$moveHeroPos]['builds'] = $moveBuilds;
+                $store['hots_updated_at'] = gmdate('c');
+            }
+            return [hotsResponse($store), 200, true];
 
         case 'admin_cleanup':
             // Admin-Seite „Daten aufräumen“: apply = false zeigt nur, was weg könnte; apply = true räumt auf

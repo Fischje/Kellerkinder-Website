@@ -1,5 +1,13 @@
 # Änderungsprotokoll
 
+## 2.40.0 — Admin-Unterseite „Heroes of the Storm – Builds“
+
+- **Neue Admin-Unterseite `admin-builds.php`** (Link im Adminbereich, nur für Admins): Pro Held lassen sich beliebig viele eigene Builds hinterlegen – mit Namen (z. B. „Allround“), optionaler Notiz und dem **Import-Text aus dem Spiel** (z. B. `[T2222324,Kerrigan]`). Builds lassen sich bearbeiten, löschen und in der Reihenfolge verschieben
+- Alle 91 Helden sind vorgetragen (mit Suchbegriffen in mehreren Sprachen, z. B. „Graumähne“). Zusätzlich gibt es pro Held einen **deutschen Namen** (leer = englischer Name), einen Import-Namen (z. B. `ETC`, `Lucio`, `LostVikings`) und weitere Suchbegriffe. Neue Helden lassen sich im Admin ergänzen
+- Der Import-Text wird geprüft (sieben Ziffern, ein Name); Anführungszeichen drumherum werden entfernt. Passt der Name im Text nicht zum Helden, gibt es einen Hinweis, gespeichert wird trotzdem
+- Neue öffentliche Leseaktion `api.php?action=hots_builds`: der Discord-Bot (ab 1.16.0) gibt die Builds mit `/build` aus. Speichern, Löschen und Verschieben geht nur für Admins
+- Die Daten liegen im gemeinsamen Datenspeicher (`hots_heroes`); die Heldenliste kommt beim ersten Zugriff aus `includes/hots-heroes-seed.json`
+
 ## 2.39.0 — „Gerade online“ zeigt den Discord-Sprachkanal
 
 - **Wie früher das TeamSpeak-Widget:** Der Kasten „Gerade online“ zeigt jetzt, wer in welchem Discord-Sprachkanal sitzt – je Kanal eine Zwischenüberschrift, darunter die Leute mit Profilbild. Spielt jemand nebenbei, steht das Spiel mit „seit …“ darunter, sonst „im Sprachkanal“

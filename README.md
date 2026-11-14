@@ -30,6 +30,7 @@ Mobiloptimierter PHP-Kalender zur Planung gemeinsamer Spielabende mit Benutzerko
 - Seitenleisten-Widget „Gerade online“: wer in welchem Discord-Sprachkanal sitzt (mit Spiel) und wer gerade spielt; nur sichtbar, wenn jemand da ist, Daten vom Discord-Bot (Sprachkanäle ab Bot 1.14.0)
 - Netzje-Sitzplan: Admin legt den Raum an, bestätigte Teilnehmer wählen ihren Platz oder bekommen ihn zugewiesen
 - Seite „Eindrücke“: Fotos und Clips, nur für Angemeldete
+- Admin-Unterseite `admin-builds.php` (Link im Adminbereich): eigene Heroes-of-the-Storm-Builds je Held mit Import-Text zum Kopieren; der Discord-Bot gibt sie mit `/build` aus
 - Zentrale Admin-Seite `admin.php`: Kästen der Seitenleiste an/aus und Reihenfolge, Seiten im Menü ein-/ausblenden, Teile der Startseite, Style für alle, offene Netzje-Anfragen und Benutzerverwaltung (Konten, Admins). Menüpunkt „Admin“ nur für Admins, mit Zahl offener Anfragen
 - Account-Knopf oben rechts auf allen Seiten: Anmelden bzw. Menü mit „Mein Account“, „Adminbereich“ und „Abmelden“
 - Drei globale Styles: „NAVI“ (mittige Spalte mit hellem Inhaltsbereich, dunklem Kopf und grünem Akzent #76e36c, angelehnt an navi.gg) als Standard, Sommer mit Sonne/Wasser/Strand und Winter mit Schnee/Weihnachtsmotiven
@@ -275,6 +276,7 @@ Die Laufzeitdateien unter `data/store.php*` werden von Git ignoriert und dadurch
 ├── index.php           (Startseite „Home“: Text des Admins + „Neu im Blog“)
 ├── kalender.php        (Kalender „Wer zockt wann?“, Anmelde- und Konto-Dialoge)
 ├── admin.php           (zentrale Admin-Seite: Schalter, Netzje-Anfragen, Benutzerverwaltung, Daten aufräumen)
+├── admin-builds.php    (Admin-Unterseite: Heroes-Builds je Held; Vorlage der Heldenliste in includes/hots-heroes-seed.json)
 ├── spieler.php         (Spielerliste; mit ?name= das Spielerprofil)
 ├── jahresrueckblick.php (Jahresrückblick der Spiele-Statistik)
 ├── eindruecke.php      (Galerie, nur für Angemeldete)
