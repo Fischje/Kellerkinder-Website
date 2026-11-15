@@ -186,32 +186,9 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
     session_start();
 }
 
-if (empty($_SESSION['user_id']) && isset($_COOKIE['kellerkinder_remember'])) {
-    $rememberParts = explode(':', (string) $_COOKIE['kellerkinder_remember'], 2);
-    $rememberRestored = false;
-    if (count($rememberParts) === 2 && $rememberParts[0] !== '' && $rememberParts[1] !== '') {
-        [$rememberSelector, $rememberValidator] = $rememberParts;
-        $rememberStore = readStore();
-        foreach ($rememberStore['remember_tokens'] as $rememberToken) {
-            if (!hash_equals($rememberToken['selector'], $rememberSelector)) {
-                continue;
-            }
-            if (hash_equals($rememberToken['validator_hash'], hash('sha256', $rememberValidator))) {
-                $rememberUserIndex = findUserIndex($rememberStore['users'], (int) $rememberToken['user_id']);
-                if ($rememberUserIndex !== null) {
-                    session_regenerate_id(true);
-                    $_SESSION['user_id'] = (int) $rememberStore['users'][$rememberUserIndex]['id'];
-                    $_SESSION['auth_version'] = max(1, (int) ($rememberStore['users'][$rememberUserIndex]['session_version'] ?? 1));
-                    $rememberRestored = true;
-                }
-            }
-            break;
-        }
-    }
-    if (!$rememberRestored) {
-        clearRememberCookie();
-    }
-}
+// Die Wiederanmeldung über das „Angemeldet bleiben“-Cookie steht weiter unten, direkt vor der
+// Verarbeitung der Anfrage: Sie liest den Store, und der braucht Konstanten, die erst später
+// in dieser Datei definiert werden (sonst HTTP 500 „Undefined constant“).
 } // Ende: if (!defined('BLOG_FEED_ONLY'))
 
 
@@ -4742,6 +4719,35 @@ function bootstrapResponse(array $store): array
 if (defined('BLOG_FEED_ONLY')) {
     // Nur Funktionen bereitstellen, keine Anfrage verarbeiten.
     return;
+}
+
+// Wiederanmeldung über das „Angemeldet bleiben“-Cookie, wenn die Sitzung abgelaufen ist.
+// Muss nach allen const-Definitionen dieser Datei stehen, weil readStore() sie braucht.
+if (empty($_SESSION['user_id']) && isset($_COOKIE['kellerkinder_remember'])) {
+    $rememberParts = explode(':', (string) $_COOKIE['kellerkinder_remember'], 2);
+    $rememberRestored = false;
+    if (count($rememberParts) === 2 && $rememberParts[0] !== '' && $rememberParts[1] !== '') {
+        [$rememberSelector, $rememberValidator] = $rememberParts;
+        $rememberStore = readStore();
+        foreach ($rememberStore['remember_tokens'] as $rememberToken) {
+            if (!hash_equals($rememberToken['selector'], $rememberSelector)) {
+                continue;
+            }
+            if (hash_equals($rememberToken['validator_hash'], hash('sha256', $rememberValidator))) {
+                $rememberUserIndex = findUserIndex($rememberStore['users'], (int) $rememberToken['user_id']);
+                if ($rememberUserIndex !== null) {
+                    session_regenerate_id(true);
+                    $_SESSION['user_id'] = (int) $rememberStore['users'][$rememberUserIndex]['id'];
+                    $_SESSION['auth_version'] = max(1, (int) ($rememberStore['users'][$rememberUserIndex]['session_version'] ?? 1));
+                    $rememberRestored = true;
+                }
+            }
+            break;
+        }
+    }
+    if (!$rememberRestored) {
+        clearRememberCookie();
+    }
 }
 
 $payload = $_SERVER['REQUEST_METHOD'] === 'POST' ? requestPayload() : $_GET;

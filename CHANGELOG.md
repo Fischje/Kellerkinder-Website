@@ -1,5 +1,9 @@
 # Änderungsprotokoll
 
+## 2.40.2 — Fehler „Die Aktion ist fehlgeschlagen“ bei „Angemeldet bleiben“ behoben
+
+- **Fehler behoben:** Wer „Angemeldet bleiben“ gewählt hatte und dessen Sitzung abgelaufen war (typisch auf dem Handy nach ein paar Tagen), sah auf allen Seiten nur noch „Die Aktion ist fehlgeschlagen.“ und war abgemeldet. Die automatische Wiederanmeldung lief in `api.php`, bevor die seit 2.40.0 nötigen Konstanten (`HOTS_…`) definiert waren, und brach mit HTTP 500 ab. Sie steht jetzt hinter allen Definitionen, direkt vor der Verarbeitung der Anfrage
+
 ## 2.40.1 — Befehl heißt jetzt /hotsbuild
 
 - Hinweistexte im Adminbereich und auf der Seite „Heroes of the Storm – Builds“: Der Discord-Befehl für die Builds heißt jetzt `/hotsbuild` (statt `/build`, ab Discord-Bot 1.16.1). An den Daten und der Funktion ändert sich nichts
