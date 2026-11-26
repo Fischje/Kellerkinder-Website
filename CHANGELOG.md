@@ -1,5 +1,11 @@
 # Änderungsprotokoll
 
+## 2.41.0 — Spielerprofil: Zeitraum wählbar
+
+- **Spielerprofil** (`spieler.php?name=…`): Über der Spieleliste gibt es jetzt dieselben Zeitraum-Knöpfe wie auf der Spiele-Seite – Letzte 7 Tage, Letzte 30 Tage, Ein Jahr, Immer. Gezeigt werden die Spiele des Spielers in diesem Zeitraum, seine Spielzeit und sein Platz unter allen Spielern. Das ersetzt die festen Listen „Lieblingsspiele“ (gesamt) und „Letzte 30 Tage“
+- Der Zeitraum aus der Rangliste wird übernommen (`&tage=…`), steht nach dem Umschalten in der Adresse, und „← Alle Spieler“ führt zur Rangliste mit demselben Zeitraum
+- `api.php?action=player_profile` nimmt `days` (7, 30, 365, 0; Standard 30) und liefert `period_days`, `period_minutes`, `period_rank`, `period_players_count`, `period_games` und `stale` statt `recent_minutes`, `top_games` und `recent_games`
+
 ## 2.40.2 — Fehler „Die Aktion ist fehlgeschlagen“ bei „Angemeldet bleiben“ behoben
 
 - **Fehler behoben:** Wer „Angemeldet bleiben“ gewählt hatte und dessen Sitzung abgelaufen war (typisch auf dem Handy nach ein paar Tagen), sah auf allen Seiten nur noch „Die Aktion ist fehlgeschlagen.“ und war abgemeldet. Die automatische Wiederanmeldung lief in `api.php`, bevor die seit 2.40.0 nötigen Konstanten (`HOTS_…`) definiert waren, und brach mit HTTP 500 ab. Sie steht jetzt hinter allen Definitionen, direkt vor der Verarbeitung der Anfrage

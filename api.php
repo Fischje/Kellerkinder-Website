@@ -5200,9 +5200,14 @@ if ($action === 'player_profile') {
     if (!defined('BOT_STATS_URL') || BOT_STATS_URL === '') {
         respond(['ok' => false, 'error' => 'Die Statistik ist noch nicht eingerichtet.'], 404);
     }
+    // Zeitraum der Spieleliste im Profil (wie auf der Spiele-Seite), Standard 30 Tage
+    $periodDays = isset($payload['days']) && $payload['days'] !== '' ? (int) $payload['days'] : 30;
+    if (!in_array($periodDays, BOT_STATS_ALLOWED_DAYS, true)) {
+        respond(['ok' => false, 'error' => 'Ungültiger Zeitraum.'], 422);
+    }
     $excluded = statsExcludedIds($profileStore);
     $all = botStatsData(0, $excluded);
-    $recent = botStatsData(30, $excluded);
+    $period = $periodDays === 0 ? $all : botStatsData($periodDays, $excluded);
     if ($all === null || !is_array($all['players'] ?? null)) {
         respond(['ok' => false, 'error' => 'Spielerprofile gibt es nur, wenn die Spielernamen öffentlich sind.'], 404);
     }
@@ -5219,7 +5224,14 @@ if ($action === 'player_profile') {
             break;
         }
     }
-    $recentPerson = findByName(is_array($recent['details']['players'] ?? null) ? $recent['details']['players'] : [], $realName);
+    $periodPerson = findByName(is_array($period['details']['players'] ?? null) ? $period['details']['players'] : [], $realName);
+    $periodRank = null;
+    foreach (is_array($period['players'] ?? null) ? $period['players'] : [] as $index => $row) {
+        if (textLower((string) $row['name']) === textLower($realName)) {
+            $periodRank = $index + 1;
+            break;
+        }
+    }
     $iconIndex = gameIconIndex();
     $gameRows = static fn(array $rows): array => array_map(static fn(array $game): array => [
         'name' => (string) ($game['name'] ?? ''),
@@ -5285,9 +5297,12 @@ if ($action === 'player_profile') {
         'rank' => $rank,
         'players_count' => count($all['players']),
         'total_minutes' => (int) ($person['minutes'] ?? 0),
-        'recent_minutes' => (int) ($recentPerson['minutes'] ?? 0),
-        'top_games' => $gameRows(is_array($person['games'] ?? null) ? $person['games'] : []),
-        'recent_games' => $gameRows(is_array($recentPerson['games'] ?? null) ? $recentPerson['games'] : []),
+        'period_days' => $periodDays,
+        'period_minutes' => (int) ($periodPerson['minutes'] ?? 0),
+        'period_rank' => $periodRank,
+        'period_players_count' => is_array($period['players'] ?? null) ? count($period['players']) : 0,
+        'period_games' => $gameRows(is_array($periodPerson['games'] ?? null) ? $periodPerson['games'] : []),
+        'stale' => (bool) ($all['stale'] ?? false) || (bool) ($period['stale'] ?? false),
         'calendar_days' => $calendarPlayer !== null ? $onlineDays : null,
         'netzje' => $netzjeParties,
         'steam_profile' => $account['steam_profile'] ?? '',

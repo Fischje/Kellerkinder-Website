@@ -2,7 +2,8 @@
 declare(strict_types=1);
 // Seite „Spieler“ (Rubrik Spiele-Statistik).
 //   spieler.php              Rangliste der Kellerkinder (gemeinsame Ansicht includes/games-view.php)
-//   spieler.php?name=Nenok   Spielerprofil: Spielzeit, Lieblingsspiele, Kalender, Netzje, Abzeichen
+//   spieler.php?name=Nenok   Spielerprofil: Spielzeit, Spiele im gewählten Zeitraum, Kalender, Netzje, Abzeichen
+//   …&tage=7|30|365|0         Zeitraum der Spieleliste (wie auf der Spiele-Seite), Standard 30 Tage
 // Daten des Profils: api.php?action=player_profile. Der Name ist der aus der Discord-Statistik;
 // Kalender- und Netzje-Daten gehören zum gleichnamigen Spieler auf der Website.
 $profileName = trim((string) ($_GET['name'] ?? ''));
@@ -59,6 +60,10 @@ require __DIR__ . '/includes/site-header.php';
 <script nonce="<?= $h($cspNonce) ?>">
     const NAME = <?= json_encode($profileName, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP) ?>;
     const byId = (id) => document.getElementById(id);
+    const ALLOWED_DAYS = [7, 30, 365, 0];
+    const PERIODS = [[7, 'Letzte 7 Tage'], [30, 'Letzte 30 Tage'], [365, 'Ein Jahr'], [0, 'Immer']];
+    const periodLabel = (days) => (PERIODS.find(([value]) => value === days) || PERIODS[1])[1];
+    let requestSeq = 0;
 
     function el(tag, className, text) {
         const node = document.createElement(tag);
@@ -156,18 +161,39 @@ require __DIR__ . '/includes/site-header.php';
         const summary = el('div', 'stats-summary review-summary');
         summary.append(
             tile(`${hours(data.total_minutes)} Std.`, 'Gesamt gezockt'),
-            tile(`${hours(data.recent_minutes)} Std.`, 'Letzte 30 Tage'),
             tile(data.calendar_days === null ? '–' : String(data.calendar_days), 'Spieltage zugesagt'),
             tile(String(data.netzje.length), data.netzje.length === 1 ? 'Netzje' : 'Netzjes'),
         );
 
-        const columns = el('div', 'review-columns');
-        columns.append(
-            section('Spiele', 'Lieblings', gameList(data.top_games)),
-            section('30 Tage', 'Letzte', gameList(data.recent_games)),
-        );
+        // Spiele im gewählten Zeitraum: Knöpfe wie auf der Spiele-Seite, Inhalt in #profilePeriod
+        const periods = el('div', 'stats-periods');
+        periods.setAttribute('role', 'group');
+        periods.setAttribute('aria-label', 'Zeitraum');
+        for (const [days, label] of PERIODS) {
+            const button = el('button', 'stats-period' + (days === data.period_days ? ' active' : ''), label);
+            button.type = 'button';
+            button.dataset.days = String(days);
+            periods.append(button);
+        }
+        periods.addEventListener('click', (event) => {
+            const button = event.target.closest('.stats-period');
+            if (!button) return;
+            const days = Number(button.dataset.days);
+            periods.querySelectorAll('.stats-period').forEach((node) => node.classList.toggle('active', node === button));
+            // Zeitraum in der Adresse merken (Neuladen, Teilen, Zurück zur Rangliste)
+            const url = new URL(window.location.href);
+            url.searchParams.set('tage', String(days));
+            history.replaceState(null, '', url);
+            backLink.href = `spieler.php?tage=${days}`;
+            loadPeriod(days);
+        });
+        const periodBody = el('div');
+        periodBody.id = 'profilePeriod';
+        periodBody.append(renderPeriod(data));
+        const games = section('Spiele', 'Gezockte', periods, periodBody);
 
-        const nodes = [card, summary, columns];
+        const nodes = [card, summary, games];
+        if (data.stale) nodes.splice(2, 0, el('p', 'stats-note', 'Der Bot ist gerade nicht erreichbar. Gezeigt wird der letzte bekannte Stand.'));
         if (data.netzje.length > 0) {
             const list = el('ul', 'review-netzje');
             for (const party of data.netzje) {
@@ -183,12 +209,49 @@ require __DIR__ . '/includes/site-header.php';
         byId('profileBody').replaceChildren(...nodes);
     }
 
+    // Spielzeit und Spiele des Spielers im gewählten Zeitraum
+    function renderPeriod(data) {
+        const box = document.createDocumentFragment();
+        const label = periodLabel(data.period_days);
+        const line = data.period_minutes > 0
+            ? `${label}: ${hours(data.period_minutes)} Std.` + (data.period_rank ? ` · Platz ${data.period_rank} von ${data.period_players_count}` : '')
+            : `${label}: nicht gezockt`;
+        box.append(el('p', 'stats-note', line), gameList(data.period_games));
+        return box;
+    }
+
+    async function fetchProfile(days) {
+        const response = await fetch(`api.php?action=player_profile&name=${encodeURIComponent(NAME)}&days=${days}`, { headers: { Accept: 'application/json' }, credentials: 'same-origin' });
+        let data = null;
+        try { data = await response.json(); } catch { data = null; }
+        if (!response.ok || !data || data.ok === false) throw new Error((data && data.error) || 'Das Profil konnte nicht geladen werden.');
+        return data;
+    }
+
+    async function loadPeriod(days) {
+        const seq = ++requestSeq;
+        const target = byId('profilePeriod');
+        target.replaceChildren(el('p', 'widget-loading', 'Wird geladen …'));
+        try {
+            const data = await fetchProfile(days);
+            if (seq !== requestSeq) return;
+            target.replaceChildren(renderPeriod(data));
+        } catch (error) {
+            if (seq !== requestSeq) return;
+            target.replaceChildren(el('p', 'widget-empty', error.message));
+        }
+    }
+
+    // Zeitraum aus der Adresse (?tage=…, kommt aus der Rangliste mit), sonst die letzten 30 Tage
+    const params = new URLSearchParams(window.location.search);
+    const requestedDays = Number(params.get('tage'));
+    const startDays = params.has('tage') && ALLOWED_DAYS.includes(requestedDays) ? requestedDays : 30;
+    const backLink = document.querySelector('.stats-link-button');
+    backLink.href = `spieler.php?tage=${startDays}`;
+
     (async () => {
         try {
-            const response = await fetch(`api.php?action=player_profile&name=${encodeURIComponent(NAME)}`, { headers: { Accept: 'application/json' }, credentials: 'same-origin' });
-            const data = await response.json();
-            if (!response.ok || data.ok === false) throw new Error(data.error || 'Das Profil konnte nicht geladen werden.');
-            render(data);
+            render(await fetchProfile(startDays));
         } catch (error) {
             byId('profileBody').replaceChildren(el('p', 'widget-empty', error.message));
         }
